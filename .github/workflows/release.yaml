@@ -1,0 +1,42 @@
+name: Make Release
+
+on:
+  schedule:
+    # 4AM UTC == 12AM EDT
+    # 5AM UTC == 12AM EST
+    # mm hh dd MM day-of-week
+    - cron: '0 5 16 2 *'
+    - cron: '0 4 9 3 *'
+    - cron: '0 4 6 4 *'
+    - cron: '0 4 27 4 *'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+    - uses: actions/checkout@v6
+    - name: Determine Metadata
+      id: meta
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        echo "Schedule: ${{ github.event.schedule }}"
+        export RELEASE_NUM="$(gh release list --json name | jq '(length + 1)')"
+        echo "num=${RELEASE_NUM}" >> $GITHUB_OUTPUT
+        echo "version=v${RELEASE_NUM}.0.0" >> $GITHUB_OUTPUT
+    - name: Merge Develop into Main
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        git fetch origin main
+        gh pr create --base main --head develop --title "Sprint ${{ steps.meta.outputs.num }} Release" --fill
+        gh pr merge develop --admin --merge
+    - name: Tag Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        gh release create "${{ steps.meta.outputs.version }}" --target main --title "Sprint ${{ steps.meta.outputs.num }} Release" --generate-notes

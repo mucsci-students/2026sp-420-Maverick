@@ -1,0 +1,4 @@
+*       @mucsci-students/maverick
+
+.github/CODEOWNERS @mucsci-students/420-admin
+.github/workflows/release.yml @mucsci-students/420-admin
