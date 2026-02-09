@@ -2,7 +2,7 @@
 
 ## Contributors:
 - Antonio Corona
-- Andrew (Code in last name so you can practice merging)
+- Andrew Jackson
 - Ian Swartz
 - Jacob Karasow
 - Naomi (Code in last name so you can practice merging)
