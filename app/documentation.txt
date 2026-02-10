@@ -24,3 +24,22 @@ template:
         Exceptions:
             <exception type:reason>
     """
+
+
+or you can also use the following app python header 
+
+
+# Author:
+# Date: <yyyy-mm-dd>
+"""
+file.name
+
+Configuration operations module for the scheduler application.
+
+Handles loading, saving, and formatting scheduler configuration files,
+as well as generating readable output representations of configuration data.
+
+Related User Stories:
+    Example: B1 — Print Configuration File
+
+"""
