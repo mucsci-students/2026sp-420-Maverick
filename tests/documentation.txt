@@ -1,0 +1,26 @@
+# Filename: documentation.txt
+# Author: Antonio Corona
+# Date: 2026-02-10
+# Description: Standardized file documentation
+
+File documentation standard:
+    # Filename: 
+    # Authors: 
+    # Date: <yyyy-mm-dd>
+    # Description: 
+
+
+Method documentation standard:
+    Params (parameters and preconditions)
+    Returns (output and postconditions)
+    Exceptions (any exceptions raised)- only have if exceptions raised
+template:   
+    """
+    <class description>
+        Params:   
+            <input:description>
+        Returns:
+            <case:description>
+        Exceptions:
+            <exception type:reason>
+    """
