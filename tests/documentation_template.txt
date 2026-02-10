@@ -1,4 +1,4 @@
-# Filename: documentation.txt
+# Filename: documentation_template.txt
 # Author: Antonio Corona
 # Date: 2026-02-10
 # Description: Standardized file documentation
@@ -24,3 +24,26 @@ template:
         Exceptions:
             <exception type:reason>
     """
+
+
+
+or the following header could also be used
+
+
+# Author: 
+# Date: <yyyy-mm-dd>
+"""
+test_lab.py
+
+Purpose:
+
+Scope:
+    - 
+
+Testing Strategy:
+    - 
+
+Related User Stories:
+
+"""
+
