@@ -1,5 +1,5 @@
-# Author:
-# Date: <yyyy-mm-dd>
+# Author: Tanner Ness
+# Date: 2026-02-10
 """
 room_management.py
 
@@ -11,3 +11,144 @@ within the scheduler configuration.
 Related User Stories:
     A4 — Room Management
 """
+
+
+from typing import Any, Dict, List, Optional, Tuple
+
+
+# -----------------------------
+# Internal Helpers
+# -----------------------------
+
+"""
+Description: get_room_list takes a config file and returns the rooms in the config file.
+Params     :
+            cfg -> the configuration file.
+Returns    :
+            A list of rooms.
+            If it is missing from the file, returns an empty list.
+"""
+def get_room_list(cfg: Dict[str, Any]) -> List[str]:
+    return cfg.setdefault("config", {}).setdefault("rooms", [])
+
+
+"""
+Description: find_room_index takes a list of rooms and returns if the room was found in the list or not.
+Parameters :
+           room_list -> the list of rooms.
+           room_name -> the name of the room.
+Returns    :
+           If the room is found, returns the index.
+           If the room was not found, -1.
+"""
+def find_room_index(room_list: List[str], room_name: str) -> Optional[int]:
+    name_lower = room_name.lower()
+
+    if len(room_list) == 0:
+        return None
+
+    for index, room in enumerate(room_list):
+        # case insensitive
+        if room.lower() == name_lower:
+            return index
+
+    return -1
+
+"""
+Description: removes the given room from faculty and courses
+Parameters :
+            cfg -> the configuration file.
+            room -> the room to remove.
+Returns    :
+           Nothing.
+"""
+def remove_room_helper(cfg: Dict[str, Any], room: str) -> None:
+
+    config = cfg.get('config', {})
+
+    course_list = config.get('courses',[])
+
+    faculty_list =  config.get('faculty', [])
+
+    room_lower = room.lower()
+
+    # Removes the instance of room in courses -> 'room' if it exists.
+    for course in course_list:
+
+        rooms = course.get('room', [])
+
+        for r in range(len(rooms)):
+            if rooms[r].lower() == room_lower:
+                rooms.pop(r)
+                break
+
+
+    # Removes the instance of room in faculty -> 'room_preferences' if it exists.
+    for faculty in faculty_list:
+
+        room_prefs = faculty.get('room_preferences', {})
+        
+        for r in list(room_prefs):
+            if r.lower() == room_lower:
+                room_prefs.pop(r, None)
+                break
+
+
+
+# -----------------------------
+# CRUD Operations
+# -----------------------------
+"""
+Description: Add a room to the config file.
+Parameters :
+           cfg -> the configuration file.
+           room -> the room to add to the configuration file
+Returns    :
+           Nothing.
+           If room already exists in room_list, returns ValueError.
+"""
+def add_room(cfg: Dict[str, Any], room: str) -> None:
+    
+    room_list = get_room_list(cfg)
+
+    index = find_room_index(room_list, room)
+
+    match index:
+        case None | -1:
+           room_list.append(room)
+
+        case    _:
+            raise ValueError(f"Room '{room}' already exists.")
+
+"""
+Description: Removes a given room from the config file.
+Parameters :
+           cgf -> the configuration file.
+           room -> the room to be removed from the config file.
+Returns    :
+           Nothing.
+           If room_list is empty, returns LookupError.
+           If room does not exist in room_list, returns ValueError.
+             
+"""
+def remove_room(cfg: Dict[str, Any], room: str) -> None:
+
+    room_list = get_room_list(cfg)
+    
+    index = find_room_index(room_list, room)
+
+    match index:
+        case None:
+            raise LookupError(f"Room list is empty.")
+        
+        case   -1:
+            raise ValueError(f"Room '{room}' does not exist.")
+        
+        case    _:
+            room_list.pop(index)
+            remove_room_helper(cfg, room)
+    
+    
+
+    
+    
