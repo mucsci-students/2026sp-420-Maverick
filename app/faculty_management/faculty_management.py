@@ -1,5 +1,5 @@
-# Author: Antonio Corona
-# Date: 2026-2-10
+# Author(s): Antonio Corona, Tanner Ness
+# Date: 2026-2-11
 """
 faculty_management.py
 
@@ -126,6 +126,31 @@ def find_faculty_index(faculty_list: List[Dict[str, Any]], name: str) -> int:
 
     return -1
 
+"""
+Description: remove_faculty_helper remove all instances of the faculty member from courses.
+Parameters :
+            cfg -> the configuration file.
+            name -> the name to remove.
+Returns    :
+           Nothing.
+"""
+def remove_faculty_helper(cfg: Dict[str, Any], name: str) -> None:
+    
+    config = cfg.get('config', {})
+
+    course_list = config.get('courses',[])
+
+    faculty_lower = name.lower()
+    
+    for course in course_list:
+
+        faculty = course.get('faculty',)
+
+        for r in range(len(faculty)):
+            if faculty[r].lower() == faculty_lower:
+                faculty.pop(r)
+                break
+
 
 # -----------------------------
 # CRUD Operations
@@ -159,3 +184,28 @@ def add_faculty(
         entry["preferences"] = prefs
 
     faculty_list.append(entry)
+
+
+"""
+Description: remove_faculty removes a faculty member from the config file.
+Parameters : 
+           cfg -> the config file.
+           name -> the name of the faculty member to remove.
+Returns    :
+           Nothing
+           If name does not exist in config file, returns ValueError.
+"""
+def remove_faculty(cfg: Dict[str, Any], name: str) -> None:
+    
+    faculty_list = get_faculty_list(cfg)
+
+    index = find_faculty_index(faculty_list, name)
+
+
+    match index:
+        case -1:
+            raise ValueError(f"Faculty {name} does not exist.")
+        case _:
+            faculty_list.pop(index)
+            remove_faculty_helper(cfg, name)
+    
