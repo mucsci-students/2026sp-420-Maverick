@@ -1,4 +1,4 @@
-# Author: Antonio Coroan
+# Author: Antonio Coroan, Tanner Ness
 # Date: 2026-2-11
 """
 course_management.py
@@ -189,3 +189,62 @@ def add_course(
 
     # Append the new course to the config list.
     courses.append(entry)
+
+
+"""
+Description: Removes a given course from the config file. 
+Parameters : 
+           cfg -> the config file.
+           course -> the course to remove.
+Returns    :
+           Nothing.
+"""
+def remove_course(cfg: Dict[str, Any], course: str) -> None:
+    course_list = get_course_list(cfg)
+
+    index = find_course_index(course_list, course)
+
+    match index:
+        case -1:
+            raise ValueError(f"Course {course} does not exist or list is empty.")
+        case _:
+            course_list.pop(index)
+            remove_course_helper(cfg, course)
+
+"""
+Description: Removes the course from faculty -> 'course_preferences'.
+Parameters :
+           cfg -> the config file.
+           course -> the course to remove
+Returns    :
+           Nothing
+"""
+def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
+    
+    config = cfg.get('config', {})
+
+    course_list = config.get('courses',[])
+
+    faculty_list = config.get('faculty',[])
+
+    course_lower = course.lower()
+
+    # removes any instances of the course in courses -> 'conflicts' if it exists.
+    for course in course_list:
+
+        conflicts = course.get('conflicts', [])
+
+        for c in range(len(conflicts)):
+            if conflicts[c].lower() == course_lower:
+                conflicts.pop(c)
+                break
+
+    # Removes the instance of room in faculty -> 'course_preferences' if it exists.
+    for cse in faculty_list:
+
+        course_prefs = cse.get('course_preferences', {})
+
+        for r in list(course_prefs):
+            if r.lower() == course_lower:
+                course_prefs.pop(r, None)
+                break
