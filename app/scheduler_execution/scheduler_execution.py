@@ -32,7 +32,7 @@ class Scheduler:
             }
         }
 
-    def add_factulty(
+    def add_faculty(
         self, 
         name: str, 
         appointment_type: str,
