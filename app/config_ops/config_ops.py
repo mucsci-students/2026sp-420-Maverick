@@ -14,12 +14,31 @@ Related User Stories:
     B3 — Load Configuration File
 """
 
+from __future__ import annotations
+
 import json
+from pathlib import Path
 from typing import Dict, Any, Optional
+
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "config": {"faculty": [], "courses": [], "rooms": [], "labs": []}
+}
+
+def ensure_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure required keys exist (shape only; no business rules)."""
+    if "config" not in cfg or not isinstance(cfg["config"], dict):
+        cfg["config"] = {}
+
+    inner = cfg["config"]
+    inner.setdefault("faculty", [])
+    inner.setdefault("courses", [])
+    inner.setdefault("rooms", [])
+    inner.setdefault("labs", [])
+    return cfg
 
 # Print Configuration File function -
 # Prints a summary of the current schedule data.
-def print_config(config_data: Dict[str, Any]) -> None:
+def summarize_config(config_data: Dict[str, Any]) -> None:
     inner_config = config_data.get("config", {})
 
     print("\n--- Current Scheduler Configuration Summary ---")
