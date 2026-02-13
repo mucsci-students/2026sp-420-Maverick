@@ -219,9 +219,9 @@ def add_faculty(
     cfg: Dict[str, Any],
     name: str,
     appointment_type: str,
-    day: Optional[str],
-    time_range: Optional[str],
-    prefs: List[Dict[str, Any]],
+    day: Optional[str] = None,
+    time_range: Optional[str] = None,
+    prefs: Optional[List[Dict[str, Any]]] = None,
 ) -> None:
     """
     Add a faculty member to cfg["config"]["faculty"].
@@ -244,6 +244,10 @@ def add_faculty(
     
     # Build times dictionary (defaults or day override)
     times = build_times(day, time_range)
+
+    # Normalizes prefs
+    if prefs is None:
+        prefs = []
 
     # Faculty record stored in the config
     entry = {
