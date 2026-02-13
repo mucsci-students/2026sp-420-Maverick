@@ -18,7 +18,7 @@ from typing import Dict, Any, List, Optional
 from faculty_management import add_faculty, remove_faculty, parse_prefs
 from lab_management import add_lab, remove_lab
 from room_management import add_room, remove_room
-from course_management import add_course
+from course_management import add_course, remove_course
 
 class Scheduler: 
 
@@ -82,6 +82,9 @@ class Scheduler:
     ) -> None:
         add_course(self.cfg, course_id, credits, room, lab, faculty_list)
 
+
+    def remove_course (self, course: str) -> None:
+        remove_course(self.cfg, course)
     # =========================
     # Accessor
     # =========================
