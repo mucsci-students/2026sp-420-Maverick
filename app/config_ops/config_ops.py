@@ -70,9 +70,9 @@ def load_config(filename: str) -> Optional[Dict[str, Any]]:
         print(f"Error: The file '{filename}' does not exist.")
 
         # Return empty placeholder for each variable.
-        return {"config": {"faculty": [], "course": [], "rooms": [], "labs": []}}
+        return {"config": {"faculty": [], "courses": [], "rooms": [], "labs": []}}
     
     # Error for if file isn't a Json file.
     except json.JSONDecodeError:
         print(f"Error: '{filename}' is not a valid JSON file.")
-        return
+        return None
