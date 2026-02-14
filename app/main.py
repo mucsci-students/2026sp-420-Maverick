@@ -11,11 +11,11 @@ from app.scheduler_execution.scheduler_execution import SchedulerExecution
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scheduler-cli")
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
 
     # --- config show/save ---
     cfg = sub.add_parser("config", help="Configuration operations")
-    cfg_sub = cfg.add_subparsers(dest="cfg_cmd", required=True)
+    cfg_sub = cfg.add_subparsers(dest="cfg_cmd")
 
     show = cfg_sub.add_parser("show", help="Show configuration")
     show.add_argument("--path", default="configs/config_dev.json")
@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # --- faculty add/remove ---
     fac = sub.add_parser("faculty", help="Faculty operations")
-    fac_sub = fac.add_subparsers(dest="fac_cmd", required=True)
+    fac_sub = fac.add_subparsers(dest="fac_cmd")
 
     fac_add = fac_sub.add_parser("add", help="Add a faculty member")
     fac_add.add_argument("--path", default="configs/config_dev.json")
@@ -55,6 +55,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        return
+
+    if args.command == "config" and args.cfg_cmd is None:
+        parser.parse_args(["config", "-h"])
+        return
+
+    if args.command == "faculty" and args.fac_cmd is None:
+        parser.parse_args(["faculty", "-h"])
+        return
+
 
     # CONFIG SHOW
     if args.command == "config" and args.cfg_cmd == "show":
