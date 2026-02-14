@@ -248,3 +248,72 @@ def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
             if r.lower() == course_lower:
                 course_prefs.pop(r, None)
                 break
+
+
+"""
+"""
+def find_conflict_index(conflict_list: List[str], conflict_name: str) -> int:
+    name_lower = conflict_name.lower()
+
+    for index, conflict in enumerate(conflict_list):
+        # case insensitive
+        if conflict.lower() == name_lower:
+            return index
+
+    return -1
+
+
+"""
+Decription: Adds a confict to a given course.
+Parameters:
+          cfg -> the config file.
+          course -> the course to add the conflict to.
+          conflict -> the conflict to add
+Returns   :
+          Nothing.
+"""
+def add_conflict(cfg: Dict[str, Any], course: str, conflict: str) -> None:
+    courses = get_course_list(cfg)
+
+    index = find_course_index(courses, course)
+
+    if index == -1:
+        raise ValueError(f"course {course} does not exist.")
+     
+    crse = courses[index]
+    conflict_list = crse.get('conflicts', [])
+
+    conflict_index = find_conflict_index(conflict_list, conflict)
+
+    if conflict_index != -1:
+        raise ValueError(f"conflict {conflict} already exists in course {course}.")
+    
+    conflict_list.append(conflict)
+    
+"""
+Description: Removes a conflict from a given course.
+Parmeters  :
+           cfg -> the config file.
+           course -> the course to remove the conflict from.
+           conflict -> the conflict to remove.
+Returns    :
+           Nothing.
+"""
+def remove_conflict(cfg: Dict[str, Any], course: str, conflict: str) -> None:
+
+    courses = get_course_list(cfg)
+
+    index = find_course_index(courses, course)
+
+    if index == -1:
+        raise ValueError(f"Course {course} does not exist.")
+    
+    crse = courses[index]
+    conflict_list = crse.get('conflicts', [])
+
+    conflict_index = find_conflict_index(conflict_list, conflict)
+
+    if conflict_index == -1:
+        raise ValueError(f"Conflict {conflict} does not exist in course {course}.")
+    
+    conflict_list.pop(conflict_index)    
