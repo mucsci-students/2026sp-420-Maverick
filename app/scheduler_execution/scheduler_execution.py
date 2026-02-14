@@ -65,7 +65,7 @@ class SchedulerExecution:
         self._write_output(schedules)
 
     # ========== Internal Methods ==========
-
+ 
     # Loads configuration from JSON file
     def _load_config(self) -> None:
 
