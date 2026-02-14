@@ -1,0 +1,9 @@
+[project]
+name = "2026sp-420-maverick"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "course-constraint-scheduler>=2.6.1",
+]
