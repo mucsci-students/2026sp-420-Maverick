@@ -14,7 +14,7 @@ Related User Stories:
 
 import csv
 import sys
-from typing import Dict, Any
+from typing import List, Dict, Any
 
 # A function that displays the schedule as a csv file.
 # Takes a list of schedule entruies and prints them in a CSV format.
