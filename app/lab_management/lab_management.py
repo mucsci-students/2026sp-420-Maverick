@@ -43,9 +43,6 @@ Returns    :
 def find_lab_index(lab_list: List[str], lab_name: str) -> Optional[int]:
     name_lower = lab_name.lower()
 
-    if len(lab_list) == 0:
-        return None
-
     for index, lab in enumerate(lab_list):
         # case insensitive
         if lab.lower() == name_lower:
@@ -113,10 +110,10 @@ def add_lab(cfg: Dict[str, Any], lab: str) -> None:
     index = find_lab_index(lab_list, lab)
 
     match index:
-        case None | -1:
+        case -1:
            lab_list.append(lab)
 
-        case    _:
+        case _:
             raise ValueError(f"Lab '{lab}' already exists.")
 
 """
@@ -137,12 +134,10 @@ def remove_lab(cfg: Dict[str, Any], lab: str) -> None:
     index = find_lab_index(lab_list, lab)
 
     match index:
-        case None:
-            raise LookupError(f"Lab list is empty.")
         
-        case   -1:
+        case -1:
             raise ValueError(f"Lab '{lab}' does not exist.")
         
-        case    _:
+        case _:
             lab_list.pop(index)
             remove_lab_helper(cfg, lab)

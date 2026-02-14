@@ -1,5 +1,5 @@
 # Author: Jacob Karasow
-# Date: 2026-02-11
+# Date: 2026-02-13
 """
 scheduler_execution.py
 
@@ -12,129 +12,123 @@ settings, and saving generated schedules to files.
 Related User Stories:
     C1 — Run Scheduler with Options
 """  
-"""
 
-from typing import Dict, Any, List, Optional
+import json
+import csv
+from typing import List, Dict, Any
 
-# Takes functions from management files, imports into this file 
-from app.faculty_management.faculty_management import add_faculty, remove_faculty, parse_prefs
-from app.lab_management.lab_management import add_lab, remove_lab
-from app.room_management.room_management import add_room, remove_room
-from app.course_management.course_management import add_course, remove_course
+# Coordinates the full scheduling pipeline.
+class SchedulerExecution:
 
-class Scheduler: 
-
-    # Initializes a new Scheduler 
-    def __init__(self) -> None:
-        self.cfg: Dict[str, Any] = {
-            "config": {
-                "faculty": [],
-                "courses": [],
-                "rooms": [],
-                "labs": []
-            }
-        }
-
-    # ========== Faculty Operations ==========
-
-    # Adds new faculty member to the configuration 
+    # Initializes execution parameters.
     #
     # Parameters:
-    #   name             -> Faculty member name 
-    #   appointment_type -> Type of appointment (full-time, adjunct)
-    #   day              -> (Optional) days available
-    #   time_range       -> (Optional) times available 
-    #   prefs            -> (Optional) room/course preferences 
-    def add_faculty(
-        self, 
-        name: str, 
-        appointment_type: str,
-        day: Optional[str] = None,
-        time_range: Optional[str] = None,
-        prefs: Optional[List[Dict[str, Any]]] = None
-    )  -> None:
-        add_faculty(self.cfg, name, appointment_type, day, time_range, prefs)
-
-    # Removes a faculty member from the configuration
-    #
-    # Parameters:
-    #   name    -> Faculty member name 
-    def remove_faculty(self, name: str) -> None:
-        remove_faculty(self.cfg, name)
-
-    # Parses a list of preference strings into a structured
-    #   preference dictionaries
-    # 
-    # Parameters:
-    #   pref_list   -> List of preferences strings 
-    # 
-    # Returns:
-    #   A list of structured preferecne dictionaries
-    def parse_preferences(self, pref_list: List[str]) -> List[Dict[str, Any]]:
-        return parse_prefs(pref_list)
-
-    # ========== Lab Operations ==========
-
-    # Adds a lab to the configuration
-    #
-    # Parameters:
-    #   lab -> Name of the lab
-    def add_lab(self, lab: str) -> None:
-        add_lab(self.cfg, lab)
-
-    # Removes a lab from the configuration
-    #
-    # Parameters:
-    #   lab -> Name of the lab
-    def remove_lab(self, lab: str) -> None:
-        remove_lab(self.cfg, lab)
-
-    # ========== Room Operations ==========
-
-    # Adds a room to the configuration
-    #
-    # Parameters:
-    #   room -> Name of the room
-    def add_room(self, room: str) -> None:
-        add_room(self.cfg, room)
-
-    # Removes a room from the configuration
-    #
-    # Parameters:
-    #   room -> Name of the room
-    def remove_room(self, room: str) -> None:
-        remove_room(self.cfg, room)
-
-    # ========== Course Operations ==========
-
-    # Adds a course to the configuration 
-    #
-    # Parameters:
-    #   course_id   -> Course identifier (e.g., CMSC330)
-    #   credits     -> Number of credit hours
-    #   room        -> Assigned room
-    #   lab         -> Optional associated lab
-    #   faculty_list-> Optional list of assigned faculty members
-    def add_course(
+    #   config_file     -> Path to configuration JSON file
+    #   limit           -> Maximum number of schedules to generate
+    #   output_format   -> csv' or 'json'
+    #   output_file     -> Output file path
+    #   optimize        -> Whether or not to optimize generated schedules
+    def __init__(
         self,
-        course_id: str,
-        credits: int,
-        room: str,
-        lab: Optional[str] = None,
-        faculty_list: Optional[List[str]] = None
+        config_file: str,
+        limit: int,
+        output_format: str,
+        output_file: str,
+        optimize: bool = False
     ) -> None:
-        add_course(self.cfg, course_id, credits, room, lab, faculty_list)
+        self.config_file = config_file
+        self.limit = limit
+        self.output_format = output_format.lower()
+        self.output_file = output_file
+        self.optimize = optimize
 
-    # Removes a course from the configuration
-    #
-    # Parameters:
-    #   course -> Course identifier 
-    def remove_course (self, course: str) -> None:
-        remove_course(self.cfg, course)
+        self.cfg: Dict[str, Any] = {}
 
-    # ========== Accessor ==========
+    # ========== Public Execution Method ==========
 
-    # Returns the current configuration dictionary
-    #   
-    def get_config(self) -> Dict[str, Any]:
-        return self.cfg
+    # Executes the full scheduling pipeline
+    def run(self) -> None:
+    
+        self._load_config()
+
+        schedules = self._generate_schedules()
+
+        if self.optimize:
+            schedules = self._optimize_schedules(schedules)
+
+        schedules = schedules[:self.limit]
+
+        self._write_output(schedules)
+
+    # ========== Internal Methods ==========
+
+    # Loads configuration from JSON file
+    def _load_config(self) -> None:
+
+        with open(self.config_file, "r") as file:
+            self.cfg = json.load(file)
+
+    # Generates Schedules 
+    def _generate_schedules(self) -> List[Dict[str, Any]]:
+        config = self.cfg.get("config", {})
+        courses = config.get("courses", [])
+        faculty_list = config.get("faculty", [])
+        rooms = config.get("rooms", [])
+
+        schedules: List[Dict[str, Any]] = []
+
+        schedule_id = 1
+
+        for course in courses:
+            for faculty in faculty_list:
+                for room in rooms:
+
+                    schedule = {
+                        "schedule_id": schedule_id,
+                        "course": course.get("course_id"),
+                        "faculty": faculty.get("name"),
+                        "room": room,
+                        "credits": course.get("credits")
+                    }
+
+                    schedules.append(schedule)
+                    schedule_id += 1
+
+        return schedules
+
+    # Writes schedules to file in selected format.
+    def _write_output(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+        
+        if self.output_format == "json":
+            self._write_json(schedules)
+
+        elif self.output_format == "csv":
+            self._write_csv(schedules)
+
+        else:
+            raise ValueError("Unsupported format. Use 'csv' or 'json'.")
+
+    # Writes schedules in JSON format
+    def _write_json(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+        with open(self.output_file, "w") as file:
+            json.dump(schedules, file, indent=4)
+
+    # Writes schedules in CSV format.
+    def _write_csv(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+
+        if not schedules:
+            return
+
+        with open(self.output_file, "w", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=schedules[0].keys())
+            writer.writeheader()
+            writer.writerows(schedules)
