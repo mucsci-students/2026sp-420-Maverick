@@ -13,7 +13,7 @@ Related User Stories:
 """
 
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 # -----------------------------
@@ -43,9 +43,6 @@ Returns    :
 """
 def find_room_index(room_list: List[str], room_name: str) -> Optional[int]:
     name_lower = room_name.lower()
-
-    if len(room_list) == 0:
-        return None
 
     for index, room in enumerate(room_list):
         # case insensitive
@@ -114,10 +111,10 @@ def add_room(cfg: Dict[str, Any], room: str) -> None:
     index = find_room_index(room_list, room)
 
     match index:
-        case None | -1:
+        case -1:
            room_list.append(room)
 
-        case    _:
+        case _:
             raise ValueError(f"Room '{room}' already exists.")
 
 """
@@ -137,14 +134,11 @@ def remove_room(cfg: Dict[str, Any], room: str) -> None:
     
     index = find_room_index(room_list, room)
 
-    match index:
-        case None:
-            raise LookupError(f"Room list is empty.")
-        
-        case   -1:
+    match index:        
+        case -1:
             raise ValueError(f"Room '{room}' does not exist.")
         
-        case    _:
+        case _:
             room_list.pop(index)
             remove_room_helper(cfg, room)
     
