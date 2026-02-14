@@ -141,3 +141,46 @@ def remove_lab(cfg: Dict[str, Any], lab: str) -> None:
         case _:
             lab_list.pop(index)
             remove_lab_helper(cfg, lab)
+
+    def modify_lab(
+        cfg: Dict[str, Any], 
+        lab: str, 
+        new_name: str
+    ) -> None:
+
+        lab_list = get_lab_list(cfg)
+
+        index = find_lab_index(lab_list, lab)
+
+        # Lab must exist
+        if index == -1:
+            raise ValueError(f"Lab '{lab}' does not exist.")
+
+        # Prevent duplicate rename
+        if find_lab_index(lab_list, new_name) != -1:
+            raise ValueError(f"Lab '{new_name}' already exists.")
+
+        # ========== Update Lab Name ==========
+        lab_list[index] = new_name
+
+        config = cfg.get("config", {})
+        course_list = config.get("courses", [])
+        faculty_list = config.get("faculty", [])
+
+        old_lower = lab.lower()
+
+        # ========== Update Lab References in Courses
+        for course in course_list:
+            labs = course.get("lab", [])
+            for i in range(len(labs)):
+                if labs[i].lower() == old_lower:
+                    labs[i] = new_name
+                    break
+
+        # ========= Update Lab References in Faculty ==========
+        for faculty in faculty_list:
+            lab_prefs = faculty.get("lab_preferences", {})
+            for key in list(lab_prefs.keys()):
+                if key.lower() == old_lower:
+                    lab_prefs[new_name] = lab_prefs.pop(key)
+                    break
