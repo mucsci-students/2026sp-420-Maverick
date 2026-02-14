@@ -53,15 +53,19 @@ class SchedulerExecution:
 
         schedules = self._generate_schedules()
 
-        if self.optimize:
-            schedules = self._optimize_schedules(schedules)
+        def _optimize_schedules(self, schedules):
+            return schedules
+        # Added the temporary stub above until the below code is implemented
+        # This was throwing an error -AC
+        # if self.optimize:
+        #     schedules = self._optimize_schedules(schedules)
 
         schedules = schedules[:self.limit]
 
         self._write_output(schedules)
 
     # ========== Internal Methods ==========
-
+ 
     # Loads configuration from JSON file
     def _load_config(self) -> None:
 
