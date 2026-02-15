@@ -1,5 +1,5 @@
-# Author: Antonio Coroan, Tanner Ness
-# Date: 2026-2-11
+# Author: Antonio Coroan, Tanner Ness, Jacob Karasow
+# Date: 2026-2-15
 """
 course_management.py
 
@@ -192,7 +192,7 @@ def add_course(
 
 
 """
-Description: Removes a given course from the config file. 
+Description: remove_course removes a given course from the config file. 
 Parameters : 
            cfg -> the config file.
            course -> the course to remove.
@@ -212,7 +212,7 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
             remove_course_helper(cfg, course)
 
 """
-Description: Removes the course from faculty -> 'course_preferences'.
+Description: remove_course_helper removes the course from faculty -> 'course_preferences'.
 Parameters :
            cfg -> the config file.
            course -> the course to remove
@@ -248,3 +248,180 @@ def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
             if r.lower() == course_lower:
                 course_prefs.pop(r, None)
                 break
+
+
+"""
+Description: find_conflict_index checks if a course exists in a conflict list or not.
+Parameters :
+           conflict_list -> the list of conflicts.
+           conflict_name -> the name of the conflict to find.
+Returns    :
+           If the conflict exists in the list, returns the index
+           Otherwise, returns -1.
+"""
+def find_conflict_index(conflict_list: List[str], conflict_name: str) -> int:
+    name_lower = conflict_name.lower()
+
+    for index, conflict in enumerate(conflict_list):
+        # case insensitive
+        if conflict.lower() == name_lower:
+            return index
+
+    return -1
+
+
+"""
+Decription: Adds a confict to a given course.
+Parameters:
+          cfg -> the config file.
+          course -> the course to add the conflict to.
+          conflict -> the conflict to add
+Returns   :
+          Nothing.
+"""
+def add_conflict(cfg: Dict[str, Any], course: str, conflict: str) -> None:
+    courses = get_course_list(cfg)
+
+    index = find_course_index(courses, course)
+
+    if index == -1:
+        raise ValueError(f"course {course} does not exist.")
+     
+    crse = courses[index]
+    conflict_list = crse.get('conflicts', [])
+
+    conflict_index = find_conflict_index(conflict_list, conflict)
+
+    if conflict_index != -1:
+        raise ValueError(f"conflict {conflict} already exists in course {course}.")
+    
+    conflict_list.append(conflict)
+    
+"""
+Description: remove_conflict removes a conflict from a given course.
+Parmeters  :
+           cfg -> the config file.
+           course -> the course to remove the conflict from.
+           conflict -> the conflict to remove.
+Returns    :
+           Nothing.
+"""
+def remove_conflict(cfg: Dict[str, Any], course: str, conflict: str) -> None:
+
+    courses = get_course_list(cfg)
+
+    index = find_course_index(courses, course)
+
+    if index == -1:
+        raise ValueError(f"Course {course} does not exist.")
+    
+    crse = courses[index]
+    conflict_list = crse.get('conflicts', [])
+
+    conflict_index = find_conflict_index(conflict_list, conflict)
+
+    if conflict_index == -1:
+        raise ValueError(f"Conflict {conflict} does not exist in course {course}.")
+    
+    conflict_list.pop(conflict_index)    
+
+
+def modify_course (
+        cfg: Dict[str, Any], 
+        course_id: str, 
+        new_course_id: Optional[str] = None, 
+        credits: Optional[int] = None, 
+        room: Optional[str] = None, 
+        lab: Optional[str] = None, 
+        faculty: Optional[List[str]] = None, 
+        conflicts: Optional[list[str]] = None, 
+) -> None: 
+    
+    courses = get_course_list(cfg)
+    index = find_course_index(courses, course_id)
+
+    if index == -1:
+        raise ValueError(f"Course '{course_id}' does not exist.")
+
+    course = courses[index]
+
+# ========== Rename Course ==========
+    if new_course_id:
+        new_course_id = new_course_id.strip()
+
+    if not new_course_id:
+        raise ValueError("new_course_id cannot be empty")
+
+    # Prevent duplicate IDs
+    if find_course_index(courses, new_course_id) != -1:
+        raise ValueError(f"Course '{new_course_id}' already exists")
+
+    old_lower = course["course_id"].lower()
+
+    # Update course_id
+    course["course_id"] = new_course_id
+
+    config = cfg.get("config", {})
+    faculty_list = config.get("faculty", [])
+    course_list = config.get("courses", [])
+
+    # Update conflicts in other courses
+    for c in course_list:
+        conflict_list = c.get("conflicts", [])
+        for i in range(len(conflict_list)):
+            if conflict_list[i].lower() == old_lower:
+                conflict_list[i] = new_course_id
+
+    # Update faculty course_preferences
+    for fac in faculty_list:
+        prefs = fac.get("course_preferences", {})
+        for key in list(prefs.keys()):
+            if key.lower() == old_lower:
+                prefs[new_course_id] = prefs.pop(key)
+
+    # ========== Update Credits ==========
+    if credits is not None:
+        if credits <= 0:
+            raise ValueError("credits must be a positive integer")
+        course["credits"] = int(credits)
+
+    # ========== Update Room ==========
+    if room is not None:
+        room = room.strip()
+        if not room:
+            raise ValueError("room cannot be empty")
+
+        rooms = _get_rooms(cfg)
+        if room not in rooms:
+            raise ValueError(f"Room '{room}' does not exist in config.rooms")
+
+        course["room"] = [room]
+
+    # ========== Update Lab ==========
+    if lab is not None:
+        labs = _get_labs(cfg)
+
+        lab = lab.strip()
+        if lab:
+            if lab not in labs:
+                raise ValueError(f"Lab '{lab}' does not exist in config.labs")
+            course["lab"] = [lab]
+        else:
+            # empty string clears lab
+            course["lab"] = []
+
+    # ========== Replace Faculty List ==========
+    if faculty is not None:
+        existing_faculty = set(_get_faculty_names(cfg))
+        cleaned = [f.strip() for f in faculty if f.strip()]
+        missing = [f for f in cleaned if f not in existing_faculty]
+
+        if missing:
+            raise ValueError(f"Faculty not found in config.faculty: {missing}")
+
+        course["faculty"] = cleaned
+
+    # ========== Replace Conflicts List ==========
+    if conflicts is not None:
+        cleaned_conflicts = [c.strip() for c in conflicts if c.strip()]
+        course["conflicts"] = cleaned_conflicts

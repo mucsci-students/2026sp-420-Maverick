@@ -1,5 +1,5 @@
-# Author: Jacob Karasow
-# Date: 2026-02-11
+# Author: Jacob Karasow & Antonio Corona
+# Date: 2026-02-14
 """
 scheduler_execution.py
 
@@ -11,83 +11,202 @@ settings, and saving generated schedules to files.
 
 Related User Stories:
     C1 — Run Scheduler with Options
-"""
+"""  
 
-from typing import Dict, Any, List, Optional
+import json
+import csv
+from typing import List, Dict, Any
 
-from faculty_management import add_faculty, remove_faculty, parse_prefs
-from lab_management import add_lab, remove_lab
-from room_management import add_room, remove_room
-from course_management import add_course, remove_course
+from scheduler_core.main import generate_schedules
 
-class Scheduler: 
+# Coordinates the full scheduling pipeline.
+class SchedulerExecution:
 
-    def __init__(self) -> None:
-        self.cfg: Dict[str, Any] = {
-            "config": {
-                "faculty": [],
-                "courses": [],
-                "rooms": [],
-                "labs": []
-            }
-        }
-
-    def add_faculty(
-        self, 
-        name: str, 
-        appointment_type: str,
-        day: Optional[str] = None,
-        time_range: Optional[str] = None,
-        prefs: Optional[List[Dict[str, Any]]] = None
-    )  -> None:
-        add_faculty(self.cfg, name, appointment_type, day, time_range, prefs)
-
-    def remove_faculty(self, name: str) -> None:
-        remove_faculty(self.cfg, name)
-
-    def parse_preferences(self, pref_list: List[str]) -> List[Dict[str, Any]]:
-        return parse_prefs(pref_list)
-
-    # =========================
-    # Lab Operations
-    # =========================
-
-    def add_lab(self, lab: str) -> None:
-        add_lab(self.cfg, lab)
-
-    def remove_lab(self, lab: str) -> None:
-        remove_lab(self.cfg, lab)
-
-    # =========================
-    # Room Operations
-    # =========================
-
-    def add_room(self, room: str) -> None:
-        add_room(self.cfg, room)
-
-    def remove_room(self, room: str) -> None:
-        remove_room(self.cfg, room)
-
-    # =========================
-    # Course Operations
-    # =========================
-
-    def add_course(
+    # Initializes execution parameters.
+    #
+    # Parameters:
+    #   config_file     -> Path to configuration JSON file
+    #   limit           -> Maximum number of schedules to generate
+    #   output_format   -> csv' or 'json'
+    #   output_file     -> Output file path
+    #   optimize        -> Whether or not to optimize generated schedules
+    def __init__(
         self,
-        course_id: str,
-        credits: int,
-        room: str,
-        lab: Optional[str] = None,
-        faculty_list: Optional[List[str]] = None
+        config_file: str,
+        limit: int,
+        output_format: str,
+        output_file: str,
+        optimize: bool = False
     ) -> None:
-        add_course(self.cfg, course_id, credits, room, lab, faculty_list)
+        self.config_file = config_file
+        self.limit = limit
+        self.output_format = output_format.lower()
+        self.output_file = output_file
+        self.optimize = optimize
+
+        self.cfg: Dict[str, Any] = {}
+
+    # ========== Public Execution Method ==========
+
+    # Executes the full scheduling pipeline
+    def run(self) -> None:
+    
+        self._load_config()
+
+        schedules = self._generate_schedules()
+
+        # def _optimize_schedules(self, schedules):
+        #     return schedules
+        # # Added the temporary stub above until the below code is implemented
+        # This was throwing an error -AC
+        if self.optimize:
+            schedules = self._optimize_schedules(schedules)
+
+        schedules = schedules[:self.limit]
+
+        self._write_output(schedules)
+
+    # ========== Internal Methods ==========
+ 
+    # Loads configuration from JSON file
+    def _load_config(self) -> None:
+
+        with open(self.config_file, "r") as file:
+            self.cfg = json.load(file)
+
+    # This should be calling the Scheduler we were given by Killian -AC
+    # Generates Schedules 
+    # def _generate_schedules(self) -> List[Dict[str, Any]]:
+    #     config = self.cfg.get("config", {})
+    #     courses = config.get("courses", [])
+    #     faculty_list = config.get("faculty", [])
+    #     rooms = config.get("rooms", [])
+
+    #     schedules: List[Dict[str, Any]] = []
+
+    #     schedule_id = 1
+
+    #     for course in courses:
+    #         for faculty in faculty_list:
+    #             for room in rooms:
+
+    #                 schedule = {
+    #                     "schedule_id": schedule_id,
+    #                     "course": course.get("course_id"),
+    #                     "faculty": faculty.get("name"),
+    #                     "room": room,
+    #                     "credits": course.get("credits")
+    #                 }
+
+    #                 schedules.append(schedule)
+    #                 schedule_id += 1
+
+    #     return schedules
+
+    def _generate_schedules(self) -> List[Dict[str, Any]]:
+        return generate_schedules(
+            self.cfg,
+            limit=self.limit,
+            optimize=self.optimize,
+        )
+
+    # Writes schedules to file in selected format.
+    def _write_output(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+        
+        if self.output_format == "json":
+            self._write_json(schedules)
+
+        elif self.output_format == "csv":
+            self._write_csv(schedules)
+
+        else:
+            raise ValueError("Unsupported format. Use 'csv' or 'json'.")
+
+    # Writes schedules in JSON format
+    def _write_json(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+        with open(self.output_file, "w") as file:
+            json.dump(schedules, file, indent=4)
+
+    # Writes schedules in CSV format.
+    def _write_csv(
+        self,
+        schedules: List[Dict[str, Any]]
+    ) -> None:
+
+        if not schedules:
+            return
+
+        with open(self.output_file, "w", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=schedules[0].keys())
+            writer.writeheader()
+            writer.writerows(schedules)
 
 
-    def remove_course (self, course: str) -> None:
-        remove_course(self.cfg, course)
-    # =========================
-    # Accessor
-    # =========================
+    def _optimize_schedules(self, schedules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Sprint 1 optimization (simple heuristic):
+            (May Change in the future mainly for testing)
 
-    def get_config(self) -> Dict[str, Any]:
-        return self.cfg
+        - If faculty preferences exist in the loaded config, score schedules higher when
+        the schedule's course matches a preferred course for that faculty.
+        - Tie-breakers so output is deterministic.
+        - Returns schedules sorted best -> worst.
+        """
+        if not schedules:
+            return schedules
+
+        config = self.cfg.get("config", {})
+        faculty_list = config.get("faculty", [])
+
+        # faculty_name -> {course_id: weight}
+        pref_map: Dict[str, Dict[str, int]] = {}
+        for f in faculty_list:
+            name = f.get("name")
+            if not name:
+                continue
+
+            weights: Dict[str, int] = {}
+            for p in (f.get("preferences") or []):
+                course_id = p.get("course_id")
+                weight = p.get("weight")
+                if course_id is None or weight is None:
+                    continue
+                try:
+                    weights[str(course_id)] = int(weight)
+                except (TypeError, ValueError):
+                    continue
+
+            pref_map[str(name)] = weights
+
+        def score(schedule: Dict[str, Any]) -> int:
+            faculty_name = str(schedule.get("faculty", ""))
+            course_id = str(schedule.get("course", ""))
+
+            pref_score = pref_map.get(faculty_name, {}).get(course_id, 0)
+            room_bonus = 1 if schedule.get("room") else 0
+
+            credits_val = schedule.get("credits")
+            try:
+                credits_bonus = int(credits_val) if credits_val is not None else 0
+            except (TypeError, ValueError):
+                credits_bonus = 0
+
+            return (pref_score * 100) + (credits_bonus * 2) + room_bonus
+
+        return sorted(
+            schedules,
+            key=lambda s: (
+                score(s),
+                str(s.get("course", "")),
+                str(s.get("faculty", "")),
+                str(s.get("room", "")),
+                int(s.get("schedule_id", 0)) if str(s.get("schedule_id", "0")).isdigit() else 0,
+            ),
+            reverse=True,
+        )
