@@ -1,14 +1,14 @@
 {
   "config": {
     "rooms": ["Room A", "Room B"],
-    "labs": ["Lab 1", "Lab 2"],
+    "labs": ["Lab 1"],
     "courses": [
       {
         "course_id": "CS101",
         "credits": 3,
         "room": ["Room A"],
         "lab": ["Lab 1"],
-        "conflicts": ["Room B"],
+        "conflicts": [],
         "faculty": ["Dr. Smith"]
       }
     ],
@@ -30,11 +30,13 @@
   },
   "time_slot_config": {
     "times": {
-        "MON": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
-        "TUE": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
-        "WED": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
-        "THU": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
-        "FRI": [{"start": "09:00", "spacing": 60, "end": "17:00"}]
+      "MON": [
+        {
+          "start": "09:00",
+          "spacing": 60,
+          "end": "17:00"
+        }
+      ]
     },
     "classes": [
       {
