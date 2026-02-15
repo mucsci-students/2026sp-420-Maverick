@@ -4,11 +4,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual environments
-.venv/
-venv/
-env/
-
 # VS Code
 .vscode/
 
