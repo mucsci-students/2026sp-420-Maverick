@@ -1,5 +1,5 @@
-# Author: 
-# Date: <yyyy-mm-dd>
+# Author(s): 
+# Date: 2026-02-14
 """
 test_room.py
 
@@ -31,3 +31,36 @@ Related User Stories:
     A4.2 — Modify Room
     A4.3 — Delete Room
 """
+from ..app.room_management import room_management
+import json
+
+def get_example():
+    with open('..configs/config_base.json', 'r') as file:
+        return json.load(file)
+    
+example = get_example().copy()
+
+# the room should be removed from 'room'
+def delete_room():
+    room = 'Room B'
+    room_management.remove_room(example, room)
+
+    assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
+
+# the room should be removed from 'room' and 'courses'
+def delete_room_nested():
+    room = 'Room A'
+    room_management.remove_room(room)
+
+    assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
+
+    assert room not in any(r['room'] == room for r in example['config']['courses']), f"Room {room} has not been removed from 'courses'."
+
+# should raise an error
+def delete_room_nonexistent():
+    try:
+        room_management.remove_room(example, 'CS999')
+    except ValueError:
+        print(f"Removing a nonexistent room raises the correct error: {ValueError}")
+
+

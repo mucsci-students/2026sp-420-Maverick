@@ -1,5 +1,5 @@
-# Author: 
-# Date: <yyyy-mm-dd>
+# Author(s): Tanner Ness
+# Date: 2026-02-14
 """
 test_course.py
 
@@ -38,3 +38,44 @@ Related User Stories:
     A2.5 — Modify Conflict
     A2.6 — Delete Conflict
 """
+
+from ..app.course_management import course_management
+import json
+
+def get_example():
+    with open('..configs/config_base.json', 'r') as file:
+        return json.load(file)
+    
+example = get_example().copy()
+
+# the conflict should be removed from 'courses'
+def delete_conflict():
+    conflict = 'Room B'
+
+    course_management.remove_conflict(conflict)
+
+    assert conflict not in any(c['conflicts'] == conflict for c in example['config']['courses']), f"Conflict {conflict} has not been removed from 'conflicts'."
+
+# should raise an error
+def delete_conflict_nonexistent():
+    try:
+        course_management.remove_conflict(example, 'Room 199')
+    except ValueError:
+        print(f"Removing a nonexistent conflict raises the correct error: {ValueError}")
+
+
+# the course should be removed
+def delete_course():
+    course = 'CS101'
+
+    course_management.remove_course(example, course)
+    
+    assert course not in any(c['course_id'] for c in example['config']['courses']), f"Course {course} has not been removed from 'courses'."
+
+# should raise an error
+def delete_course_nonexistent():
+    try:
+        course_management.remove_course(example, 'CS009')
+    except ValueError:
+        print(f"Removing a nonexistent course raises the correct error: {ValueError}")
+
