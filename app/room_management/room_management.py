@@ -141,7 +141,7 @@ def remove_room(cfg: Dict[str, Any], room: str) -> None:
             room_list.pop(index)
             remove_room_helper(cfg, room)
     
-    def modify_room (
+def modify_room (
         cfg: Dict[str, Any],
         room : str, 
         new_name: str
