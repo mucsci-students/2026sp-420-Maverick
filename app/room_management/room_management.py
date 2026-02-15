@@ -1,5 +1,5 @@
 # Author: Tanner Ness
-# Date: 2026-02-10
+# Date: 2026-02-15
 """
 room_management.py
 
@@ -26,7 +26,7 @@ Params     :
             cfg -> the configuration file.
 Returns    :
             A list of rooms.
-            If it is missing from the file, returns an empty list.
+            If it is missing from the config file, returns an empty list.
 """
 def get_room_list(cfg: Dict[str, Any]) -> List[str]:
     return cfg.setdefault("config", {}).setdefault("rooms", [])
@@ -52,7 +52,7 @@ def find_room_index(room_list: List[str], room_name: str) -> Optional[int]:
     return -1
 
 """
-Description: removes the given room from faculty and courses
+Description: remove_room_helper removes the given room from faculty and courses
 Parameters :
             cfg -> the configuration file.
             room -> the room to remove.
@@ -96,7 +96,7 @@ def remove_room_helper(cfg: Dict[str, Any], room: str) -> None:
 # CRUD Operations
 # -----------------------------
 """
-Description: Add a room to the config file.
+Description: add_room adds a room to the config file.
 Parameters :
            cfg -> the configuration file.
            room -> the room to add to the configuration file
@@ -118,13 +118,12 @@ def add_room(cfg: Dict[str, Any], room: str) -> None:
             raise ValueError(f"Room '{room}' already exists.")
 
 """
-Description: Removes a given room from the config file.
+Description: remove_room removes a given room from the config file.
 Parameters :
            cgf -> the configuration file.
            room -> the room to be removed from the config file.
 Returns    :
            Nothing.
-           If room_list is empty, returns LookupError.
            If room does not exist in room_list, returns ValueError.
              
 """

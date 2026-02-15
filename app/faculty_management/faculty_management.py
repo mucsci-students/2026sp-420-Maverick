@@ -1,5 +1,5 @@
-# Author(s): Antonio Corona, Tanner Ness
-# Date: 2026-2-11
+# Author(s): Antonio Corona, Tanner Ness, Jacob Karasow
+# Date: 2026-2-15
 """
 faculty_management.py
 
@@ -290,53 +290,53 @@ def remove_faculty(cfg: Dict[str, Any], name: str) -> None:
             remove_faculty_helper(cfg, name)
 
 
-    def modify_faculty(
-            cfg: Dict[str, Any],
-            name: str, 
-            appointment_type: Optional[str] = None,
-            day: Optional[str] = None,             
-            time_range: Optional[str] = None, 
-            prefs: Optional[List[Dict[str, Any]]] = None, 
-            maximum_credits: Optional[int] = None, 
-            minimum_credits: Optional[int] = None,
-            unique_course_limit: Optional[int] = None,
-   ) -> None: 
-        # Modify an existinf faculty member
-        #
-        # Only fields explicitly provided will be updated.
-        # All others will remain unchanged.
-        #
-        # Raises: 
-        #   ValueError if faculty does not exist
-        faculty_list = get_faculty_list(cfg)
-        index = find_faculty_index (faculty_list, name)
+def modify_faculty(
+        cfg: Dict[str, Any],
+        name: str, 
+        appointment_type: Optional[str] = None,
+        day: Optional[str] = None,             
+        time_range: Optional[str] = None, 
+        prefs: Optional[List[Dict[str, Any]]] = None, 
+        maximum_credits: Optional[int] = None, 
+        minimum_credits: Optional[int] = None,
+        unique_course_limit: Optional[int] = None,
+) -> None: 
+    # Modify an existinf faculty member
+    #
+    # Only fields explicitly provided will be updated.
+    # All others will remain unchanged.
+    #
+    # Raises: 
+    #   ValueError if faculty does not exist
+    faculty_list = get_faculty_list(cfg)
+    index = find_faculty_index (faculty_list, name)
 
-        if index == -1:
-            raise ValueError(f"Faculty '{name}' does not exist")
+    if index == -1:
+        raise ValueError(f"Faculty '{name}' does not exist")
 
-        faculty = faculty_list[index]
+    faculty = faculty_list[index]
 
-        # ========== Update Appointment Type ==========
-        if appointment_type:
-            maximum_credits, minimum_credits, unique_course_limit = faculty_defaults(appointment_type)
-            faculty["maximum_credits"] = maximum_credits
-            faculty["minimum_credits"] = minimum_credits
-            faculty["unique_course_limit"] = unique_course_limit
+    # ========== Update Appointment Type ==========
+    if appointment_type:
+        maximum_credits, minimum_credits, unique_course_limit = faculty_defaults(appointment_type)
+        faculty["maximum_credits"] = maximum_credits
+        faculty["minimum_credits"] = minimum_credits
+        faculty["unique_course_limit"] = unique_course_limit
 
-        # ========== Manual Credit overrides ==========
-        if maximum_credits is not None:
-            faculty["maximum_credits"] = maximum_credits
+    # ========== Manual Credit overrides ==========
+    if maximum_credits is not None:
+        faculty["maximum_credits"] = maximum_credits
 
-        if minimum_credits is not None:
-            faculty["minimum_credits"] = minimum_credits
+    if minimum_credits is not None:
+        faculty["minimum_credits"] = minimum_credits
 
-        if unique_course_limit is not None:
-            faculty["unique_course_limit"] = unique_course_limit
+    if unique_course_limit is not None:
+        faculty["unique_course_limit"] = unique_course_limit
 
-        # ========== Update Availability ===========
-        if day is not None or time_range is not None:
-            faculty["times"] = build_times(day, time_range)
+    # ========== Update Availability ===========
+    if day is not None or time_range is not None:
+        faculty["times"] = build_times(day, time_range)
 
-        # ========== Replace Preferences ==========
-        if prefs is not None:
-            faculty["preferences"] = prefs
+    # ========== Replace Preferences ==========
+    if prefs is not None:
+        faculty["preferences"] = prefs
