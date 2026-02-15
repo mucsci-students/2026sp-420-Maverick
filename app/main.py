@@ -1,7 +1,6 @@
 # Author: Antonio Corona, Jacob Karasow
 # Date: 2026-2-13
 # app/main.py
-# app/main.py
 import argparse
 
 from app.config_ops.config_ops import load_config, save_config, pretty_print_config, summarize_config
