@@ -134,18 +134,54 @@ class SchedulerExecution:
             json.dump(schedules, file, indent=4)
 
     # Writes schedules in CSV format.
-    def _write_csv(
-        self,
-        schedules: List[Dict[str, Any]]
-    ) -> None:
+    # def _write_csv(
+    #     self,
+    #     schedules: List[Dict[str, Any]]
+    # ) -> None:
 
+    #     if not schedules:
+    #         return
+
+    #     with open(self.output_file, "w", newline="") as file:
+    #         writer = csv.DictWriter(file, fieldnames=schedules[0].keys())
+    #         writer.writeheader()
+    #         writer.writerows(schedules)
+
+    def _write_csv(self, schedules: List[Dict[str, Any]]) -> None:
         if not schedules:
+            print("No schedules generated (solver returned 0 models).")
             return
 
+        # Flatten schedules -> rows
+        rows: List[Dict[str, Any]] = []
+        for sched in schedules:
+            sid = sched.get("schedule_id")
+            for c in sched.get("courses", []):
+                row = {"schedule_id": sid}
+
+                # If we only have a raw CSV line from the model, store it
+                if "csv" in c:
+                    row["csv"] = c["csv"]
+                else:
+                    row.update(c)
+
+                rows.append(row)
+
+        if not rows:
+            return
+
+        # Pick a stable header order
+        preferred = ["schedule_id", "course_id", "day", "start", "start_time", "room", "faculty", "lab", "duration", "csv", "repr"]
+        fieldnames = [f for f in preferred if any(f in r for r in rows)]
+        # Include any unexpected keys too
+        extra = sorted({k for r in rows for k in r.keys()} - set(fieldnames))
+        fieldnames.extend(extra)
+
         with open(self.output_file, "w", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=schedules[0].keys())
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(schedules)
+            writer.writerows(rows)
+
 
 
     def _optimize_schedules(self, schedules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -159,6 +195,7 @@ class SchedulerExecution:
         - Returns schedules sorted best -> worst.
         """
         if not schedules:
+            print("No schedules generated (solver returned 0 models).")
             return schedules
 
         config = self.cfg.get("config", {})
