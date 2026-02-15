@@ -5,7 +5,7 @@
 import argparse
 
 from app.config_ops.config_ops import load_config, save_config, pretty_print_config, summarize_config
-from app.faculty_management.faculty_management import add_faculty, remove_faculty, parse_prefs
+from app.faculty_management.faculty_management import add_faculty, remove_faculty, parse_prefs, modify_faculty
 from app.room_management.room_management import add_room, remove_room, modify_room
 from app.lab_management.lab_management import add_lab, remove_lab, modify_lab
 from app.course_management.course_management import add_course, remove_course, modify_course
@@ -141,7 +141,18 @@ def main() -> None:
     if args.command == "faculty" and args.fac_cmd is None:
         parser.parse_args(["faculty", "-h"])
         return
+    
+    if args.command == "room" and args.room_cmd is None:
+        parser.parse_args(["room", "-h"])
+        return 
+    
+    if args.command == "lab" and args.lab_cmd is None:
+        parser.parse_args(["lab", "-h"])
+        return
 
+    if args.command == "course" and args.course_cmd is None:
+        parser.parse_args(["course", "-h"])
+        return
 
     # CONFIG SHOW
     if args.command == "config" and args.cfg_cmd == "show":
@@ -171,6 +182,112 @@ def main() -> None:
         remove_faculty(cfg, args.name)
         save_config(args.path, cfg)
         print(f"Removed faculty {args.name}")
+        return
+    
+    # Faculty Modify
+    if args.command == "faculty" and args.fac_cmd == "modify":
+        cfg = load_config(args.path)
+        prefs = parse_prefs(args.pref) if args.pref else None
+        modify_faculty(
+            cfg,
+            args.name,
+            appointment_type = args.type,
+            day = args.day,
+            time_range = args.time,
+            prefs = prefs,
+            maximum_credits = args.max_credits,
+            minimum_credits = args.min_credits,
+            unique_course_limit = args.unique_limit,
+        )
+        save_config(args.path, cfg)
+        print(f"Modified faculty {args.name}")
+        return
+
+    # Room add
+    if args.command == "room" and args.room_cmd == "add":
+        cfg = load_config(args.path)
+        add_room(cfg, args.name)
+        save_config(args.path, cfg)
+        print(f"Added room {args.name}")
+        return
+
+    # Room remove
+    if args.command == "room" and args.room_cmd == "remove":
+        cfg = load_config(args.path)
+        remove_room(cfg, args.name)
+        save_config(args.path, cfg)
+        print(f"Removed room {args.name}")
+        return
+
+    # Room modify
+    if args.command == "room" and args.room_cmd == "modify":
+        cfg = load_config(args.path)
+        modify_room(cfg, args.name, args.new_name)
+        save_config(args.path, cfg)
+        print(f"Renamed room {args.name} -> {args.new_name}")
+        return
+
+    # Lab add
+    if args.command == "lab" and args.lab_cmd == "add":
+        cfg = load_config(args.path)
+        add_lab(cfg, args.name)
+        save_config(args.path, cfg)
+        print(f"Added lab {args.name}")
+        return
+
+    # Lab remove
+    if args.command == "lab" and args.lab_cmd == "remove":
+        cfg = load_config(args.path)
+        remove_lab(cfg, args.name)
+        save_config(args.path, cfg)
+        print(f"Removed lab {args.name}")
+        return
+
+    # Lab modify
+    if args.command == "lab" and args.lab_cmd == "modify":
+        cfg = load_config(args.path)
+        modify_lab(cfg, args.name, args.new_name)
+        save_config(args.path, cfg)
+        print(f"Renamed lab {args.name} -> {args.new_name}")
+        return
+
+    # Course add
+    if args.command == "course" and args.course_cmd == "add":
+        cfg = load_config(args.path)
+        add_course(cfg, 
+                   args.id, 
+                   args.credits, 
+                   args.room,
+                   lab = args.lab,
+                   faculty = args.faculty
+        )
+        save_config(args.path, cfg)
+        print(f"Added course {args.id}")
+        return
+
+    # Course remove
+    if args.command == "course" and args.course_cmd == "remove":
+        cfg = load_config(args.path)
+        remove_course(cfg, args.id)
+        save_config(args.path, cfg)
+        print(f"Removed course {args.id}")
+        return
+
+    # Course modify 
+    if args.command == "course" and args.course_cmd == "modify":
+        cfg = load_config(args.path)
+        modify_course (
+            cfg, 
+            args.id, 
+            new_course_id = args.new_id, 
+            credits = args.credit, 
+            room = args.room, 
+            lab = args.lab, 
+            faculty = args.faculty, 
+            conflicts = args.conflicts, 
+        )
+        save_config(args.path, cfg)
+        print(f"Modified course {args.id}")
         return
 
     # RUN SCHEDULER
