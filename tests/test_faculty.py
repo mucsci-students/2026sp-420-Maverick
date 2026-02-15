@@ -1,5 +1,5 @@
-# Author: 
-# Date: <yyyy-mm-dd>
+# Author(s): Tanner Ness
+# Date: 2026-02-14
 """
 test_faculty.py
 
@@ -34,3 +34,27 @@ Related User Stories:
     A1.3 — Modify Faculty Availability
     A1.4 — Delete Faculty
 """
+from ..app.faculty_management import faculty_management
+import json
+
+def get_example():
+    with open('..configs/config_base.json', 'r') as file:
+        return json.load(file)
+    
+example = get_example().copy()
+
+# the faculty member should be removed from 'faculty' and 'courses'
+def delete_faculty_member():
+    name = 'Dr. Smith'
+    faculty_management.remove_faculty(example, name)
+
+    assert name not in any(f['name'] == name for f in example['config']['faculty'] ), f"Faculty {name} has not been removed from 'faculty'."
+
+    assert name not in any(f['faculty'] == name for f in example['config']['courses']), f"Faculty {name} has not been removed from 'courses'."
+
+# should raise an error
+def delete_faculty_member_nonexistent():
+    try:
+        faculty_management.remove_faculty(example, 'MR CBO')
+    except ValueError:
+        print(f"Removing a nonexistent faculty members raises the correct error: {ValueError}")

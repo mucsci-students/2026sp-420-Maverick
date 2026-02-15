@@ -1,14 +1,14 @@
 {
   "config": {
     "rooms": ["Room A", "Room B"],
-    "labs": ["Lab 1"],
+    "labs": ["Lab 1", "Lab 2"],
     "courses": [
       {
         "course_id": "CS101",
         "credits": 3,
         "room": ["Room A"],
         "lab": ["Lab 1"],
-        "conflicts": [],
+        "conflicts": ["Room B"],
         "faculty": ["Dr. Smith"]
       }
     ],
