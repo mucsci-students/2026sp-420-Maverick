@@ -1,4 +1,4 @@
-# Author(s): 
+# Author(s): Tanner Ness, Ian Swartz
 # Date: 2026-02-14
 """
 test_room.py
@@ -64,3 +64,38 @@ def delete_room_nonexistent():
         print(f"Removing a nonexistent room raises the correct error: {ValueError}")
 
 
+# Add room tests
+def test_add_room():
+    """A4.1 — Confirms new rooms are correctly inserted."""
+    example = get_example()
+    room_name = "Roddy 300"
+    
+    room_management.add_room(example, room_name)
+    
+    assert room_name in example['config']['rooms'], f"Room {room_name} was not added."
+    print(f"PASSED: test_add_room")
+
+def test_add_room_duplicate():
+    """Ensures adding an existing room raises a ValueError."""
+    example = get_example()
+    # Assuming 'Roddy 145' exists in your config_base.json
+    room_name = 'Roddy 145' 
+    
+    try:
+        room_management.add_room(example, room_name)
+        assert False, "Should have raised ValueError for duplicate room."
+    except ValueError:
+        print(f"PASSED: test_add_room_duplicate")
+
+# Used to execute tests:
+"""
+if __name__ == "__main__":
+    print("--- Starting Room Management Tests ---")
+    test_add_room()
+    test_add_room_duplicate()
+    test_modify_room()
+    delete_room()
+    delete_room_nested()
+    delete_room_nonexistent()
+    print("\nAll room tests passed")
+    """
