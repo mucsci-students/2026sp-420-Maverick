@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness, Ian Swartz
+# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
 # Date: 2026-02-14
 """
 test_lab.py
@@ -95,6 +95,35 @@ def test_add_lab_duplicate():
         assert False, "Should have raised ValueError for duplicate lab."
     except ValueError:
         print(f"PASSED: test_add_lab_duplicate")
+
+# The lab name should change
+def test_modify_lab():
+
+    example = copy.deepcopy(get_example())
+
+    old_lab = "Lab 1"
+    new_lab = "Lab X"
+
+    lab_management.modify_lab(
+        example, 
+        old_lab, 
+        new_lab
+        )
+
+# Should raise an error
+def test_modify_lab_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
+    try:
+        lab_management.modify_lab(
+            example, 
+            "Lab 999", 
+            "Lab Z"
+            )
+    except ValueError:
+        print("Modifying a nonexistent lab raises the correct error.")
+
 
 # Used to execute tests:
 """
