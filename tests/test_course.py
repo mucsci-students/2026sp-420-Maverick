@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness
+# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
 # Date: 2026-02-14
 """
 test_course.py
@@ -39,17 +39,20 @@ Related User Stories:
     A2.6 — Delete Conflict
 """
 
+from doctest import Example
 from ..app.course_management import course_management
 import json
+import copy
 
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
         return json.load(file)
-    
-example = get_example().copy()
 
 # the conflict should be removed from 'courses'
 def delete_conflict():
+
+    example = copy.deepcopy(get_example())
+
     conflict = 'Room B'
 
     course_management.remove_conflict(conflict)
@@ -58,6 +61,9 @@ def delete_conflict():
 
 # should raise an error
 def delete_conflict_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
     try:
         course_management.remove_conflict(example, 'Room 199')
     except ValueError:
@@ -66,6 +72,9 @@ def delete_conflict_nonexistent():
 
 # the course should be removed
 def delete_course():
+
+    example = copy.deepcopy(get_example())
+
     course = 'CS101'
 
     course_management.remove_course(example, course)
@@ -74,8 +83,84 @@ def delete_course():
 
 # should raise an error
 def delete_course_nonexistent():
+
+    example = copy.deepcopy(get_example())
+    
     try:
         course_management.remove_course(example, 'CS009')
     except ValueError:
         print(f"Removing a nonexistent course raises the correct error: {ValueError}")
 
+
+
+# Add course test
+def test_add_course_success():
+    """A2.1 — Confirms new courses are correctly inserted with required fields."""
+    example = get_example() # Get a fresh copy for this test
+    
+    # Test data - Ensure 'Roddy 145' exists in your config_base.json rooms list
+    course_id = "CS420"
+    credits = 3
+    room = "Roddy 145" 
+
+    course_management.add_course(example, course_id, credits, room)
+
+    # Verify existence
+    courses = example['config']['courses']
+    new_course = next((c for c in courses if c['course_id'] == course_id), None)
+    
+    assert new_course is not None, f"Course {course_id} was not added."
+    assert new_course['credits'] == credits, "Credits mismatch."
+    assert isinstance(new_course['room'], list), "Room must be stored as a list."
+    assert new_course['room'][0] == room
+    print(f"PASSED: test_add_course_success")
+
+def test_add_course_duplicate():
+    """Verifies that adding a duplicate ID raises a ValueError."""
+    example = get_example()
+    course_id = "CS101" # Assuming CS101 is already in your base config
+    
+    try:
+        # Attempt to add a course that likely already exists
+        course_management.add_course(example, course_id, 3, "Roddy 145")
+        assert False, "Should have raised ValueError for duplicate ID."
+    except ValueError:
+        print(f"PASSED: test_add_course_duplicate (Correctly blocked)")
+
+# The course credits should change
+def modify_course():
+    course = 'CS101'
+    new_credits = 5
+
+    course_management.modify_course(
+        Example, 
+        course, 
+        credits = new_credits
+    )
+
+# Should raise an error
+def modify_course_nonexistent():
+    try:
+        course_management.modify_course(
+            Example, 
+            'CS009', 
+            credits = 4
+        )
+    except ValueError:
+        print("Modifying a nonexistent course raises the correct error.")
+
+
+# Used to execute the tests:
+"""
+if __name__ == "__main__":
+    print("--- Starting Course Management Tests ---")
+    try:
+        test_add_course_success()
+        test_add_course_duplicate()
+        test_delete_course()
+        test_delete_course_nonexistent()
+        test_delete_conflict()
+        print("\nAll tests passed sucessfully")
+    except AssertionError as e:
+        print(f"\nTest failed: {e}")
+"""

@@ -13,7 +13,7 @@ Related User Stories:
 """
 
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 # -----------------------------
@@ -41,7 +41,7 @@ Returns    :
            If the room is found, returns the index.
            If the room was not found, -1.
 """
-def find_room_index(room_list: List[str], room_name: str) -> Optional[int]:
+def find_room_index(room_list: List[str], room_name: str) -> int:
     name_lower = room_name.lower()
 
     for index, room in enumerate(room_list):
@@ -69,7 +69,7 @@ def remove_room_helper(cfg: Dict[str, Any], room: str) -> None:
 
     room_lower = room.lower()
 
-    # Removes the instance of room in courses -> 'room' if it exists.
+    # Removes any instance(s) of room in courses -> 'room' if it exists.
     for course in course_list:
 
         rooms = course.get('room', [])
@@ -80,7 +80,7 @@ def remove_room_helper(cfg: Dict[str, Any], room: str) -> None:
                 break
 
 
-    # Removes the instance of room in faculty -> 'room_preferences' if it exists.
+    # Removes any instance(s) of room in faculty -> 'room_preferences' if it exists.
     for faculty in faculty_list:
 
         room_prefs = faculty.get('room_preferences', {})
@@ -169,7 +169,7 @@ def modify_room (
 
         # ========== Update Room References in Courses ==========
         for course in course_list:
-            rooms = course,get("room", [])
+            rooms = course.get("room", [])
             for i in range(len(rooms)):
                 if rooms[i].lower() == old_lower:
                     rooms[i] = new_name
