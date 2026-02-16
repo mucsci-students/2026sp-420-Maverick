@@ -37,7 +37,7 @@ def faculty_defaults(appointment_type: str) -> Tuple[int, int, int]:
 
     # Full-time defaults
     if t in {"full_time", "full-time", "fulltime"}:
-        return (12, 6, 3) 
+        return (12, 6, 2) 
     
     # Adjunct defaults
     if t == "adjunct":
