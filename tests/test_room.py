@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness, Ian Swartz
+# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
 # Date: 2026-02-14
 """
 test_room.py
@@ -98,6 +98,35 @@ def test_add_room_duplicate():
         assert False, "Should have raised ValueError for duplicate room."
     except ValueError:
         print(f"PASSED: test_add_room_duplicate")
+
+# The room name should change
+def test_modify_room():
+
+    example = copy.deepcopy(get_example())
+
+    old_room = "Room A"
+    new_room = "Room Z"
+
+    room_management.modify_room(
+        example, 
+        old_room, 
+        new_room
+    )
+
+# Should raise an error
+def test_modify_room_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
+    try:
+        room_management.modify_room(
+            example, 
+            "Room 999", 
+            "Room X"
+        )
+    except ValueError:
+        print("Modifying a nonexistent room raises the correct error.")
+
 
 # Used to execute tests:
 """
