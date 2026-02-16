@@ -26,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     save = cfg_sub.add_parser("save", help = "Save configuration (no-op if already saved)")
     save.add_argument("--path", default = "configs/config_dev.json")
 
+    set_limit = cfg_sub.add_parser("set-limit", help="Set schedule generation limit in config file")
+    set_limit.add_argument("--path", default="configs/config_dev.json")
+    set_limit.add_argument("--limit", type=int, required=True)
+
     # --- faculty add/remove/modify ---
     fac = sub.add_parser("faculty", help = "Faculty operations")
     fac_sub = fac.add_subparsers(dest = "fac_cmd")
@@ -117,7 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     # --- run scheduler ---
     run = sub.add_parser("run", help="Run the scheduler")
     run.add_argument("--config", default="configs/config_dev.json")
-    run.add_argument("--limit", type=int, default=10)
+    run.add_argument("--limit", type=int)
     run.add_argument("--format", choices=["csv", "json"], default="csv")
     run.add_argument("--output", default="schedules.csv")
     run.add_argument("--optimize", action="store_true")
@@ -166,6 +170,19 @@ def main() -> None:
         print(f"Saved {args.path}")
         return
 
+    # CONFIG SET-LIMIT (persist to disk)
+    if args.command == "config" and args.cfg_cmd == "set-limit":
+        cfg = load_config(args.path)
+
+        if args.limit <= 0:
+            raise ValueError("limit must be a positive integer")
+
+        cfg["limit"] = args.limit
+        save_config(args.path, cfg)
+        print(f"Updated limit to {args.limit} in {args.path}")
+        return
+
+
     # FACULTY ADD
     if args.command == "faculty" and args.fac_cmd == "add":
         cfg = load_config(args.path)
@@ -194,9 +211,10 @@ def main() -> None:
             day = args.day,
             time_range = args.time,
             prefs = prefs,
-            maximum_credits = args.max_credits,
-            minimum_credits = args.min_credits,
-            unique_course_limit = args.unique_limit,
+            maximum_credits = args.maximum_credits,
+            minimum_credits = args.minimum_credits,
+            unique_course_limit = args.unique_course_limit,
+
         )
         save_config(args.path, cfg)
         print(f"Modified faculty {args.name}")
@@ -291,9 +309,13 @@ def main() -> None:
 
     # RUN SCHEDULER
     if args.command == "run":
+        cfg = load_config(args.config)
+
+        limit = args.limit if args.limit is not None else cfg.get("limit", 10)
+
         exec = SchedulerExecution(
             config_file=args.config,
-            limit=args.limit,
+            limit=limit,
             output_format=args.format,
             output_file=args.output,
             optimize=args.optimize,

@@ -1,23 +1,37 @@
 {
   "config": {
-    "rooms": ["Room A", "Room B"],
-    "labs": ["Lab 1", "Lab 2"],
+    "rooms": [
+      "Room A",
+      "Room B"
+    ],
+    "labs": [
+      "Lab 1",
+      "Lab 2"
+    ],
     "courses": [
       {
         "course_id": "CS101",
         "credits": 3,
-        "room": ["Room A"],
+        "room": [
+          "Room A"
+        ],
         "lab": [],
         "conflicts": [],
-        "faculty": ["Dr. Smith"]
+        "faculty": [
+          "Dr. Smith"
+        ]
       },
       {
         "course_id": "CS102",
         "credits": 3,
-        "room": ["Room A"],
+        "room": [
+          "Room A"
+        ],
         "lab": [],
         "conflicts": [],
-        "faculty": ["Dr. Smith"]
+        "faculty": [
+          "Dr. Smith"
+        ]
       }
     ],
     "faculty": [
@@ -27,11 +41,21 @@
         "minimum_credits": 6,
         "unique_course_limit": 3,
         "times": {
-          "MON": ["09:00-17:00"],
-          "TUE": ["09:00-17:00"],
-          "WED": ["09:00-17:00"],
-          "THU": ["09:00-17:00"],
-          "FRI": ["09:00-17:00"]
+          "MON": [
+            "09:00-17:00"
+          ],
+          "TUE": [
+            "09:00-17:00"
+          ],
+          "WED": [
+            "09:00-17:00"
+          ],
+          "THU": [
+            "09:00-17:00"
+          ],
+          "FRI": [
+            "09:00-17:00"
+          ]
         }
       }
     ]
@@ -78,13 +102,28 @@
       {
         "credits": 3,
         "meetings": [
-          { "day": "MON", "duration": 50, "lab": false },
-          { "day": "WED", "duration": 50, "lab": false },
-          { "day": "FRI", "duration": 50, "lab": false }
+          {
+            "day": "MON",
+            "duration": 50,
+            "lab": false
+          },
+          {
+            "day": "WED",
+            "duration": 50,
+            "lab": false
+          },
+          {
+            "day": "FRI",
+            "duration": 50,
+            "lab": false
+          }
         ]
       }
     ]
   },
-  "limit": 10,
-  "optimizer_flags": ["faculty_course", "pack_rooms"]
+  "limit": 2,
+  "optimizer_flags": [
+    "faculty_course",
+    "pack_rooms"
+  ]
 }
