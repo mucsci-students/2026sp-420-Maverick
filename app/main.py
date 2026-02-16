@@ -7,7 +7,10 @@ from app.config_ops.config_ops import load_config, save_config, pretty_print_con
 from app.faculty_management.faculty_management import add_faculty, remove_faculty, parse_prefs, modify_faculty
 from app.room_management.room_management import add_room, remove_room, modify_room
 from app.lab_management.lab_management import add_lab, remove_lab, modify_lab
-from app.course_management.course_management import add_course, remove_course, modify_course
+from app.course_management.course_management import (
+    add_course, remove_course, modify_course,
+    add_conflict, remove_conflict, modify_conflict
+)
 from app.scheduler_execution.scheduler_execution import SchedulerExecution
 
 
@@ -113,6 +116,25 @@ def build_parser() -> argparse.ArgumentParser:
     course_mod.add_argument("--lab")
     course_mod.add_argument("--faculty", action="append")
     course_mod.add_argument("--conflicts", action="append")
+    # --- course conflicts add/remove/modify ---
+    conf_add = course_sub.add_parser("conflict-add", help="Add a conflict to a course")
+    conf_add.add_argument("--path", default="configs/config_dev.json")
+    conf_add.add_argument("--id", required=True, help="Course to modify (e.g., CS101)")
+    conf_add.add_argument("--conflict", required=True, help="Course to conflict with (e.g., CS102)")
+    conf_add.add_argument("--no-symmetric", action="store_true", help="Do not add reverse conflict")
+
+    conf_rm = course_sub.add_parser("conflict-remove", help="Remove a conflict from a course")
+    conf_rm.add_argument("--path", default="configs/config_dev.json")
+    conf_rm.add_argument("--id", required=True)
+    conf_rm.add_argument("--conflict", required=True)
+    conf_rm.add_argument("--no-symmetric", action="store_true")
+
+    conf_mod = course_sub.add_parser("conflict-modify", help="Replace a conflict old->new")
+    conf_mod.add_argument("--path", default="configs/config_dev.json")
+    conf_mod.add_argument("--id", required=True)
+    conf_mod.add_argument("--old", required=True)
+    conf_mod.add_argument("--new", required=True)
+    conf_mod.add_argument("--no-symmetric", action="store_true")
 
     # --- run scheduler ---
     run = sub.add_parser("run", help="Run the scheduler")
@@ -194,9 +216,9 @@ def main() -> None:
             day = args.day,
             time_range = args.time,
             prefs = prefs,
-            maximum_credits = args.max_credits,
-            minimum_credits = args.min_credits,
-            unique_course_limit = args.unique_limit,
+            maximum_credits = args.maximum_credits,
+            minimum_credits = args.minimum_credits,
+            unique_course_limit = args.unique_course_limit,
         )
         save_config(args.path, cfg)
         print(f"Modified faculty {args.name}")
@@ -279,7 +301,7 @@ def main() -> None:
             cfg, 
             args.id, 
             new_course_id = args.new_id, 
-            credits = args.credit, 
+            credits = args.credits, 
             room = args.room, 
             lab = args.lab, 
             faculty = args.faculty, 
@@ -287,6 +309,46 @@ def main() -> None:
         )
         save_config(args.path, cfg)
         print(f"Modified course {args.id}")
+        return
+    
+    # Course conflict add
+    if args.command == "course" and args.course_cmd == "conflict-add":
+        cfg = load_config(args.path)
+        add_conflict(
+            cfg,
+            course_id=args.id,
+            conflict_course_id=args.conflict,
+            symmetric=not args.no_symmetric,
+        )
+        save_config(args.path, cfg)
+        print(f"Added conflict: {args.id} <-> {args.conflict}" if not args.no_symmetric else f"Added conflict: {args.id} -> {args.conflict}")
+        return
+
+    # Course conflict remove
+    if args.command == "course" and args.course_cmd == "conflict-remove":
+        cfg = load_config(args.path)
+        remove_conflict(
+            cfg,
+            course_id=args.id,
+            conflict_course_id=args.conflict,
+            symmetric=not args.no_symmetric,
+        )
+        save_config(args.path, cfg)
+        print(f"Removed conflict: {args.id} <-> {args.conflict}" if not args.no_symmetric else f"Removed conflict: {args.id} -> {args.conflict}")
+        return
+
+    # Course conflict modify
+    if args.command == "course" and args.course_cmd == "conflict-modify":
+        cfg = load_config(args.path)
+        modify_conflict(
+            cfg,
+            course_id=args.id,
+            old_conflict_course_id=args.old,
+            new_conflict_course_id=args.new,
+            symmetric=not args.no_symmetric,
+        )
+        save_config(args.path, cfg)
+        print(f"Modified conflict for {args.id}: {args.old} -> {args.new}")
         return
 
     # RUN SCHEDULER
