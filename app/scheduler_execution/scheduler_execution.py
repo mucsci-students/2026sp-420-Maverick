@@ -53,7 +53,7 @@ class SchedulerExecution:
     
         self._load_config()
 
-        schedules = self._generate_schedules()
+        schedules = self._generate_schedules(self.limit, self.optimize)
 
         # def _optimize_schedules(self, schedules):
         #     return schedules
@@ -61,8 +61,6 @@ class SchedulerExecution:
         # This was throwing an error -AC
         if self.optimize:
             schedules = self._optimize_schedules(schedules)
-
-        schedules = schedules[:self.limit]
 
         self._write_output(schedules)
 
@@ -103,12 +101,21 @@ class SchedulerExecution:
 
     #     return schedules
 
-    def _generate_schedules(self) -> List[Dict[str, Any]]:
-        return generate_schedules(
-            self.cfg,
-            limit=self.limit,
-            optimize=self.optimize,
-        )
+    def _generate_schedules(self, limit: int, optimize: bool) -> List[Dict[str, Any]]:
+        """
+        Thin wrapper around scheduler_core.main.generate_schedules.
+
+        SchedulerExecution is responsible for:
+        - loading config JSON into self.cfg
+        - calling core scheduling
+        - writing output (csv/json)
+
+        scheduler_core is responsible for:
+        - running the solver
+        - converting solver output into flat meeting-level rows
+        """
+        return generate_schedules(self.cfg, limit=limit, optimize=optimize)
+
 
     # Writes schedules to file in selected format.
     def _write_output(
@@ -147,40 +154,30 @@ class SchedulerExecution:
     #         writer.writeheader()
     #         writer.writerows(schedules)
 
-    def _write_csv(self, schedules: List[Dict[str, Any]]) -> None:
+    def _write_csv(self, schedules):
+        # schedules is a flat List[Dict[str, Any]]
         if not schedules:
             print("No schedules generated (solver returned 0 models).")
             return
 
-        # Flatten schedules -> rows
-        rows: List[Dict[str, Any]] = []
-        for sched in schedules:
-            sid = sched.get("schedule_id")
-            for c in sched.get("courses", []):
-                row = {"schedule_id": sid}
-
-                # If we only have a raw CSV line from the model, store it
-                if "csv" in c:
-                    row["csv"] = c["csv"]
-                else:
-                    row.update(c)
-
-                rows.append(row)
-
-        if not rows:
-            return
-
-        # Pick a stable header order
-        preferred = ["schedule_id", "course_id", "day", "start", "start_time", "room", "faculty", "lab", "duration", "csv", "repr"]
-        fieldnames = [f for f in preferred if any(f in r for r in rows)]
-        # Include any unexpected keys too
-        extra = sorted({k for r in rows for k in r.keys()} - set(fieldnames))
-        fieldnames.extend(extra)
+        fieldnames = [
+            "schedule_id",
+            "course_id",
+            "day",
+            "start",
+            "room",
+            "faculty",
+            "lab",
+            "duration",
+            "credits",
+            "meeting_index",
+        ]
 
         with open(self.output_file, "w", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows(schedules)
+
 
 
 
@@ -223,7 +220,7 @@ class SchedulerExecution:
 
         def score(schedule: Dict[str, Any]) -> int:
             faculty_name = str(schedule.get("faculty", ""))
-            course_id = str(schedule.get("course", ""))
+            course_id = str(schedule.get("course_id", ""))
 
             pref_score = pref_map.get(faculty_name, {}).get(course_id, 0)
             room_bonus = 1 if schedule.get("room") else 0
@@ -240,7 +237,7 @@ class SchedulerExecution:
             schedules,
             key=lambda s: (
                 score(s),
-                str(s.get("course", "")),
+                str(s.get("course_id", "")),
                 str(s.get("faculty", "")),
                 str(s.get("room", "")),
                 int(s.get("schedule_id", 0)) if str(s.get("schedule_id", "0")).isdigit() else 0,
