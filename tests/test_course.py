@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness
+# Author(s): Tanner Ness, Ian Swartz
 # Date: 2026-02-14
 """
 test_course.py
@@ -41,6 +41,7 @@ Related User Stories:
 
 from ..app.course_management import course_management
 import json
+import copy
 
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
@@ -79,3 +80,54 @@ def delete_course_nonexistent():
     except ValueError:
         print(f"Removing a nonexistent course raises the correct error: {ValueError}")
 
+
+
+# Add course test
+def test_add_course_success():
+    """A2.1 — Confirms new courses are correctly inserted with required fields."""
+    example = get_example() # Get a fresh copy for this test
+    
+    # Test data - Ensure 'Roddy 145' exists in your config_base.json rooms list
+    course_id = "CS420"
+    credits = 3
+    room = "Roddy 145" 
+
+    course_management.add_course(example, course_id, credits, room)
+
+    # Verify existence
+    courses = example['config']['courses']
+    new_course = next((c for c in courses if c['course_id'] == course_id), None)
+    
+    assert new_course is not None, f"Course {course_id} was not added."
+    assert new_course['credits'] == credits, "Credits mismatch."
+    assert isinstance(new_course['room'], list), "Room must be stored as a list."
+    assert new_course['room'][0] == room
+    print(f"PASSED: test_add_course_success")
+
+def test_add_course_duplicate():
+    """Verifies that adding a duplicate ID raises a ValueError."""
+    example = get_example()
+    course_id = "CS101" # Assuming CS101 is already in your base config
+    
+    try:
+        # Attempt to add a course that likely already exists
+        course_management.add_course(example, course_id, 3, "Roddy 145")
+        assert False, "Should have raised ValueError for duplicate ID."
+    except ValueError:
+        print(f"PASSED: test_add_course_duplicate (Correctly blocked)")
+
+
+# Used to execute the tests:
+"""
+if __name__ == "__main__":
+    print("--- Starting Course Management Tests ---")
+    try:
+        test_add_course_success()
+        test_add_course_duplicate()
+        test_delete_course()
+        test_delete_course_nonexistent()
+        test_delete_conflict()
+        print("\nAll tests passed sucessfully")
+    except AssertionError as e:
+        print(f"\nTest failed: {e}")
+"""
