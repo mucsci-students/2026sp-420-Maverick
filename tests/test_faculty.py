@@ -102,6 +102,34 @@ def test_add_faculty_adjunct_with_prefs():
     print(f"PASSED: test_add_faculty_adjunct_with_prefs")
 
 
+# The faculty availability/credits should change
+def modify_faculty_member():
+
+    example = copy.deepcopy(get_example())
+
+    name = "Dr. Smith"
+    new_max_credits = 15
+
+    faculty_management.modify_faculty(
+        example,
+        name,
+        maximum_credits=new_max_credits
+    )
+
+# Should raise an error
+def modify_faculty_member_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
+    try:
+        faculty_management.modify_faculty(
+            example,
+            "MR CBO",
+            maximum_credits=10
+        )
+    except ValueError:
+        print("Modifying a nonexistent faculty member raises the correct error.")
+
 #Used to execute tests:
 """
 if __name__ == "__main__":
