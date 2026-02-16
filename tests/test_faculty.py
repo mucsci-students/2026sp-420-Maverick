@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness
+# Author(s): Tanner Ness, Ian Swartz
 # Date: 2026-02-14
 """
 test_faculty.py
@@ -36,6 +36,7 @@ Related User Stories:
 """
 from ..app.faculty_management import faculty_management
 import json
+import copy
 
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
@@ -58,3 +59,51 @@ def delete_faculty_member_nonexistent():
         faculty_management.remove_faculty(example, 'MR CBO')
     except ValueError:
         print(f"Removing a nonexistent faculty members raises the correct error: {ValueError}")
+
+
+# Add faculty tests
+def test_add_faculty_full_time():
+    """A1.1 — Add Full-Time Faculty (Default Availability)"""
+    example = get_example()
+    name = "Dr. Alice"
+    
+    faculty_management.add_faculty(example, name, "full-time")
+    
+    faculty_list = example['config']['faculty']
+    # Check if name exists in any faculty dict
+    found = any(f['name'] == name for f in faculty_list)
+    
+    assert found, f"Faculty {name} was not added to the configuration."
+    
+    # Check defaults for Full-Time (12 max credits)
+    new_fac = next(f for f in faculty_list if f['name'] == name)
+    assert new_fac['maximum_credits'] == 12, "Full-time faculty should have 12 max credits."
+    print(f"PASSED: test_add_faculty_full_time")
+
+def test_add_faculty_adjunct_with_prefs():
+    """A1.2 — Add Adjunct Faculty with Preferences"""
+    example = get_example()
+    name = "Prof. Bob"
+    # Preferences format expected by add_faculty based on your management file
+    test_prefs = [{"course_id": "CS101", "weight": 5}]
+    
+    faculty_management.add_faculty(example, name, "adjunct", prefs=test_prefs)
+    
+    faculty_list = example['config']['faculty']
+    new_fac = next(f for f in faculty_list if f['name'] == name)
+    
+    assert new_fac['maximum_credits'] == 4, "Adjunct should have 4 max credits."
+    assert new_fac['preferences'] == test_prefs, "Preferences were not stored correctly."
+    print(f"PASSED: test_add_faculty_adjunct_with_prefs")
+
+
+#Used to execute tests:
+"""
+if __name__ == "__main__":
+    print("--- Starting Faculty Management Tests ---")
+    test_add_faculty_full_time()
+    test_add_faculty_adjunct_with_prefs()
+    delete_faculty_member()
+    delete_faculty_member_nonexistent()
+    print("\nAll faculty tests passed")
+"""
