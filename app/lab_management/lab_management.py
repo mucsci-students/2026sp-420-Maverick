@@ -12,7 +12,7 @@ Related User Stories:
     A3 — Lab Management
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 # -----------------------------
@@ -40,7 +40,7 @@ Returns    :
            If the lab is found, returns the index.
            If the lab was not found, -1.
 """
-def find_lab_index(lab_list: List[str], lab_name: str) -> Optional[int]:
+def find_lab_index(lab_list: List[str], lab_name: str) -> int:
     name_lower = lab_name.lower()
 
     for index, lab in enumerate(lab_list):
@@ -68,7 +68,7 @@ def remove_lab_helper(cfg: Dict[str, Any], lab: str) -> None:
 
     lab_lower = lab.lower()
 
-    # Removes the instance of lab in courses -> 'lab' if it exists.
+    # Removes any instance(s) of lab in courses -> 'lab' if it exists.
     for course in course_list:
 
         labs = course.get('lab', [])
@@ -79,14 +79,14 @@ def remove_lab_helper(cfg: Dict[str, Any], lab: str) -> None:
                 break
 
 
-    # Removes the instance of lab in faculty -> 'lab_preferences' if it exists.
+    # Removes any instance(s) of lab in faculty -> 'lab_preferences' if it exists.
     for faculty in faculty_list:
 
         lab_prefs = faculty.get('lab_preferences', {})
         
-        for r in list(lab_prefs):
-            if r.lower() == lab_lower:
-                lab_prefs.pop(r, None)
+        for l in list(lab_prefs):
+            if l.lower() == lab_lower:
+                lab_prefs.pop(l, None)
                 break
 
 

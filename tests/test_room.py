@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness, Ian Swartz
+# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
 # Date: 2026-02-14
 """
 test_room.py
@@ -33,6 +33,7 @@ Related User Stories:
 """
 from ..app.room_management import room_management
 import json
+import copy
 
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
@@ -42,14 +43,22 @@ example = get_example().copy()
 
 # the room should be removed from 'room'
 def delete_room():
+
+    example = copy.deepcopy(get_example())
+
     room = 'Room B'
+
     room_management.remove_room(example, room)
 
     assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
 
 # the room should be removed from 'room' and 'courses'
 def delete_room_nested():
+
+    example = copy.deepcopy(get_example())
+
     room = 'Room A'
+
     room_management.remove_room(room)
 
     assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
@@ -58,6 +67,9 @@ def delete_room_nested():
 
 # should raise an error
 def delete_room_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
     try:
         room_management.remove_room(example, 'CS999')
     except ValueError:
@@ -86,6 +98,35 @@ def test_add_room_duplicate():
         assert False, "Should have raised ValueError for duplicate room."
     except ValueError:
         print(f"PASSED: test_add_room_duplicate")
+
+# The room name should change
+def test_modify_room():
+
+    example = copy.deepcopy(get_example())
+
+    old_room = "Room A"
+    new_room = "Room Z"
+
+    room_management.modify_room(
+        example, 
+        old_room, 
+        new_room
+    )
+
+# Should raise an error
+def test_modify_room_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
+    try:
+        room_management.modify_room(
+            example, 
+            "Room 999", 
+            "Room X"
+        )
+    except ValueError:
+        print("Modifying a nonexistent room raises the correct error.")
+
 
 # Used to execute tests:
 """

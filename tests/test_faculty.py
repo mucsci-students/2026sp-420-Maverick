@@ -41,12 +41,14 @@ import copy
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
         return json.load(file)
-    
-example = get_example().copy()
 
 # the faculty member should be removed from 'faculty' and 'courses'
 def delete_faculty_member():
+
+    example = copy.deepcopy(get_example())
+
     name = 'Dr. Smith'
+
     faculty_management.remove_faculty(example, name)
 
     assert name not in any(f['name'] == name for f in example['config']['faculty'] ), f"Faculty {name} has not been removed from 'faculty'."
@@ -55,6 +57,9 @@ def delete_faculty_member():
 
 # should raise an error
 def delete_faculty_member_nonexistent():
+
+    example = copy.deepcopy(get_example())
+    
     try:
         faculty_management.remove_faculty(example, 'MR CBO')
     except ValueError:
@@ -96,6 +101,34 @@ def test_add_faculty_adjunct_with_prefs():
     assert new_fac['preferences'] == test_prefs, "Preferences were not stored correctly."
     print(f"PASSED: test_add_faculty_adjunct_with_prefs")
 
+
+# The faculty availability/credits should change
+def modify_faculty_member():
+
+    example = copy.deepcopy(get_example())
+
+    name = "Dr. Smith"
+    new_max_credits = 15
+
+    faculty_management.modify_faculty(
+        example,
+        name,
+        maximum_credits=new_max_credits
+    )
+
+# Should raise an error
+def modify_faculty_member_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
+    try:
+        faculty_management.modify_faculty(
+            example,
+            "MR CBO",
+            maximum_credits=10
+        )
+    except ValueError:
+        print("Modifying a nonexistent faculty member raises the correct error.")
 
 #Used to execute tests:
 """

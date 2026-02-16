@@ -198,6 +198,7 @@ Parameters :
            course -> the course to remove.
 Returns    :
            Nothing.
+           if course does not exist in course_list, returns ValueError
 """
 def remove_course(cfg: Dict[str, Any], course: str) -> None:
     course_list = get_course_list(cfg)
@@ -207,7 +208,7 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
 
     match index:
         case -1:
-            raise ValueError(f"Course {course} does not exist or list is empty.")
+            raise ValueError(f"Course {course} does not exist.")
         case _:
             course_list.pop(index)
             remove_course_helper(cfg, course)
@@ -216,9 +217,9 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
 Description: remove_course_helper removes the course from faculty -> 'course_preferences'.
 Parameters :
            cfg -> the config file.
-           course -> the course to remove
+           course -> the course to remove.
 Returns    :
-           Nothing
+           Nothing.
 """
 def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
     config = cfg.get("config", {})
@@ -247,7 +248,7 @@ Parameters :
            conflict_list -> the list of conflicts.
            conflict_name -> the name of the conflict to find.
 Returns    :
-           If the conflict exists in the list, returns the index
+           If the conflict exists in the list, returns the index.
            Otherwise, returns -1.
 """
 def find_conflict_index(conflict_list: List[str], conflict_name: str) -> int:
@@ -293,9 +294,11 @@ Decription: Adds a confict to a given course.
 Parameters:
           cfg -> the config file.
           course -> the course to add the conflict to.
-          conflict -> the conflict to add
+          conflict -> the conflict to add.
 Returns   :
           Nothing.
+          If the course does not exist in courses, returns ValueError.
+          If the conflict does not exist in conflict_list, returns ValueError.
 """
 def add_conflict(
     cfg: Dict[str, Any],

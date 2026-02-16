@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness, Ian Swartz
+# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
 # Date: 2026-02-14
 """
 test_course.py
@@ -39,6 +39,7 @@ Related User Stories:
     A2.6 — Delete Conflict
 """
 
+from doctest import Example
 from ..app.course_management import course_management
 import json
 import copy
@@ -46,11 +47,12 @@ import copy
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
         return json.load(file)
-    
-example = get_example().copy()
 
 # the conflict should be removed from 'courses'
 def delete_conflict():
+
+    example = copy.deepcopy(get_example())
+
     conflict = 'Room B'
 
     course_management.remove_conflict(conflict)
@@ -59,6 +61,9 @@ def delete_conflict():
 
 # should raise an error
 def delete_conflict_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
     try:
         course_management.remove_conflict(example, 'Room 199')
     except ValueError:
@@ -67,6 +72,9 @@ def delete_conflict_nonexistent():
 
 # the course should be removed
 def delete_course():
+
+    example = copy.deepcopy(get_example())
+
     course = 'CS101'
 
     course_management.remove_course(example, course)
@@ -75,6 +83,9 @@ def delete_course():
 
 # should raise an error
 def delete_course_nonexistent():
+
+    example = copy.deepcopy(get_example())
+    
     try:
         course_management.remove_course(example, 'CS009')
     except ValueError:
@@ -115,6 +126,28 @@ def test_add_course_duplicate():
         assert False, "Should have raised ValueError for duplicate ID."
     except ValueError:
         print(f"PASSED: test_add_course_duplicate (Correctly blocked)")
+
+# The course credits should change
+def modify_course():
+    course = 'CS101'
+    new_credits = 5
+
+    course_management.modify_course(
+        Example, 
+        course, 
+        credits = new_credits
+    )
+
+# Should raise an error
+def modify_course_nonexistent():
+    try:
+        course_management.modify_course(
+            Example, 
+            'CS009', 
+            credits = 4
+        )
+    except ValueError:
+        print("Modifying a nonexistent course raises the correct error.")
 
 
 # Used to execute the tests:
