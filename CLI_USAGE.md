@@ -28,18 +28,18 @@ source .venv/bin/activate
 
 ### Run commands using:
 
-python app.main <command> <subcommand> [options]
+python -m app.main <command> <subcommand> [options]
 
 ### To see help:
 
 ```bash
-python app.main -h
-python app.main config -h
-python app.main faculty -h
-python app.main room -h
-python app.main lab -h
-python app.main course -h
-python app.main run -h
+python -m app.main -h
+python -m app.main config -h
+python -m app.main faculty -h
+python -m app.main room -h
+python -m app.main lab -h
+python -m app.main course -h
+python -m app.main run -h
 ```
 
 ## Config Commands
@@ -49,26 +49,26 @@ python app.main run -h
 #### Show a summarized view (default):
 
 ```bash
-python app.main config show --path configs/config_dev.json
+python -m app.main config show --path configs/config_dev.json
 ```
 
 #### Show full JSON:
 
 ```bash
-python app.main config show --path configs/config_dev.json --full
+python -m app.main config show --path configs/config_dev.json --full
 ```
 
 ### Save Configuration
 
 ```Bash
 # This reloads the file and writes it back out
-python app.main config save --path configs/config_dev.json
+python -m app.main config save --path configs/config_dev.json
 ```
 
 ### Set Schedule Generation Limit
 
 ```bash
-python app.main config set-limit --path configs/config_dev.json --limit 10
+python -m app.main config set-limit --path configs/config_dev.json --limit 10
 ```
 ## Faculty Commands
 
@@ -76,7 +76,7 @@ python app.main config set-limit --path configs/config_dev.json --limit 10
 
 ```bash
 # Full-time faculty (default times 09:00–17:00 for MON–FRI):
-python app.main faculty add --path configs/config_dev.json \
+python -m app.main faculty add --path configs/config_dev.json \
   --name "Dr. Rivera" \
   --type full_time
 ```
@@ -84,14 +84,14 @@ python app.main faculty add --path configs/config_dev.json \
 #### Adjunct faculty:
 
 ```bash
-python app.main faculty add --path configs/config_dev.json \
+python -m app.main faculty add --path configs/config_dev.json \
   --name "Prof. Chen" \
   --type adjunct
 ```
 #### Add faculty with a single-day time override:
 
 ```bash
-python app.main faculty add --path configs/config_dev.json \
+python -m app.main faculty add --path configs/config_dev.json \
   --name "Prof. Chen" \
   --type adjunct \
   --day TUE \
@@ -101,7 +101,7 @@ python app.main faculty add --path configs/config_dev.json \
 #### Add faculty with preferences (repeatable --pref):
 
 ```bash
-python app.main faculty add --path configs/config_dev.json \
+python -m app.main faculty add --path configs/config_dev.json \
   --name "Dr. Lee" \
   --type full_time \
   --pref CS101:8 \
@@ -111,14 +111,14 @@ python app.main faculty add --path configs/config_dev.json \
 ### Remove Faculty
 
 ```bash
-python app.main faculty remove --path configs/config_dev.json \
+python -m app.main faculty remove --path configs/config_dev.json \
   --name "Dr. Rivera"
 ```
 
 ### Modify Faculty
 
 ```bash
-python app.main faculty modify --path configs/config_dev.json \
+python -m app.main faculty modify --path configs/config_dev.json \
   --name "Prof. Chen" \
   --type full_time \
   --day THU \
@@ -128,7 +128,7 @@ python app.main faculty modify --path configs/config_dev.json \
 #### Update preferences (repeatable --pref):
 
 ```bash
-python app.main faculty modify --path configs/config_dev.json \
+python -m app.main faculty modify --path configs/config_dev.json \
   --name "Prof. Chen" \
   --pref CS101:6 \
   --pref CS201:9
@@ -137,7 +137,7 @@ python app.main faculty modify --path configs/config_dev.json \
 #### Update credit limits directly (optional overrides):
 
 ```bash
-python app.main faculty modify --path configs/config_dev.json \
+python -m app.main faculty modify --path configs/config_dev.json \
   --name "Prof. Chen" \
   --maximum_credits 12 \
   --minimum_credits 6 \
@@ -152,21 +152,21 @@ All room commands use --path (defaults to configs/config_dev.json).
 ### Add Room
 
 ```bash
-python app.main room add --path configs/config_dev.json \
+python -m app.main room add --path configs/config_dev.json \
   --name "Room C"
 ```
 
 ### Remove Room
 
 ```bash
-python app.main room remove --path configs/config_dev.json \
+python -m app.main room remove --path configs/config_dev.json \
   --name "Room C"
 ``` 
 
 ### Modify Room (Rename)
 
 ```bash
-python app.main room modify --path configs/config_dev.json \
+python -m app.main room modify --path configs/config_dev.json \
   --name "Room B" \
   --new-name "Room B (Renamed)"
 ``` 
@@ -178,21 +178,21 @@ All lab commands use --path (defaults to configs/config_dev.json).
 ### Add Lab
 
 ```bash
-python app.main lab add --path configs/config_dev.json \
+python -m app.main lab add --path configs/config_dev.json \
   --name "Lab 2"
 ``` 
 
 ### Remove Lab
 
 ```bash
-python app.main lab remove --path configs/config_dev.json \
+python -m app.main lab remove --path configs/config_dev.json \
   --name "Lab 2"
 ``` 
 
 ### Modify Lab (Rename)
 
 ```bash
-python app.main lab modify --path configs/config_dev.json \
+python -m app.main lab modify --path configs/config_dev.json \
   --name "Lab 1" \
   --new-name "Lab 1 (Renamed)"
 ``` 
@@ -216,7 +216,7 @@ Optional:
 --faculty (repeatable)
 
 ```bash
-python app.main course add --path configs/config_dev.json \
+python -m app.main course add --path configs/config_dev.json \
   --id CS201 \
   --credits 3 \
   --room "Room A"
@@ -225,7 +225,7 @@ python app.main course add --path configs/config_dev.json \
 #### Add with lab:
 
 ```bash
-python app.main course add --path configs/config_dev.json \
+python -m app.main course add --path configs/config_dev.json \
   --id CS301 \
   --credits 3 \
   --room "Room B" \
@@ -235,7 +235,7 @@ python app.main course add --path configs/config_dev.json \
 #### Add with faculty (repeatable):
 
 ```bash
-python app.main course add --path configs/config_dev.json \
+python -m app.main course add --path configs/config_dev.json \
   --id CS401 \
   --credits 3 \
   --room "Room A" \
@@ -245,7 +245,7 @@ python app.main course add --path configs/config_dev.json \
 ### Remove Course
 
 ```bash
-python app.main course remove --path configs/config_dev.json \
+python -m app.main course remove --path configs/config_dev.json \
   --id CS201
 ``` 
 
@@ -266,7 +266,7 @@ Optional updates:
 --conflicts (repeatable)
 
 ```bash
-python app.main course modify --path configs/config_dev.json \
+python -m app.main course modify --path configs/config_dev.json \
   --id CS101 \
   --new-id CS101A \
   --credits 4 \
@@ -276,7 +276,7 @@ python app.main course modify --path configs/config_dev.json \
 #### Add/replace faculty list (repeatable):
 
 ```bash
-python app.main course modify --path configs/config_dev.json \
+python -m app.main course modify --path configs/config_dev.json \
   --id CS101 \
   --faculty "Dr. Smith"
 ``` 
@@ -284,7 +284,7 @@ python app.main course modify --path configs/config_dev.json \
 #### Add conflicts list (repeatable --conflicts):
 
 ```bash
-python app.main course modify --path configs/config_dev.json \
+python -m app.main course modify --path configs/config_dev.json \
   --id CS101 \
   --conflicts CS102 \
   --conflicts CS201
@@ -298,7 +298,7 @@ These commands directly manage conflicts on a course.
 
 ```bash
 # By default, conflicts are symmetric (adds reverse conflict too):
-python app.main course conflict-add --path configs/config_dev.json \
+python -m app.main course conflict-add --path configs/config_dev.json \
   --id CS101 \
   --conflict CS102
 ``` 
@@ -306,7 +306,7 @@ python app.main course conflict-add --path configs/config_dev.json \
 #### One-way conflict only:
 
 ```bash
-python app.main course conflict-add --path configs/config_dev.json \
+python -m app.main course conflict-add --path configs/config_dev.json \
   --id CS101 \
   --conflict CS102 \
   --no-symmetric
@@ -317,7 +317,7 @@ python app.main course conflict-add --path configs/config_dev.json \
 ### Symmetric removal (default):
 
 ```bash
-python app.main course conflict-remove --path configs/config_dev.json \
+python -m app.main course conflict-remove --path configs/config_dev.json \
   --id CS101 \
   --conflict CS102
 ``` 
@@ -325,7 +325,7 @@ python app.main course conflict-remove --path configs/config_dev.json \
 #### One-way removal only:
 
 ```bash
-python app.main course conflict-remove --path configs/config_dev.json \
+python -m app.main course conflict-remove --path configs/config_dev.json \
   --id CS101 \
   --conflict CS102 \
   --no-symmetric
@@ -336,7 +336,7 @@ python app.main course conflict-remove --path configs/config_dev.json \
 ### Replace one conflict with another (default symmetric):
 
 ```bash
-python app.main course conflict-modify --path configs/config_dev.json \
+python -m app.main course conflict-modify --path configs/config_dev.json \
   --id CS101 \
   --old CS102 \
   --new CS201
@@ -345,7 +345,7 @@ python app.main course conflict-modify --path configs/config_dev.json \
 #### One-way modify only:
 
 ```bash
-python app.main course conflict-modify --path configs/config_dev.json \
+python -m app.main course conflict-modify --path configs/config_dev.json \
   --id CS101 \
   --old CS102 \
   --new CS201 \
@@ -356,13 +356,13 @@ python app.main course conflict-modify --path configs/config_dev.json \
 ## Run Scheduler
 
 ```bash
-python app.main run --config configs/config_dev.json
+python -m app.main run --config configs/config_dev.json
 ``` 
 
 ### Example (generate 5 schedules as JSON to a file):
 
 ```bash
-python app.main run --config configs/config_dev.json \
+python -m app.main run --config configs/config_dev.json \
   --limit 5 \
   --format json \
   --output schedules.json \
