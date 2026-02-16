@@ -28,7 +28,7 @@ def get_course_list(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
 # Prevent duplicates and supports modify/delete
 def find_course_index(courses: List[Dict[str, Any]], course_id: str) -> int:
     # Normalizes the course id so matching is case_insensitive and whitespace-safe.
-    cid = course_id.strip().lower()
+    cid = str(course_id or "").strip().lower()
 
     # Scans the list and looks for a matching "course_id"
     for i, c in enumerate(courses):
@@ -202,6 +202,7 @@ Returns    :
 def remove_course(cfg: Dict[str, Any], course: str) -> None:
     course_list = get_course_list(cfg)
 
+    course = str(course or "").strip()
     index = find_course_index(course_list, course)
 
     match index:
@@ -220,36 +221,25 @@ Returns    :
            Nothing
 """
 def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
-    
-    config = cfg.get('config', {})
-
-    course_list = config.get('courses',[])
-
-    faculty_list = config.get('faculty',[])
+    config = cfg.get("config", {})
+    course_list = config.get("courses", [])
+    faculty_list = config.get("faculty", [])
 
     course_lower = course.lower()
 
-    # removes any instances of the course in courses -> 'conflicts' if it exists.
-    for course in course_list:
+    # Remove this course from every other course's conflicts list
+    for c in course_list:
+        conflicts = c.get("conflicts", [])
+        if isinstance(conflicts, list):
+            c["conflicts"] = [x for x in conflicts if str(x).lower() != course_lower]
 
-        conflicts = course.get('conflicts', [])
-
-        for c in range(len(conflicts)):
-            if conflicts[c].lower() == course_lower:
-                conflicts.pop(c)
-                break
-
-    # Removes the instance of room in faculty -> 'course_preferences' if it exists.
-    for cse in faculty_list:
-
-        prefs = cse.get("preferences") or []
-        cse["preferences"] = [p for p in prefs if str(p.get("course_id","")).lower() != course_lower]
-
-        for r in list(course_prefs):
-            if r.lower() == course_lower:
-                course_prefs.pop(r, None)
-                break
-
+    # Remove this course from every faculty member's preferences list
+    for fac in faculty_list:
+        prefs = fac.get("preferences") or []
+        fac["preferences"] = [
+            p for p in prefs
+            if str(p.get("course_id", "")).lower() != course_lower
+        ]
 
 """
 Description: find_conflict_index checks if a course exists in a conflict list or not.
@@ -261,14 +251,14 @@ Returns    :
            Otherwise, returns -1.
 """
 def find_conflict_index(conflict_list: List[str], conflict_name: str) -> int:
-    name_lower = conflict_name.lower()
+    name_lower = str(conflict_name or "").strip().lower()
 
     for index, conflict in enumerate(conflict_list):
-        # case insensitive
-        if conflict.lower() == name_lower:
+        if str(conflict or "").strip().lower() == name_lower:
             return index
 
     return -1
+
 
 def _norm_course_id(course_id: str) -> str:
     return str(course_id or "").strip()
@@ -329,6 +319,10 @@ def add_conflict(
     if _norm_course_id_lower(course_id) == _norm_course_id_lower(conflict_course_id):
         raise ValueError("A course cannot conflict with itself")
 
+    # Require conflict course exists (prevents typos / dangling conflicts)
+    if find_course_index(get_course_list(cfg), conflict_course_id) == -1:
+        raise ValueError(f"Conflict course '{conflict_course_id}' does not exist.")
+
     course = _get_course(cfg, course_id)
     conflicts = _ensure_conflicts_list(course)
 
@@ -365,6 +359,10 @@ def remove_conflict(
 
     if not course_id or not conflict_course_id:
         raise ValueError("course_id and conflict_course_id cannot be empty")
+
+    # Require conflict course exists (cleaner errors + consistent policy)
+    if find_course_index(get_course_list(cfg), conflict_course_id) == -1:
+        raise ValueError(f"Conflict course '{conflict_course_id}' does not exist.")
 
     course = _get_course(cfg, course_id)
     conflicts = _ensure_conflicts_list(course)
@@ -412,6 +410,10 @@ def modify_conflict(
     if _norm_course_id_lower(course_id) == _norm_course_id_lower(new_conflict_course_id):
         raise ValueError("A course cannot conflict with itself")
 
+    # Require the new conflict course exists (prevents typos / dangling conflicts)
+    if find_course_index(get_course_list(cfg), new_conflict_course_id) == -1:
+        raise ValueError(f"Conflict course '{new_conflict_course_id}' does not exist.")
+
     course = _get_course(cfg, course_id)
     conflicts = _ensure_conflicts_list(course)
 
@@ -448,17 +450,16 @@ def modify_conflict(
             if find_conflict_index(new_other_conflicts, course_id) == -1:
                 new_other_conflicts.append(course_id)  
 
-def modify_course (
-        cfg: Dict[str, Any], 
-        course_id: str, 
-        new_course_id: Optional[str] = None, 
-        credits: Optional[int] = None, 
-        room: Optional[str] = None, 
-        lab: Optional[str] = None, 
-        faculty: Optional[List[str]] = None, 
-        conflicts: Optional[list[str]] = None, 
-) -> None: 
-    
+def modify_course(
+    cfg: Dict[str, Any],
+    course_id: str,
+    new_course_id: Optional[str] = None,
+    credits: Optional[int] = None,
+    room: Optional[str] = None,
+    lab: Optional[str] = None,
+    faculty: Optional[List[str]] = None,
+    conflicts: Optional[List[str]] = None,
+) -> None:
     courses = get_course_list(cfg)
     index = find_course_index(courses, course_id)
 
@@ -467,47 +468,42 @@ def modify_course (
 
     course = courses[index]
 
-# ========== Rename Course ==========
+    config = cfg.get("config", {})
+    faculty_list = config.get("faculty", [])
+    course_list = config.get("courses", [])
+
+    # ========== Rename Course ==========
     if new_course_id is not None:
         new_course_id = new_course_id.strip()
         if not new_course_id:
             raise ValueError("new_course_id cannot be empty")
 
-        if find_course_index(courses, new_course_id) != -1:
+        # Prevent duplicate IDs (ignore self)
+        existing_idx = find_course_index(courses, new_course_id)
+        if existing_idx != -1 and existing_idx != index:
             raise ValueError(f"Course '{new_course_id}' already exists")
 
-        old_lower = course["course_id"].lower()
+        old_id = str(course.get("course_id", "")).strip()
+        old_lower = old_id.lower()
+
+        # Update course_id on the course itself
         course["course_id"] = new_course_id
 
-    # update references...
+        # Update conflicts in other courses
+        for c in course_list:
+            conflict_list = c.get("conflicts", [])
+            if not isinstance(conflict_list, list):
+                continue
+            for i in range(len(conflict_list)):
+                if str(conflict_list[i]).strip().lower() == old_lower:
+                    conflict_list[i] = new_course_id
 
-    # Prevent duplicate IDs
-    if find_course_index(courses, new_course_id) != -1:
-        raise ValueError(f"Course '{new_course_id}' already exists")
-
-    old_lower = course["course_id"].lower()
-
-    # Update course_id
-    course["course_id"] = new_course_id
-
-    config = cfg.get("config", {})
-    faculty_list = config.get("faculty", [])
-    course_list = config.get("courses", [])
-
-    # Update conflicts in other courses
-    for c in course_list:
-        conflict_list = c.get("conflicts", [])
-        for i in range(len(conflict_list)):
-            if conflict_list[i].lower() == old_lower:
-                conflict_list[i] = new_course_id
-
-    # Update faculty course_preferences
-    for fac in faculty_list:
-        prefs = fac.get("preferences") or []
-        for p in prefs:
-            if str(p.get("course_id","")).lower() == old_lower:
-                p["course_id"] = new_course_id
-
+        # Update faculty preferences list entries
+        for fac in faculty_list:
+            prefs = fac.get("preferences") or []
+            for p in prefs:
+                if str(p.get("course_id", "")).strip().lower() == old_lower:
+                    p["course_id"] = new_course_id
 
     # ========== Update Credits ==========
     if credits is not None:
@@ -530,20 +526,19 @@ def modify_course (
     # ========== Update Lab ==========
     if lab is not None:
         labs = _get_labs(cfg)
-
         lab = lab.strip()
+
         if lab:
             if lab not in labs:
                 raise ValueError(f"Lab '{lab}' does not exist in config.labs")
             course["lab"] = [lab]
         else:
-            # empty string clears lab
             course["lab"] = []
 
     # ========== Replace Faculty List ==========
     if faculty is not None:
         existing_faculty = set(_get_faculty_names(cfg))
-        cleaned = [f.strip() for f in faculty if f.strip()]
+        cleaned = [f.strip() for f in faculty if f and f.strip()]
         missing = [f for f in cleaned if f not in existing_faculty]
 
         if missing:
@@ -553,5 +548,12 @@ def modify_course (
 
     # ========== Replace Conflicts List ==========
     if conflicts is not None:
-        cleaned_conflicts = [c.strip() for c in conflicts if c.strip()]
+        cleaned_conflicts = [c.strip() for c in conflicts if c and c.strip()]
+
+        # Optional strict validation: all conflicts must exist as courses
+        courses = get_course_list(cfg)
+        missing = [c for c in cleaned_conflicts if find_course_index(courses, c) == -1]
+        if missing:
+            raise ValueError(f"Conflict course(s) do not exist: {missing}")
+
         course["conflicts"] = cleaned_conflicts
