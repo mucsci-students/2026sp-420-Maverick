@@ -356,18 +356,13 @@ python -m app.main course conflict-modify --path configs/config_dev.json \
 ## Run Scheduler
 
 ```bash
-python -m app.main run --config configs/config_dev.json
+python -m app.main run --config configs/config_dev.json --limit 5 --format csv --output schedules.csv
 ``` 
 
 ### Example (generate 5 schedules as JSON to a file):
 
 ```bash
-python -m app.main run --config configs/config_dev.json \
-  --limit 5 \
-  --format json \
-  --output schedules.json \
-  --optimize
-
+python -m app.main run --config configs/config_dev.json --limit 5 --format json --output schedules.json
 ``` 
 
 ## Notes
