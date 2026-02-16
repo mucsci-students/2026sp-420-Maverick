@@ -46,11 +46,12 @@ import copy
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
         return json.load(file)
-    
-example = get_example().copy()
 
 # the conflict should be removed from 'courses'
 def delete_conflict():
+
+    example = copy.deepcopy(get_example())
+
     conflict = 'Room B'
 
     course_management.remove_conflict(conflict)
@@ -59,6 +60,9 @@ def delete_conflict():
 
 # should raise an error
 def delete_conflict_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
     try:
         course_management.remove_conflict(example, 'Room 199')
     except ValueError:
@@ -67,6 +71,9 @@ def delete_conflict_nonexistent():
 
 # the course should be removed
 def delete_course():
+
+    example = copy.deepcopy(get_example())
+
     course = 'CS101'
 
     course_management.remove_course(example, course)
@@ -75,6 +82,9 @@ def delete_course():
 
 # should raise an error
 def delete_course_nonexistent():
+
+    example = copy.deepcopy(get_example())
+    
     try:
         course_management.remove_course(example, 'CS009')
     except ValueError:

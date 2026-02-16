@@ -33,15 +33,17 @@ Related User Stories:
 """
 from ..app.lab_management import lab_management
 import json
+import copy
 
 def get_example():
     with open('..configs/config_base.json', 'r') as file:
         return json.load(file)
-    
-example = get_example().copy()
 
 # the lab should be removed from 'lab'
 def delete_lab():
+
+    example = copy.deepcopy(get_example())
+
     lab = 'Lab 2'
     lab_management.remove_lab(example, lab)
 
@@ -49,7 +51,11 @@ def delete_lab():
 
 # the lab should be removed from 'lab' and 'courses'
 def delete_lab_nested():
-    lab = 'Lab_1'
+
+    example = copy.deepcopy(get_example())
+
+    lab = 'Lab 1'
+
     lab_management.remove_lab(example, lab)
 
     assert lab not in example['config']['labs'], f"Room {lab} has not been removed from 'room'."
@@ -58,6 +64,9 @@ def delete_lab_nested():
 
 # should raise an error
 def delete_lab_nonexistent():
+
+    example = copy.deepcopy(get_example())
+
     try:
         lab_management.remove_lab(example, 'Lab 999')
     except ValueError:
