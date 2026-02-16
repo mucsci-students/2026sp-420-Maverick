@@ -182,6 +182,7 @@ def find_faculty_index(faculty_list: List[Dict[str, Any]], name: str) -> int:
 # -----------------------------
 # Course cleanup helper(s)
 # -----------------------------
+
 """
 Description: remove_faculty_helper remove all instances of the faculty member from courses.
 Parameters:
@@ -203,7 +204,7 @@ def remove_faculty_helper(cfg: Dict[str, Any], name: str) -> None:
     # For each course, remove the deleted faculty from its faculty list
     for course in course_list:
         # IMPORTANT: this should default to [] not None, otherwise len(faculty) can crash
-        faculty = course.get('faculty',)
+        faculty = course.get('faculty', [])
 
         # Iterate by index and remove the first match
         for r in range(len(faculty)):
@@ -283,8 +284,11 @@ def remove_faculty(cfg: Dict[str, Any], name: str) -> None:
 
 
     match index:
+
+
         case -1:
             raise ValueError(f"Faculty {name} does not exist.")
+        
         case _:
             faculty_list.pop(index)
             remove_faculty_helper(cfg, name)
@@ -301,7 +305,7 @@ def modify_faculty(
         minimum_credits: Optional[int] = None,
         unique_course_limit: Optional[int] = None,
 ) -> None: 
-    # Modify an existinf faculty member
+    # Modify an existing faculty member
     #
     # Only fields explicitly provided will be updated.
     # All others will remain unchanged.
