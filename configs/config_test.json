@@ -1,0 +1,14 @@
+{
+  "config": {
+    "rooms": ["Test Room"],
+    "labs": ["Test Lab"],
+    "courses": [],
+    "faculty": []
+  },
+  "time_slot_config": {
+    "times": {},
+    "classes": []
+  },
+  "limit": 1,
+  "optimizer_flags": []
+}
