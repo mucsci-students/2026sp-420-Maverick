@@ -1,4 +1,4 @@
-# Author(s): Tanner Ness
+# Author(s): Tanner Ness, Ian Swartz
 # Date: 2026-02-14
 """
 test_lab.py
@@ -62,3 +62,40 @@ def delete_lab_nonexistent():
         lab_management.remove_lab(example, 'Lab 999')
     except ValueError:
         print(f"Removing a nonexistent lab raises the correct error: {ValueError}")
+
+
+# Add lab tests
+def test_add_lab():
+    """A3.1 — Confirms new labs are correctly inserted."""
+    example = get_example()
+    lab_name = "Digital Media Lab"
+    
+    lab_management.add_lab(example, lab_name)
+    
+    assert lab_name in example['config']['labs'], f"Lab {lab_name} was not added."
+    print(f"PASSED: test_add_lab")
+
+def test_add_lab_duplicate():
+    """Ensures adding an existing lab raises a ValueError."""
+    example = get_example()
+    # Assuming 'Lab 1' exists in your config_base.json
+    lab_name = 'Lab 1' 
+    
+    try:
+        lab_management.add_lab(example, lab_name)
+        assert False, "Should have raised ValueError for duplicate lab."
+    except ValueError:
+        print(f"PASSED: test_add_lab_duplicate")
+
+# Used to execute tests:
+"""
+if __name__ == "__main__":
+    print("--- Starting Lab Management Tests ---")
+    test_add_lab()
+    test_add_lab_duplicate()
+    test_modify_lab()
+    delete_lab()
+    delete_lab_nested()
+    delete_lab_nonexistent()
+    print("\nAll lab tests passed")
+"""
