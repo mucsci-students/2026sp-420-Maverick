@@ -14,7 +14,7 @@ The CLI allows you to:
 
 ---
 
-## Environment Setup
+## Environment Setup 
 
 Before running CLI commands, activate the virtual environment.
 
