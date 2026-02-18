@@ -1,5 +1,15 @@
 # Author: 
-# Date:
+# Date: 2026-02-18
 """
-Docstring for app.gui.controllers.config_controller
+RootWindow — Main Application Window
+
+Defines:
+    - Top-level GUI window
+    - Navigation (tabs or sidebar)
+    - Screen switching between:
+        - Config Editor
+        - Schedule Generator
+        - Schedule Viewer
+
+This class composes all primary View components.
 """
