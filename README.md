@@ -5,6 +5,6 @@
 - Andrew Jackson
 - Ian Swartz
 - Jacob Karasow
-- Naomi (Code in last name so you can practice merging)
+- Naomi Ermold
 - Tanner Ness
 
