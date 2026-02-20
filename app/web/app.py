@@ -1,3 +1,19 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Flask Application Factory
+
+This module defines the create_app() function, which initializes
+and configures the Flask application for Sprint 2.
+
+Responsibilities:
+- Create the Flask app instance
+- Register blueprints (routes)
+- Configure basic settings (secret key, etc.)
+
+This serves as the main entry point for the web-based GUI.
+"""
+
 # app/web/app.py
 import os
 from flask import Flask
