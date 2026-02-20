@@ -1,3 +1,19 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Schedule Viewing Service
+
+Provides logic for:
+- Navigating between schedules
+- Transforming schedules into tabular formats
+- Importing schedules from file
+- Exporting schedules to file
+
+Supports the Schedule Viewer functionality in the Flask GUI.
+
+Acts as part of the Model layer in MVC.
+"""
+
 # app/web/services/schedule_service.py
 import json
 from flask import session

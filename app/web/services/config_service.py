@@ -1,3 +1,17 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Configuration Service
+
+Provides business logic for loading, saving, and modifying
+the scheduler configuration.
+
+This module wraps the existing Sprint 1 configuration
+and management modules to integrate them into the Flask GUI.
+
+Acts as part of the Model layer in MVC.
+"""
+
 # app/web/services/config_service.py
 import json
 from flask import session

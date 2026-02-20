@@ -1,3 +1,19 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Schedule Execution Service
+
+Provides logic for running the scheduler from the web interface.
+
+Responsibilities:
+- Apply limit overrides
+- Apply optimization overrides
+- Invoke SchedulerExecution or scheduler_core
+- Store generated schedules for viewing
+
+Acts as part of the Model layer in MVC.
+"""
+
 # app/web/services/run_service.py
 from flask import session
 from copy import deepcopy
