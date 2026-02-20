@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% set title = "Schedule Generator" %}
+{% block content %}
+<h1>Schedule Generator</h1>
+
+<section class="card">
+  <form method="post" action="/run/generate">
+    <div class="row">
+      <label>Limit</label>
+      <input name="limit" type="number" min="0" value="5">
+    </div>
+
+    <div class="row">
+      <label>Optimize</label>
+      <input name="optimize" type="checkbox">
+    </div>
+
+    <button type="submit">Generate</button>
+  </form>
+
+  <p class="hint">
+    This currently generates placeholder schedules so the Viewer works.
+    Replace the placeholder in <code>run_service.py</code> with your real SchedulerExecution call.
+  </p>
+</section>
+{% endblock %}
