@@ -1,3 +1,19 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Schedule Viewer Routes
+
+Defines Flask endpoints for viewing and managing generated schedules.
+
+Responsibilities:
+- Navigate between schedules
+- Display schedules by Room and Faculty
+- Export schedules to file
+- Import schedules from file
+
+Acts as the Controller layer for schedule viewing functionality.
+"""
+
 # app/web/routes/viewer_routes.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.web.services.schedule_service import (

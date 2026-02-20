@@ -1,3 +1,19 @@
+# Author: Antonio Corona
+# Date: 2026-02-20
+"""
+Schedule Generator Routes
+
+Defines Flask endpoints for generating schedules.
+
+Responsibilities:
+- Accept limit override input
+- Accept optimization override selection
+- Trigger schedule generation
+- Redirect to the Schedule Viewer upon completion
+
+These routes serve as Controllers in the MVC structure.
+"""
+
 # app/web/routes/run_routes.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.web.services.run_service import generate_schedules_into_session
