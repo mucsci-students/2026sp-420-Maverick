@@ -1,0 +1,98 @@
+<!--
+Author: Antonio Corona
+Date: 2026-02-20
+
+Schedule Viewer Template
+
+Provides the user interface for:
+- Navigating generated schedules
+- Viewing schedules by Room and Faculty
+- Importing and exporting schedules
+
+Extends base.html.
+-->
+
+{% extends "base.html" %}
+{% set title = "Schedule Viewer" %}
+{% block content %}
+<h1>Schedule Viewer</h1>
+
+<section class="card">
+  <div class="row">
+    <form method="post" action="/viewer/prev">
+      <button type="submit">Prev</button>
+    </form>
+    <div>
+      <strong>Schedule:</strong> {{ data.index + 1 if data.count > 0 else 0 }} / {{ data.count }}
+    </div>
+    <form method="post" action="/viewer/next">
+      <button type="submit">Next</button>
+    </form>
+  </div>
+
+  <div class="row">
+    <form method="post" action="/viewer/import" class="row">
+      <label>Import path</label>
+      <input name="path" value="schedules.json">
+      <button type="submit">Import</button>
+    </form>
+
+    <form method="post" action="/viewer/export" class="row">
+      <label>Export path</label>
+      <input name="path" value="schedules.json">
+      <button type="submit">Export</button>
+    </form>
+  </div>
+
+  <h2>Meta</h2>
+  <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
+</section>
+
+<section class="card">
+  <h2>Table: By Room</h2>
+  {% if data.count == 0 %}
+    <p class="hint">No schedules loaded. Generate or import schedules.</p>
+  {% else %}
+    {% for room, rows in data.by_room.items() %}
+      <h3>{{ room }}</h3>
+      <table>
+        <thead>
+          <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr>
+              <td>{{ r.course }}</td>
+              <td>{{ r.faculty }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Table: By Faculty</h2>
+  {% if data.count > 0 %}
+    {% for fac, rows in data.by_faculty.items() %}
+      <h3>{{ fac }}</h3>
+      <table>
+        <thead>
+          <tr><th>Course</th><th>Room</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr>
+              <td>{{ r.course }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

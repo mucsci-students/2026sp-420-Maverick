@@ -1,0 +1,50 @@
+<!--
+Author: Antonio Corona
+Date: 2026-02-20
+
+Config Editor Template
+
+Provides the user interface for viewing and modifying
+the scheduler configuration.
+
+Extends base.html.
+-->
+
+{% extends "base.html" %}
+{% set title = "Config Editor" %}
+{% block content %}
+<h1>Config Editor</h1>
+
+<section class="card">
+  <h2>Load / Save</h2>
+
+  <form method="post" action="/config/load" class="row">
+    <label>Config path</label>
+    <input name="path" value="{{ status.path or 'configs/config_dev.json' }}">
+    <button type="submit">Load</button>
+  </form>
+
+  <form method="post" action="/config/save" class="row">
+    <label>Save path</label>
+    <input name="path" value="{{ status.path or 'configs/config_dev.json' }}">
+    <button type="submit">Save</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Status</h2>
+  {% if status.loaded %}
+    <p><strong>Loaded:</strong> Yes</p>
+    <p><strong>Path:</strong> {{ status.path }}</p>
+    <ul>
+      {% for k, v in status.counts.items() %}
+        <li>{{ k }}: {{ v }}</li>
+      {% endfor %}
+    </ul>
+    <p class="hint">Next: wire CRUD forms here (add/edit/remove faculty/rooms/labs/courses).</p>
+  {% else %}
+    <p><strong>Loaded:</strong> No</p>
+    <p class="hint">Load a config to enable schedule generation.</p>
+  {% endif %}
+</section>
+{% endblock %}

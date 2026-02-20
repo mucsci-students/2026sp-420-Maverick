@@ -1,1 +1,0 @@
-course-constraint-scheduler>=2.6.1
