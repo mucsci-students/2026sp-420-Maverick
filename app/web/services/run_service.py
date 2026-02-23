@@ -43,6 +43,16 @@ SESSION_SCHEDULES_KEY = "schedules"
 # Stores currently selected schedule index for navigation
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
+# Known flag constants for optimization
+KNOWN_OPTIMIZER_FLAGS = [
+    "faculty_course",
+    "faculty_room",
+    "faculty_lab",
+    "same_room",
+    "same_lab",
+    "pack_rooms",
+]
+
 
 # ------------------------------
 # Utility Functions
