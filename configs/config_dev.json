@@ -410,13 +410,10 @@
       }
     ]
   },
-  "limit": 100,
+  "limit": 3,
   "optimizer_flags": [
     "faculty_course",
     "faculty_room",
-    "faculty_lab",
-    "same_room",
-    "same_lab",
     "pack_rooms"
   ]
 }
