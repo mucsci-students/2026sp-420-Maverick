@@ -27,7 +27,7 @@ High-Level Flow:
 from flask import session                     # Session storage for per-user state
 from copy import deepcopy                     # Prevent mutation of loaded config
 from datetime import datetime                 # Timestamp metadata for schedules
-from typing import Any, Dict, List            # Type hints for clarity
+from typing import Any, Dict, List, Optional  # Type hints for clarity
 
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
@@ -69,7 +69,7 @@ def _to_int(x: Any, default: int = 0) -> int:
 # Core Service Function
 # ------------------------------
 
-def generate_schedules_into_session(limit: int, optimize: bool) -> int:
+def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[str]] = None) -> int:
     """
     Executes the scheduling engine and stores results in session state.
 
@@ -113,6 +113,23 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
 
     # Use deepcopy to ensure overrides do not modify the saved configuration.
     run_cfg = deepcopy(cfg)
+
+
+
+    # ---- Apply per-run overrides (DO NOT save to disk) ----
+    run_cfg["limit"] = limit
+
+    # Default to what is in JSON, unless UI submitted a list
+    if optimizer_flags is None:
+        optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+
+    # (Optional safety) keep only known flags
+    optimizer_flags = [f for f in optimizer_flags if f in KNOWN_OPTIMIZER_FLAGS]
+
+    run_cfg["optimizer_flags"] = optimizer_flags
+
+    # Core currently doesn't use optimize bool, but keep it for future compatibility
+    optimize = len(optimizer_flags) > 0
 
 
     # --------------------------------
@@ -168,7 +185,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
             "meta": {
                 "schedule_id": sid,
                 "generated_at": datetime.now().isoformat(timespec="seconds"),
-                "optimize": optimize,
+                "optimizer_flags": optimizer_flags,   # <-- store what was used
                 "row_count": len(grouped[sid]),
             },
             "assignments": grouped[sid],
