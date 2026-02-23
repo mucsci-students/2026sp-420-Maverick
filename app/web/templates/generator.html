@@ -18,19 +18,45 @@ Extends base.html.
 <h1>Schedule Generator</h1>
 
 <section class="card">
+  {% if not config_loaded %}
+    <p><strong>No config loaded.</strong> Load one in the Config Editor before generating schedules.</p>
+  {% endif %}
+
   <form method="post" action="/run/generate">
     <div class="row">
       <label>Limit</label>
-      <input name="limit" type="number" min="0" value="5">
+      <input
+        name="limit"
+        type="number"
+        min="1"
+        value="{{ default_limit }}"
+        {% if not config_loaded %}disabled{% endif %}
+      >
     </div>
 
     <div class="row">
-      <label>Optimize</label>
-      <input name="optimize" type="checkbox">
+      <label>Optimization Flags (choose any)</label>
+      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+        {% for flag in available_flags %}
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input
+              type="checkbox"
+              name="optimizer_flags"
+              value="{{ flag }}"
+              {% if flag in selected_flags %}checked{% endif %}
+              {% if not config_loaded %}disabled{% endif %}
+            >
+            <span>{{ flag }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <small>
+        Defaults come from the loaded JSON config’s <code>optimizer_flags</code>.
+        Uncheck all to run without optimization preferences.
+      </small>
     </div>
 
-    <button type="submit">Generate</button>
+    <button type="submit" {% if not config_loaded %}disabled{% endif %}>Generate</button>
   </form>
-
 </section>
 {% endblock %}
