@@ -1,28 +1,54 @@
 <!--
 Author: Antonio Corona
-Date: 2026-02-22
+Date: 2026-02-23
 
 Schedule Generator Template
 
 Provides the user interface for:
-- Setting schedule generation limit
-- Selecting optimization options
+- Setting schedule generation limit (per-run override)
+- Selecting optimization flags (multi-select override)
 - Triggering schedule generation
+
+Template Inputs (from Controller):
+- config_loaded (bool): whether a configuration is loaded in session
+- default_limit (int): default limit value pulled from config (fallback if absent)
+- selected_flags (list[str]): flags that should be pre-checked (from config)
+- available_flags (list[str]): list of all flags to render as checkboxes
 
 Extends base.html.
 -->
 
 {% extends "base.html" %}
 {% set title = "Schedule Generator" %}
+
 {% block content %}
 <h1>Schedule Generator</h1>
 
 <section class="card">
-  {% if not config_loaded %}
+
+  <!--
+    No-config state:
+    - If no configuration is loaded into session, user cannot generate schedules.
+    - Inputs and the Generate button are disabled to prevent invalid runs.
+  -->
+  {% if not conf8ig_loaded %}
     <p><strong>No config loaded.</strong> Load one in the Config Editor before generating schedules.</p>
   {% endif %}
 
+  <!--
+    Generator Form (POST):
+    Submits per-run overrides to the Controller route:
+      POST /run/generate
+    Overrides are applied in the Service layer without mutating the saved config.
+  -->
   <form method="post" action="/run/generate">
+
+    <!--
+      Limit Override:
+      - Defaults to JSON config value (default_limit)
+      - Must be >= 1
+      - Disabled when no config is loaded
+    -->
     <div class="row">
       <label>Limit</label>
       <input
@@ -34,11 +60,25 @@ Extends base.html.
       >
     </div>
 
+    <!--
+      Optimization Flags (Multi-Select):
+      - Defaults come from JSON config via selected_flags
+      - User may check multiple flags
+      - User may uncheck all flags to run with no optimization preferences
+      - Disabled when no config is loaded
+    -->
     <div class="row">
       <label>Optimization Flags (choose any)</label>
+
+      <!-- Renders one checkbox per supported optimization flag -->
       <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
         {% for flag in available_flags %}
           <label style="display:flex; align-items:center; gap:8px;">
+
+            <!--
+              Each checkbox uses the same name ("optimizer_flags")
+              so Flask can read it as a list via request.form.getlist().
+            -->
             <input
               type="checkbox"
               name="optimizer_flags"
@@ -50,12 +90,19 @@ Extends base.html.
           </label>
         {% endfor %}
       </div>
+
+      <!-- Explanation of defaulting + expected behavior -->
       <small>
         Defaults come from the loaded JSON config’s <code>optimizer_flags</code>.
         Uncheck all to run without optimization preferences.
       </small>
     </div>
 
+    <!--
+      Generate Action:
+      - Disabled when no config is loaded
+      - Triggers schedule generation and redirects to Viewer on success
+    -->
     <button type="submit" {% if not config_loaded %}disabled{% endif %}>Generate</button>
   </form>
 </section>
