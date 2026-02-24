@@ -31,26 +31,45 @@ bp = Blueprint("viewer", __name__, url_prefix="/viewer")
 
 @bp.get("/")
 def viewer():
+    """
+    Main Viewer page.
+    Retrieves fully prepared view data from the service layer.
+    """
     data = get_view_data()
     return render_template("viewer.html", data=data)
 
 
 @bp.post("/next")
 def go_next():
+    """
+    Advances to the next schedule.
+    """
     next_schedule()
     return redirect(url_for("viewer.viewer"))
 
 
 @bp.post("/prev")
 def go_prev():
+    """
+    Moves to the previous schedule.
+    """
     prev_schedule()
     return redirect(url_for("viewer.viewer"))
 
 @bp.post("/select")  
 def select():
     """
-    Directly selects a schedule index from the Viewer dropdown.
-    Expects a 0-based integer index in form field 'index'.
+    Handles direct schedule selection from the dropdown.
+
+    Expects:
+        form field 'index' (0-based integer)
+
+    Controller Responsibility:
+        - Parse raw form value
+        - Call service layer to clamp & set index
+        - Redirect back to viewer page
+
+    Any invalid input is ignored.
     """
     raw = request.form.get("index", "0")
     try:
@@ -63,6 +82,9 @@ def select():
 
 @bp.post("/export")
 def export():
+    """
+    Exports schedules currently stored in session to a JSON file.
+    """
     path = request.form.get("path", "schedules.json").strip()
     try:
         export_schedules_to_file(path)
@@ -74,6 +96,10 @@ def export():
 
 @bp.post("/import")
 def import_():
+    """
+    Imports schedules from a JSON file and loads them into session.
+    Resets selected index to 0 inside the service layer.
+    """
     path = request.form.get("path", "schedules.json").strip()
     try:
         import_schedules_from_file(path)
