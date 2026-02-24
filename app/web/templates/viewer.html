@@ -1,35 +1,89 @@
 <!--
 Author: Antonio Corona
-Date: 2026-02-22
+Date: 2026-02-24
 
 Schedule Viewer Template
 
-Provides the user interface for:
-- Navigating generated schedules
-- Viewing schedules by Room and Faculty
-- Importing and exporting schedules
+Schedule Viewer Template
 
-Extends base.html.
+Purpose:
+  Provides the user interface for browsing and validating generated schedules
+  stored in session state.
+
+UI Responsibilities:
+  - Navigate between generated schedules (Prev/Next)
+  - Display schedule metadata (debug/traceability)
+  - Render tabular views grouped by:
+      * Room (Rooms + Labs)
+      * Faculty
+  - Import schedules from a JSON file into the viewer
+  - Export schedules currently in session to a JSON file
+
+Template Inputs (from Controller / Service):
+  - data (dict) produced by schedule_service.get_view_data(), containing:
+      * count (int): number of schedules loaded
+      * index (int): selected schedule index (0-based)
+      * current_meta (dict): metadata for the selected schedule
+      * assignments (list[dict]): assignment rows for selected schedule
+      * by_room (dict[str, list[dict]]): grouped rows by room
+      * by_faculty (dict[str, list[dict]]): grouped rows by faculty
+      * has_schedules (bool): convenience flag for empty-state handling
+      * is_first (bool): True if index == 0 (disable Prev)
+      * is_last (bool): True if index == count-1 (disable Next)
+
+Extends:
+  - base.html
 -->
 
 {% extends "base.html" %}
+
 {% set title = "Schedule Viewer" %}
 {% block content %}
+
 <h1>Schedule Viewer</h1>
 
 <section class="card">
+
+  <!--
+    Navigation Bar:
+      - Prev/Next are implemented as POSTs to avoid state-changing GETs.
+      - Buttons are disabled based on computed navigation flags:
+          * data.has_schedules prevents navigation when empty
+          * data.is_first disables Prev at the first schedule
+          * data.is_last disables Next at the last schedule
+      - The schedule counter is displayed as 1-based for the user.
+  -->
   <div class="row">
     <form method="post" action="/viewer/prev">
-      <button type="submit">Prev</button>
+      <button type="submit"
+              {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
+        Prev
+      </button>
     </form>
+
     <div>
-      <strong>Schedule:</strong> {{ data.index + 1 if data.count > 0 else 0 }} / {{ data.count }}
+      <strong>Schedule:</strong>
+      {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
     </div>
+
     <form method="post" action="/viewer/next">
-      <button type="submit">Next</button>
+      <button type="submit"
+              {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
+        Next
+      </button>
     </form>
   </div>
 
+  <!--
+    Import / Export Controls:
+      - Import loads schedules from a JSON file path and overwrites session schedules.
+      - Export writes the schedules currently in session to a JSON file path.
+      - Defaults to "schedules.json" for convenience during development/testing.
+
+    Routes:
+      POST /viewer/import
+      POST /viewer/export
+  -->
   <div class="row">
     <form method="post" action="/viewer/import" class="row">
       <label>Import path</label>
@@ -44,15 +98,30 @@ Extends base.html.
     </form>
   </div>
 
+  <!--
+    Metadata (Debug / Traceability):
+      - Renders current schedule meta as pretty JSON.
+      - Useful for confirming schedule_id, generation timestamp, optimization flags, etc.
+      - When no schedules exist, current_meta is an empty dict.
+  -->
   <h2>Meta</h2>
   <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
 </section>
 
 <section class="card">
+
+  <!--
+    Table: By Room
+      - Shows all assignments grouped by room.
+      - Primary use case: validate room usage and quickly spot conflicts.
+      - Empty-state message appears when no schedules are loaded.
+  -->
   <h2>Table: By Room</h2>
+
   {% if data.count == 0 %}
     <p class="hint">No schedules loaded. Generate or import schedules.</p>
   {% else %}
+
     {% for room, rows in data.by_room.items() %}
       <h3>{{ room }}</h3>
       <table>
@@ -74,7 +143,15 @@ Extends base.html.
 </section>
 
 <section class="card">
+
+  <!--
+    Table: By Faculty
+      - Shows all assignments grouped by faculty.
+      - Primary use case: validate teaching loads and quickly spot conflicts.
+      - Only rendered when schedules exist (matches service "has_schedules" logic).
+  -->
   <h2>Table: By Faculty</h2>
+  
   {% if data.count > 0 %}
     {% for fac, rows in data.by_faculty.items() %}
       <h3>{{ fac }}</h3>
