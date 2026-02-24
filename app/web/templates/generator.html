@@ -31,7 +31,7 @@ Extends base.html.
     - If no configuration is loaded into session, user cannot generate schedules.
     - Inputs and the Generate button are disabled to prevent invalid runs.
   -->
-  {% if not conf8ig_loaded %}
+  {% if not config_loaded %}
     <p><strong>No config loaded.</strong> Load one in the Config Editor before generating schedules.</p>
   {% endif %}
 
