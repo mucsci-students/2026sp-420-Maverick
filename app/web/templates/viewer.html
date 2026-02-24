@@ -43,6 +43,14 @@ Extends:
 
 <section class="card">
   <div>
+    <!-- 
+      Direct Schedule Selection Dropdown ("Jump To")
+        - Uses POST /viewer/select
+        - Submits 0-based index internally
+        - Displays 1-based numbering for users
+        - Auto-submits on change
+        - Disabled when no schedules exist
+    -->
     <form method="post"
           action="/viewer/select"
           style="gap: 8px; align-items: center; margin-left: auto;">
