@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-22
+# Date: 2026-02-24
 """
 Schedule Viewing Service
 
@@ -206,8 +206,15 @@ def get_view_data():
     schedules = _get_schedules()
     i = _get_index()
 
+    count = len(schedules)
+    has_schedules = count > 0
+
     # Pick the current schedule only if the index is valid
     current = schedules[i] if schedules and 0 <= i < len(schedules) else None
+
+    # Compute navigation state flags for the View layer
+    is_first = has_schedules and i == 0
+    is_last = has_schedules and i == (count - 1)
 
     # Assignments are stored under the "assignments" key (same shape as run_service output)
     assignments = (current or {}).get("assignments", [])
@@ -221,4 +228,9 @@ def get_view_data():
         # Tabular groupings for the Viewer: Rooms/Labs and Faculty
         "by_room": _group_by(assignments, "room"),
         "by_faculty": _group_by(assignments, "faculty"),
+
+        # Navigation state for disabling Prev/Next in the template
+        "has_schedules": has_schedules,
+        "is_first": is_first,
+        "is_last": is_last,
     }
