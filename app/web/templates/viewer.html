@@ -1,9 +1,7 @@
 <!--
 Author: Antonio Corona
 Date: 2026-02-24
-
-Schedule Viewer Template
-
+9
 Schedule Viewer Template
 
 Purpose:
@@ -12,6 +10,7 @@ Purpose:
 
 UI Responsibilities:
   - Navigate between generated schedules (Prev/Next)
+  - Directly select a schedule (dropdown)
   - Display schedule metadata (debug/traceability)
   - Render tabular views grouped by:
       * Room (Rooms + Labs)
@@ -43,6 +42,23 @@ Extends:
 <h1>Schedule Viewer</h1>
 
 <section class="card">
+  <div>
+    <form method="post"
+          action="/viewer/select"
+          style="gap: 8px; align-items: center; margin-left: auto;">
+      <label for="schedule_index"><strong>Jump to</strong></label>
+      <select id="schedule_index"
+              name="index"
+              {% if not data.has_schedules %}disabled{% endif %}
+              onchange="this.form.submit()">
+        {% for idx in range(data.count) %}
+          <option value="{{ idx }}" {% if idx == data.index %}selected{% endif %}>
+            Schedule {{ idx + 1 }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
 
   <!--
     Navigation Bar:
@@ -72,7 +88,10 @@ Extends:
         Next
       </button>
     </form>
+
+
   </div>
+
 
   <!--
     Import / Export Controls:
@@ -148,6 +167,7 @@ Extends:
     Table: By Faculty
       - Shows all assignments grouped by faculty.
       - Primary use case: validate teaching loads and quickly spot conflicts.
+      - Empty-state message appears when no schedules are loaded.
       - Only rendered when schedules exist (matches service "has_schedules" logic).
   -->
   <h2>Table: By Faculty</h2>
