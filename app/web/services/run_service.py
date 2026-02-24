@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-21
+# Date: 2026-02-23
 """
 Schedule Execution Service
 
@@ -27,7 +27,7 @@ High-Level Flow:
 from flask import session                     # Session storage for per-user state
 from copy import deepcopy                     # Prevent mutation of loaded config
 from datetime import datetime                 # Timestamp metadata for schedules
-from typing import Any, Dict, List            # Type hints for clarity
+from typing import Any, Dict, List, Optional  # Type hints for clarity
 
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
@@ -44,11 +44,35 @@ SESSION_SCHEDULES_KEY = "schedules"
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
 
+# -------------------------------------------------
+# Optimization Flag Constants (UI & Config Bridge)
+# -------------------------------------------------
+# These represent all valid optimizer flags supported
+# by the scheduling engine. The UI may select any subset
+# of these, and per-run overrides are validated against
+# this list.
+
+KNOWN_OPTIMIZER_FLAGS = [
+    "faculty_course",
+    "faculty_room",
+    "faculty_lab",
+    "same_room",
+    "same_lab",
+    "pack_rooms",
+]
+
+
 # ------------------------------
 # Utility Functions
 # ------------------------------
 
 def _to_int(x: Any, default: int = 0) -> int:
+    """
+    Safely convert a value to int.
+
+    Used primarily when grouping solver rows by schedule_id,
+    since solver output may return numeric values as strings.
+    """
     try:
         return int(x)
     except Exception:
@@ -59,7 +83,7 @@ def _to_int(x: Any, default: int = 0) -> int:
 # Core Service Function
 # ------------------------------
 
-def generate_schedules_into_session(limit: int, optimize: bool) -> int:
+def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[str]] = None) -> int:
     """
     Executes the scheduling engine and stores results in session state.
 
@@ -67,8 +91,10 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
         limit (int):
             Maximum number of schedules to generate (override value).
 
-        optimize (bool):
-            Whether to apply optimization flags in the solver.
+        optimizer_flags (Optional[List[str]]):
+            List of optimizer flags selected in the UI.
+            - If None, defaults to flags defined in loaded JSON config.
+            - If empty list, runs without optimization preferences.
 
     Returns:
         int:
@@ -80,6 +106,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
 
     Design Notes:
         - This function does NOT mutate the original config.
+        - Per-run overrides affect only the in-memory copy.
         - It transforms solver output (flat rows) into grouped schedules.
         - It prepares data in a format optimized for the Viewer layer.
     """
@@ -100,13 +127,49 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
     # 2. Protect Original Configuration
     # ----------------------------------
     # Copy so we don't mutate saved config 
-
     # Use deepcopy to ensure overrides do not modify the saved configuration.
+    # the saved configuration stored in session.
+
     run_cfg = deepcopy(cfg)
 
 
+    # ----------------------------------------
+    # 3. Apply Per-Run Overrides (Generator UI)
+    # ----------------------------------------
+
+    # Override schedule generation limit
+    # (Ensures consistency between config and solver call)
+    run_cfg["limit"] = limit
+
+    # ----------------------------------------------------
+    # Optimization Flag Override Logic
+    # ----------------------------------------------------
+    # Behavior:
+    #   - If UI did not submit flags (None), default to
+    #     JSON configuration values.
+    #   - If UI submitted flags (including empty list),
+    #     use exactly what user selected.
+    #   - Validate against KNOWN_OPTIMIZER_FLAGS for safety.
+    # ----------------------------------------------------
+    if optimizer_flags is None:
+        # No UI override → use JSON defaults
+        optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+
+    # Filter out any unknown flags (defensive validation)
+    optimizer_flags = [
+        flag for flag in optimizer_flags
+        if flag in KNOWN_OPTIMIZER_FLAGS
+    ]
+
+    # Apply override to in-memory config
+    run_cfg["optimizer_flags"] = optimizer_flags
+
+    # Core currently doesn't use optimize bool, but kept it for future compatibility
+    optimize = len(optimizer_flags) > 0
+
+
     # --------------------------------
-    # 3. Invoke Core Scheduler Engine
+    # 4. Invoke Core Scheduler Engine
     # --------------------------------
 
     # --- REAL SCHEDULER CALL ---
@@ -120,7 +183,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
 
 
     # --------------------------------------------
-    # 4. Transform Flat Rows -> Grouped Schedules
+    # 5. Transform Flat Rows -> Grouped Schedules
     # --------------------------------------------
 
     # Group rows by schedule_id for Viewer to navigate
@@ -148,7 +211,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
 
 
     # --------------------------------
-    # 5. Build Final Schedule Objects
+    # 6. Build Final Schedule Objects
     # --------------------------------
     
     schedules: List[Dict[str, Any]] = []
@@ -158,7 +221,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
             "meta": {
                 "schedule_id": sid,
                 "generated_at": datetime.now().isoformat(timespec="seconds"),
-                "optimize": optimize,
+                "optimizer_flags": optimizer_flags,   # Store actual flags used
                 "row_count": len(grouped[sid]),
             },
             "assignments": grouped[sid],
@@ -166,7 +229,7 @@ def generate_schedules_into_session(limit: int, optimize: bool) -> int:
 
 
     # ----------------------------------------
-    # 6. Persist in Session for Viewer Layer
+    # 7. Persist in Session for Viewer Layer
     # ----------------------------------------
     # Store for Viewer navigation
     
