@@ -152,7 +152,9 @@ Extends:
   -->
   <h2>Table: By Faculty</h2>
   
-  {% if data.count > 0 %}
+  {% if data.count == 0 %}
+    <p class="hint">No schedules loaded. Generate or import schedules.</p>
+  {% else %}
     {% for fac, rows in data.by_faculty.items() %}
       <h3>{{ fac }}</h3>
       <table>
