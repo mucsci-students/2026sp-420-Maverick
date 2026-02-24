@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona
-Date: 2026-02-22
+Date: 2026-02-24
 
 Schedule Viewer Template
 
@@ -20,13 +20,22 @@ Extends base.html.
 <section class="card">
   <div class="row">
     <form method="post" action="/viewer/prev">
-      <button type="submit">Prev</button>
+      <button type="submit"
+              {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
+        Prev
+      </button>
     </form>
+
     <div>
-      <strong>Schedule:</strong> {{ data.index + 1 if data.count > 0 else 0 }} / {{ data.count }}
+      <strong>Schedule:</strong>
+      {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
     </div>
+
     <form method="post" action="/viewer/next">
-      <button type="submit">Next</button>
+      <button type="submit"
+              {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
+        Next
+      </button>
     </form>
   </div>
 
