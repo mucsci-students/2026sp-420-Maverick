@@ -12,19 +12,19 @@ Purpose:
 
 Architectural Role (MVC):
     - Acts as part of the Model layer.
-    - Owns schedule viewer state (selected schedule iindex) via Flask session.
+    - Owns schedule viewer state (selected schedule index) via Flask session.
     - Prepares data structures that are easy for the View layer to render.
 
 High-Level Responsibilities:
-    1. Maintain navigation state (current schedule iindex).
+    1. Maintain navigation state (current schedule index).
     2. Provide access to session-backed schedule data.
     3. Transform assignment rows into grouped table structures.
     4. Support JSON import/export for portability.    
 
 Design Notes:
     - Schedules are stored in session under SESSION_SCHEDULES_KEY as a list.
-    - The currently selected schedule is tracked by iindex under
-      SESSION_SELECTED_Iindex_KEY.
+    - The currently selected schedule is tracked by index under
+      SESSION_SELECTED_INDEX_KEY.
     - Import/export uses JSON for portability and simplicity.
     - All access to session state is funneled through helper functions
       to centralize logic.
@@ -48,8 +48,8 @@ from flask import session      # Per-user session storage (viewer state + schedu
 # Each element is expected to follow the structure produced by run_service.
 SESSION_SCHEDULES_KEY = "schedules"
 
-# Stores the currently selected schedule iindex for navigation
-SESSION_SELECTED_Iindex_KEY = "selected_schedule_iindex"
+# Stores the currently selected schedule index for navigation
+SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
 
 # ------------------------------
@@ -67,16 +67,16 @@ def _get_schedules():
     return session.get(SESSION_SCHEDULES_KEY, [])
 
 
-def _get_iindex():
+def _get_index():
     """
-    Retrieves the current selected schedule iindex from session.
+    Retrieves the current selected schedule index from session.
 
     Returns:
         int:
-            The selected schedule iindex. Defaults to 0 if missing/invalid.
+            The selected schedule index. Defaults to 0 if missing/invalid.
     """
     # The `or 0` guards against None/""
-    return int(session.get(SESSION_SELECTED_Iindex_KEY, 0) or 0)
+    return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
 
 
 # ------------------------------
@@ -85,14 +85,14 @@ def _get_iindex():
 
 def next_schedule():
     """
-    Advances the selected schedule iindex forward by one.
+    Advances the selected schedule index forward by one.
 
     Behavior:
-        - Clamped to the last schedule iindex.
+        - Clamped to the last schedule index.
         - No-op if no schedules are loaded.
 
     Side Effects:
-        - Updates SESSION_SELECTED_Iindex_KEY in session.
+        - Updates SESSION_SELECTED_INDEX_KEY in session.
     """
     schedules = _get_schedules()
 
@@ -101,20 +101,20 @@ def next_schedule():
         return
 
     # Clamp to valid range: 0..len(schedules)-1
-    index = min(_get_iindex() + 1, len(schedules) - 1)
-    session[SESSION_SELECTED_Iindex_KEY] = index
+    index = min(_get_index() + 1, len(schedules) - 1)
+    session[SESSION_SELECTED_INDEX_KEY] = index
 
 
 def prev_schedule():
     """
-    Moves the selected schedule iindex backward by one.
+    Moves the selected schedule index backward by one.
 
     Behavior:
         - Clamped to zero.
         - No-op if no schedules are loaded.
 
     Side Effects:
-        - Updates SESSION_SELECTED_Iindex_KEY in session.
+        - Updates SESSION_SELECTED_INDEX_KEY in session.
     """
     schedules = _get_schedules()
     
@@ -123,8 +123,8 @@ def prev_schedule():
         return
 
     # Clamp to valid range: 0..len(schedules)-1
-    index = max(_get_iindex() - 1, 0)
-    session[SESSION_SELECTED_Iindex_KEY] = index
+    index = max(_get_index() - 1, 0)
+    session[SESSION_SELECTED_INDEX_KEY] = index
 
 
 # -------------------------------------------------------------------------
@@ -164,7 +164,7 @@ def import_schedules_from_file(path: str):
 
     Side Effects:
         - Overwrites session schedules
-        - Resets selected iindex to 0 (first schedule)
+        - Resets selected index to 0 (first schedule)
     """
     with open(path, "r", encoding="utf-8") as f:
         schedules = json.load(f)
@@ -176,7 +176,7 @@ def import_schedules_from_file(path: str):
     session[SESSION_SCHEDULES_KEY] = schedules
 
     # Reset navigation to first schedule for consistency.
-    session[SESSION_SELECTED_Iindex_KEY] = 0
+    session[SESSION_SELECTED_INDEX_KEY] = 0
 
 
 # ------------------------------
@@ -224,7 +224,7 @@ def get_view_data():
         dict:
             {
                 "count": total number of schedules,
-                "iindex": currently selected iindex,
+                "index": currently selected index,
                 "current_meta": metadata for selected schedule,
                 "assignments": flat assignment list,
                 "by_room": grouped assignments by room,
@@ -241,7 +241,7 @@ def get_view_data():
         - It ensures safe defaults when no schedules exist.
 
     Design Notes:
-        - Iindex bounds are validated.
+        - Index bounds are validated.
         - Missing schedules return empty-safe structures.
     """
 
@@ -250,7 +250,7 @@ def get_view_data():
     # ------------------------------
 
     schedules = _get_schedules()
-    index = _get_iindex()
+    index = _get_index()
 
     count = len(schedules)
     has_schedules = count > 0
@@ -259,7 +259,7 @@ def get_view_data():
     # 2. Resolve Current Schedule
     # ------------------------------
 
-    # Pick the current schedule only if the iindex is valid
+    # Pick the current schedule only if the index is valid
     current = schedules[index] if schedules and 0 <= index < len(schedules) else None
 
     # Assignments are stored under the "assignments" key (same shape as run_service output)
@@ -279,7 +279,7 @@ def get_view_data():
 
     return {
         "count": len(schedules),
-        "iindex": index,
+        "index": index,
         "current_meta": (current or {}).get("meta", {}),
         "assignments": assignments,
 
