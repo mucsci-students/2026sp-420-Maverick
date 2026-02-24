@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-20
+# Date: 2026-02-24
 """
 Schedule Viewer Routes
 
@@ -10,6 +10,7 @@ Responsibilities:
 - Display schedules by Room and Faculty
 - Export schedules to file
 - Import schedules from file
+- Select a schedule directly by index (dropdown)
 
 Acts as the Controller layer for schedule viewing functionality.
 """
@@ -20,6 +21,7 @@ from app.web.services.schedule_service import (
     get_view_data,
     next_schedule,
     prev_schedule,
+    select_schedule,              
     export_schedules_to_file,
     import_schedules_from_file,
 )
@@ -42,6 +44,20 @@ def go_next():
 @bp.post("/prev")
 def go_prev():
     prev_schedule()
+    return redirect(url_for("viewer.viewer"))
+
+@bp.post("/select")  
+def select():
+    """
+    Directly selects a schedule index from the Viewer dropdown.
+    Expects a 0-based integer index in form field 'index'.
+    """
+    raw = request.form.get("index", "0")
+    try:
+        select_schedule(int(raw))
+    except Exception:
+        # Ignore invalid input; keep current schedule selection
+        pass
     return redirect(url_for("viewer.viewer"))
 
 
