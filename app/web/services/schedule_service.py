@@ -12,14 +12,22 @@ Purpose:
 
 Architectural Role (MVC):
     - Acts as part of the Model layer.
-    - Owns schedule viewer state (selected schedule index) via Flask session.
+    - Owns schedule viewer state (selected schedule iindex) via Flask session.
     - Prepares data structures that are easy for the View layer to render.
+
+High-Level Responsibilities:
+    1. Maintain navigation state (current schedule iindex).
+    2. Provide access to session-backed schedule data.
+    3. Transform assignment rows into grouped table structures.
+    4. Support JSON import/export for portability.    
 
 Design Notes:
     - Schedules are stored in session under SESSION_SCHEDULES_KEY as a list.
-    - The currently selected schedule is tracked by index under
-      SESSION_SELECTED_INDEX_KEY.
+    - The currently selected schedule is tracked by iindex under
+      SESSION_SELECTED_Iindex_KEY.
     - Import/export uses JSON for portability and simplicity.
+    - All access to session state is funneled through helper functions
+      to centralize logic.
 """
 
 # app/web/services/schedule_service.py
@@ -37,10 +45,11 @@ from flask import session      # Per-user session storage (viewer state + schedu
 # ------------------------------
 
 # Stores the list of generated/imported schedules in the Flask session
+# Each element is expected to follow the structure produced by run_service.
 SESSION_SCHEDULES_KEY = "schedules"
 
-# Stores the currently selected schedule index for navigation
-SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
+# Stores the currently selected schedule iindex for navigation
+SESSION_SELECTED_Iindex_KEY = "selected_schedule_iindex"
 
 
 # ------------------------------
@@ -49,7 +58,7 @@ SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
 def _get_schedules():
     """
-    Fetches the schedules list from session.
+    Retrieves the list of schedules from session.
 
     Returns:
         list:
@@ -58,16 +67,16 @@ def _get_schedules():
     return session.get(SESSION_SCHEDULES_KEY, [])
 
 
-def _get_index():
+def _get_iindex():
     """
-    Fetches the current schedule index from session (safely coerced to int).
+    Retrieves the current selected schedule iindex from session.
 
     Returns:
         int:
-            The selected schedule index. Defaults to 0 if missing/invalid.
+            The selected schedule iindex. Defaults to 0 if missing/invalid.
     """
     # The `or 0` guards against None/""
-    return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
+    return int(session.get(SESSION_SELECTED_Iindex_KEY, 0) or 0)
 
 
 # ------------------------------
@@ -76,34 +85,46 @@ def _get_index():
 
 def next_schedule():
     """
-    Advances the selected schedule index by one, clamped to the last schedule.
+    Advances the selected schedule iindex forward by one.
 
-    No-op if no schedules are loaded.
+    Behavior:
+        - Clamped to the last schedule iindex.
+        - No-op if no schedules are loaded.
+
+    Side Effects:
+        - Updates SESSION_SELECTED_Iindex_KEY in session.
     """
     schedules = _get_schedules()
+
     if not schedules:
-        # Nothing to navigate
+        # Nothing to navigate - safely exit
         return
 
     # Clamp to valid range: 0..len(schedules)-1
-    i = min(_get_index() + 1, len(schedules) - 1)
-    session[SESSION_SELECTED_INDEX_KEY] = i
+    index = min(_get_iindex() + 1, len(schedules) - 1)
+    session[SESSION_SELECTED_Iindex_KEY] = index
 
 
 def prev_schedule():
     """
-    Moves the selected schedule index back by one, clamped to zero.
+    Moves the selected schedule iindex backward by one.
 
-    No-op if no schedules are loaded.
+    Behavior:
+        - Clamped to zero.
+        - No-op if no schedules are loaded.
+
+    Side Effects:
+        - Updates SESSION_SELECTED_Iindex_KEY in session.
     """
     schedules = _get_schedules()
+    
     if not schedules:
-        # Nothing to navigate
+        # Nothing to navigate - safely exit
         return
 
     # Clamp to valid range: 0..len(schedules)-1
-    i = max(_get_index() - 1, 0)
-    session[SESSION_SELECTED_INDEX_KEY] = i
+    index = max(_get_iindex() - 1, 0)
+    session[SESSION_SELECTED_Iindex_KEY] = index
 
 
 # -------------------------------------------------------------------------
@@ -116,7 +137,11 @@ def export_schedules_to_file(path: str):
 
     Parameters:
         path (str):
-            Destination file path (written as UTF-8).
+
+    Notes:
+        - Produces human-readable JSON.
+        - Intended for sharing, or debugging.
+        - Does NOT modify session state.
     """
     schedules = _get_schedules()
 
@@ -139,17 +164,19 @@ def import_schedules_from_file(path: str):
 
     Side Effects:
         - Overwrites session schedules
-        - Resets selected index to 0 (first schedule)
+        - Resets selected iindex to 0 (first schedule)
     """
     with open(path, "r", encoding="utf-8") as f:
         schedules = json.load(f)
 
-    # Basic validation: the Viewer expects a list of schedules
+    # Basic structural validation: the Viewer expects a list of schedules
     if not isinstance(schedules, list):
         raise ValueError("Imported schedules file must contain a JSON list.")
 
     session[SESSION_SCHEDULES_KEY] = schedules
-    session[SESSION_SELECTED_INDEX_KEY] = 0
+
+    # Reset navigation to first schedule for consistency.
+    session[SESSION_SELECTED_Iindex_KEY] = 0
 
 
 # ------------------------------
@@ -170,8 +197,13 @@ def _group_by(assignments, key):
         dict[str, list[dict]]:
             Mapping from group name -> list of assignments in that group.
 
+    UI Purpose:
+        Enables tabular rendering grouped by:
+            - Room / Lab
+            - Faculty
+
     Notes:
-        - Missing keys are grouped under 'Unknown' to keep the UI stable.
+        - Missing keys are grouped under 'Unknown' to keep the UI stable & to prevent template errors.
     """
     grouped = {}
     for a in assignments:
@@ -190,38 +222,64 @@ def get_view_data():
 
     Returns:
         dict:
-            A dictionary containing:
-                - count: total number of schedules in session
-                - index: currently selected schedule index
-                - current_meta: metadata dict for the selected schedule
-                - assignments: flat assignment list for the selected schedule
-                - by_room: assignments grouped by room
-                - by_faculty: assignments grouped by faculty
+            {
+                "count": total number of schedules,
+                "iindex": currently selected iindex,
+                "current_meta": metadata for selected schedule,
+                "assignments": flat assignment list,
+                "by_room": grouped assignments by room,
+                "by_faculty": grouped assignments by faculty,
+                "has_schedules": bool,
+                "is_first": bool,
+                "is_last": bool
+            }
+
+    Architectural Intent:
+        - This function acts as a View adapter.
+        - It centralizes all session-derived state.
+        - It computes navigation flags for template logic.
+        - It ensures safe defaults when no schedules exist.
 
     Design Notes:
-        - This function is coded defensively:
-          if index is out of range or no schedules exist, it returns safe defaults.
-        - The View layer can render "no schedules" state using count/current_meta.
+        - Iindex bounds are validated.
+        - Missing schedules return empty-safe structures.
     """
+
+    # ------------------------------
+    # 1. Retrieve Session State
+    # ------------------------------
+
     schedules = _get_schedules()
-    i = _get_index()
+    index = _get_iindex()
 
     count = len(schedules)
     has_schedules = count > 0
 
-    # Pick the current schedule only if the index is valid
-    current = schedules[i] if schedules and 0 <= i < len(schedules) else None
+    # ------------------------------
+    # 2. Resolve Current Schedule
+    # ------------------------------
 
-    # Compute navigation state flags for the View layer
-    is_first = has_schedules and i == 0
-    is_last = has_schedules and i == (count - 1)
+    # Pick the current schedule only if the iindex is valid
+    current = schedules[index] if schedules and 0 <= index < len(schedules) else None
 
     # Assignments are stored under the "assignments" key (same shape as run_service output)
     assignments = (current or {}).get("assignments", [])
 
+    # ------------------------------
+    # 3. Compute Navigation Flags
+    # ------------------------------
+
+    # Compute navigation state flags for the View layer
+    is_first = has_schedules and index == 0
+    is_last = has_schedules and index == (count - 1)
+
+    # ------------------------------
+    # 4. Build View Model
+    # ------------------------------
+
     return {
         "count": len(schedules),
-        "index": i,
+        "iindex": index,
         "current_meta": (current or {}).get("meta", {}),
         "assignments": assignments,
 
