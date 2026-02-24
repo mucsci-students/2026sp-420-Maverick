@@ -127,6 +127,37 @@ def prev_schedule():
     session[SESSION_SELECTED_INDEX_KEY] = index
 
 
+# ------------------------------
+# Direct Selection Operation
+# ------------------------------
+
+def select_schedule(index: int) -> None:
+    """
+    Directly sets the selected schedule index from the Viewer dropdown.
+
+    Parameters:
+        index (int):
+            0-based schedule index submitted from the UI.
+
+    Behavior:
+        - If no schedules exist, this is a no-op.
+        - The index is clamped to the valid range (0..len(schedules)-1)
+          to prevent out-of-bounds access.
+        - Updates the session-selected schedule index.
+    """
+    schedules = _get_schedules()
+
+    # If no schedules exist, nothing to select
+    if not schedules:
+        return
+
+    # Clamp index safely within valid bounds
+    clamped = max(0, min(int(index), len(schedules) - 1))
+
+    # Store new selected index in session
+    session[SESSION_SELECTED_INDEX_KEY] = clamped
+
+
 # -------------------------------------------------------------------------
 # Import / Export Operations (Just initial/temp/placeholder code for now )
 # -------------------------------------------------------------------------
