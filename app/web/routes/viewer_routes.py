@@ -22,6 +22,7 @@ from app.web.services.schedule_service import (
     prev_schedule,
     export_schedules_to_file,
     import_schedules_from_file,
+    is_export_enabled,
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -30,7 +31,8 @@ bp = Blueprint("viewer", __name__, url_prefix="/viewer")
 @bp.get("/")
 def viewer():
     data = get_view_data()
-    return render_template("viewer.html", data=data)
+    export_enabled = is_export_enabled()
+    return render_template("viewer.html", data=data, is_export_enabled = export_enabled)
 
 
 @bp.post("/next")
@@ -43,7 +45,6 @@ def go_next():
 def go_prev():
     prev_schedule()
     return redirect(url_for("viewer.viewer"))
-
 
 @bp.post("/export")
 def export():
