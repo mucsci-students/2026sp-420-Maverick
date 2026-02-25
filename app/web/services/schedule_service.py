@@ -1,4 +1,4 @@
-# Author: Antonio Corona
+# Author: Antonio Corona, Tanner Ness
 # Date: 2026-02-24
 """
 Schedule Viewing Service
@@ -38,7 +38,8 @@ Design Notes:
 
 import json                    # Serialize/deserialize schedules to/from JSON
 from flask import session      # Per-user session storage (viewer state + schedules)
-
+from typing import List, Dict, Any, Optional, Literal
+from pydantic import BaseModel, ValidationError
 
 # ------------------------------
 # Session Keys (Viewer State)
@@ -149,6 +150,12 @@ def export_schedules_to_file(path: str):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(schedules, f, indent=2)
 
+# Disables the 'Export Schedules' button if there are no schedules to export.
+def is_export_enabled() -> bool:
+    count = len(_get_schedules())
+    return count != 0
+
+
 
 def import_schedules_from_file(path: str):
     """
@@ -166,18 +173,92 @@ def import_schedules_from_file(path: str):
         - Overwrites session schedules
         - Resets selected index to 0 (first schedule)
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open('./configs/config_base.json', "r", encoding="utf-8") as f:
         schedules = json.load(f)
+
 
     # Basic structural validation: the Viewer expects a list of schedules
     if not isinstance(schedules, list):
         raise ValueError("Imported schedules file must contain a JSON list.")
+    
+    # in-depth validation of each schedule's structure against the schema.
+    scheduleschema = Schema()
+    for s in schedules:
+        is_valid_file(s, scheduleschema)
+
+    is_export_enabled()
 
     session[SESSION_SCHEDULES_KEY] = schedules
 
     # Reset navigation to first schedule for consistency.
     session[SESSION_SELECTED_INDEX_KEY] = 0
 
+
+# Checks the file being imported fits the general schema of the configuration file.
+def is_valid_file(schedule: Dict[str, Any], scheduleschema) -> None:
+    try:
+        # checks if schedules' schema matches 
+        scheduleschema.model_validate(schedule)
+        
+    except ValidationError as e:
+        raise ValueError(f"Invalid file: {e}")
+
+# returns the schema of a properly configured json file
+def Schema():
+
+    class Course(BaseModel):
+        course_id: str
+        credits: int
+        room: List[str]
+        lab: Optional[List[str]] = None
+        conflicts: Optional[List[str]] = None
+        faculty: List[str]
+
+    class Faculty(BaseModel):
+        name: str
+        maximum_credits: int
+        minimum_credits: int
+        unique_course_limit: int
+        maximum_days: Optional[int] = None
+        mandatory_days: Optional[List[str]] = None
+        times: Dict[str, List[str]]
+        course_preferences: Optional[Dict[str, int]] = None
+        room_preferences: Optional[Dict[str, int]] = None
+        lab_preferences: Optional[Dict[str, int]] = None
+
+    class Meeting(BaseModel):
+        day: Literal["MON", "TUE", "WED", "THU", "FRI"]
+        duration: int
+        lab: Optional[bool] = None
+
+    class Class(BaseModel):
+        credits: int
+        meetings: List[Meeting]
+        start_time: Optional[str] = None
+        disabled: Optional[bool] = None
+    
+    class TimeSlot(BaseModel):
+        start: str
+        spacing: int
+        end: str
+
+    class TimeSlotConfig(BaseModel):
+        times: Dict[Literal["MON", "TUE", "WED", "THU", "FRI"], List[TimeSlot]]
+        classes: List[Class]
+
+    class Config(BaseModel):
+        rooms: List[str]
+        labs: List[str]
+        courses: List[Course]
+        faculty: List[Faculty]
+
+    class ScheduleSchema(BaseModel):
+        config: Config
+        time_slot_config: TimeSlotConfig
+        limit: int
+        optimizer_flags: List[str]
+        
+    return ScheduleSchema
 
 # ------------------------------
 # Viewer Grouping Helpers

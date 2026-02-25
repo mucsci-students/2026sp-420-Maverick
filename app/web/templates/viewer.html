@@ -1,5 +1,5 @@
 <!--
-Author: Antonio Corona
+Author: Antonio Corona, Tanner Ness
 Date: 2026-02-24
 
 Schedule Viewer Template
@@ -85,17 +85,19 @@ Extends:
       POST /viewer/export
   -->
   <div class="row">
-    <form method="post" action="/viewer/import" class="row">
+    <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">
       <label>Import path</label>
       <input name="path" value="schedules.json">
       <button type="submit">Import</button>
     </form>
-
-    <form method="post" action="/viewer/export" class="row">
+    {% if is_export_enabled %}
+    <form method="post" action="/viewer/export" class="row" onsubmit="return confirm('Export file?');">
       <label>Export path</label>
       <input name="path" value="schedules.json">
       <button type="submit">Export</button>
     </form>
+    {% else %}
+    {% endif %}
   </div>
 
   <!--
