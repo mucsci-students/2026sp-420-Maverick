@@ -16,7 +16,7 @@ Acts as part of the Model layer in MVC.
 import json
 from flask import session
 
-# Import management functions from existing modules
+# Import management functions
 from app.faculty_management.faculty_management import ( 
     add_faculty,
     remove_faculty, 
