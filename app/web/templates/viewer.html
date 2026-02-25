@@ -154,26 +154,26 @@ Extends:
     <h2 style="margin: 0;">Tables</h2>
 
     <!-- Tabs (By Room / By Faculty) -->
-    <div class="row" style="gap: 8px; align-items: center; margin-left: auto;">
-      <button type="button" class="tab-btn" data-tab="master-faculty-table" aria-selected="true">
-        Faculty Master Schedule
-      </button>
-      <button type="button" class="tab-btn" data-tab="master-room-table" aria-selected="false">
-        Room Master Schedule
-      </button>
-      <button type="button" class="tab-btn" data-tab="lab-room-table" aria-selected="false">
-        Lab Master Schedule
-      </button>
-      <button type="button" class="tab-btn" data-tab="filter-by-faculty-table" aria-selected="false">
-        Filter By Faculty
-      </button>
-      <button type="button" class="tab-btn" data-tab="filter-by-room-table" aria-selected="false">
-        Filter By Room
-      </button>
-      <button type="button" class="tab-btn" data-tab="filter-by-lab-table" aria-selected="false">
-        Filter By Lab
-      </button>
+    <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
+
+      <!-- Master Schedule Dropdown -->
+      <select id="master_menu" class="mode-select" data-group="master">
+        <option value="" selected disabled>Master Schedule</option>
+        <option value="master-faculty-table">Faculty Master Schedule</option>
+        <option value="master-room-table">Room Master Schedule</option>
+        <option value="master-lab-table">Lab Master Schedule</option>
+      </select>
+
+      <!-- Filter By Dropdown -->
+      <select id="filter_menu" class="mode-select" data-group="filter">
+        <option value="" selected disabled>Filter By</option>
+        <option value="filter-by-faculty-table">Filter By Faculty</option>
+        <option value="filter-by-room-table">Filter By Room</option>
+        <option value="filter-by-lab-table">Filter By Lab</option>
+      </select>
+
     </div>
+
   </div>
   
   <!-- Tab Panel: Master Faculty Schedule-->
@@ -243,6 +243,64 @@ Extends:
     {% endif %}
   </div>
 
+  <!-- Tab Panel: Master Lab Scedule -->
+  <!--
+    Table: By Lab
+      - Shows all assignments grouped by lab.
+      - Primary use case: validate lab usage and quickly spot conflicts.
+      - Empty-state message appears when no schedules are loaded.
+  -->
+  <div class="tab-panel" id="tab-master-lab-table">
+    <h3>Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
+      {% for lab, rows in data.by_lab.items() %}
+        {% if lab %}
+          <h4>{{ lab }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+    {% endif %}
+
+  </div>
+
   <!-- Tab Panel: Filter By Faculty -->
   <!--
     Table: Filter By Faculty
@@ -310,6 +368,65 @@ Extends:
         </table>
       {% endfor %}
     {% endif %}
+  </div>
+
+  <!-- Tab Panel: Filter By Lab -->
+  <!--
+    Table: Filter By Lab
+      - Shows all assignments grouped by lab.
+      - Filters by lab
+      - Primary use case: validate lab usage and quickly spot conflicts.
+      - Empty-state message appears when no schedules are loaded.
+  -->
+  <div class="tab-panel" id="tab-filter-by-lab-table">
+    <h3>Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
+      {% for lab, rows in data.by_lab.items() %}
+        {% if lab %}
+          <h4>{{ lab }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      
+    {% endif %}
+
   </div>
 
 </section>
