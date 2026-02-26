@@ -87,82 +87,93 @@ def get_config_status():
 
     return {"loaded": True, "path": path, "counts": counts}
 
+# Helper
+def _get_cgf():
+    cfg = session.get(SESSION_CONFIG_KEY)
+    if cfg is None:
+        raise ValueError("No config loaded. Load a config first.")
+    return cfg
+
 # Faculty Management
-def add_faculty_service(name: str): 
-    cfg = session[SESSION_CONFIG_KEY]
-    add_faculty(cfg, name)
+def add_faculty_service(**kwargs):
+    cfg = _get_cgf()
+    add_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def remove_faculty_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    remove_faculty(cfg, name)
+def remove_faculty_service(**kwargs):
+    cfg = _get_cgf()
+    remove_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def modify_faculty_service(old_name: str, new_name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    modify_faculty(cfg, old_name, new_name)
+def modify_faculty_service(**kwargs):
+    cfg = _get_cgf()
+    modify_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
+
 
 # Room Management
-def add_room_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    add_room(cfg, name)
+def add_room_service(room: str):
+    cfg = _get_cgf()
+    add_room(cfg, room)
     session[SESSION_CONFIG_KEY] = cfg
 
-def remove_room_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    remove_room(cfg, name)
+def remove_room_service(**kwargs):
+    cfg = _get_cgf()
+    remove_room(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def modify_room_service(old_name: str, new_name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    modify_room(cfg, old_name, new_name)
+def modify_room_service(room: str, new_name: str):
+    cfg = _get_cgf()
+    modify_room(cfg, room, new_name)
     session[SESSION_CONFIG_KEY] = cfg
+
 
 # Lab Management
-def add_lab_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    add_lab(cfg, name)
+def add_lab_service(**kwargs):
+    cfg = _get_cgf()
+    add_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def remove_lab_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    remove_lab(cfg, name)
+def remove_lab_service(**kwargs):
+    cfg = _get_cgf()
+    remove_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def modify_lab_service(old_name: str, new_name: str):    
-    cfg = session[SESSION_CONFIG_KEY]
-    modify_lab(cfg, old_name, new_name)
+def modify_lab_service(**kwargs):
+    cfg = _get_cgf()
+    modify_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
+
 
 # Course Management
-def add_course_service(name: str, faculty: str, room: str, lab: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    add_course(cfg, name, faculty, room, lab)
+def add_course_service(**kwargs):
+    cfg = _get_cgf()
+    add_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def remove_course_service(name: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    remove_course(cfg, name)
+def remove_course_service(**kwargs):
+    cfg = _get_cgf()
+    remove_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def modify_course_service(old_name: str, new_name: str, faculty: str, room: str, lab: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    modify_course(cfg, old_name, new_name, faculty, room, lab)
+def modify_course_service(**kwargs):
+    cfg = _get_cgf()
+    modify_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
+
 
 # Conflict Management
-def add_conflict_service(course1: str, course2: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    add_conflict(cfg, course1, course2)
+def add_conflict_service(**kwargs):
+    cfg = _get_cgf()
+    add_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-def remove_conflict_service(course1: str, course2: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    remove_conflict(cfg, course1, course2)
-    session[SESSION_CONFIG_KEY] = cfg   
+def remove_conflict_service(**kwargs):
+    cfg = _get_cgf()
+    remove_conflict(cfg, **kwargs)
+    session[SESSION_CONFIG_KEY] = cfg
 
-def modify_conflict_service(old_course1: str, old_course2: str, new_course1: str, new_course2: str):
-    cfg = session[SESSION_CONFIG_KEY]
-    modify_conflict(cfg, old_course1, old_course2, new_course1, new_course2)
+def modify_conflict_service(**kwargs):
+    cfg = _get_cgf()
+    modify_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg

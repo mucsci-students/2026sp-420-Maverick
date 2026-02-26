@@ -77,131 +77,150 @@ def save():
         flash(f"Save failed: {e}", "error")
     return redirect(url_for("config.editor"))
 
+
 # Faculty 
 @bp.post("/faculty/add")
-def add_faculty():
-    add_faculty_service(request.form.get("name").strip())
-    flash("Faculty added.", "success")
+def faculty_add():
+    try:
+        add_faculty_service(**request.form.to_dict())
+        flash("Faculty added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/faculty/remove")
-def remove_faculty():
-    remove_faculty_service(request.form.get("name").strip())
-    flash("Faculty removed.", "success")
+def faculty_remove():
+    try: 
+        remove_faculty_service(**request.form.to_dict())
+        flash("Faculty removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")  
     return redirect(url_for("config.editor"))
 
 @bp.post("/faculty/modify")
 def modify_faculty():
-    modify_faculty_service(
-        old_name=request.form.get("old_name").strip(),
-        new_name=request.form.get("new_name").strip(),
-    )
-    flash("Faculty modified.", "success")
+    try:
+        modify_faculty_service(**request.form.to_dict())
+        flash("Faculty modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")  
     return redirect(url_for("config.editor"))
 
-# Room
+
+# Room 
 @bp.post("/room/add")
-def add_room():
-    add_room_service(request.form.get("name").strip())
-    flash("Room added.", "success")
+def room_add():
+    try:
+        add_room_service(request.form.get("room"))
+        flash("Room added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/room/remove")
-def remove_room():
-    remove_room_service(request.form.get("name").strip())
-    flash("Room removed.", "success")
+def room_remove():
+    try:
+        remove_room_service(request.form.get("room"))
+        flash("Room removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/room/modify")
 def modify_room():
-    modify_room_service(
-        old_name=request.form.get("old_name").strip(),
-        new_name=request.form.get("new_name").strip(),
-    )
-    flash("Room modified.", "success")
+    try:
+        modify_room_service(
+            request.form.get("room"), 
+            request.form.get("new_name"),
+        )
+        flash("Room modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Lab
 @bp.post("/lab/add")
-def add_lab():
-    add_lab_service(request.form.get("name").strip())
-    flash("Lab added.", "success")
+def lab_add():
+    try:
+        add_lab_service(**request.form.to_dict())
+        flash("Lab added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/lab/remove")
-def remove_lab():
-    remove_lab_service(request.form.get("name").strip())
-    flash("Lab removed.", "success")
+def lab_remove():
+    try:
+        remove_lab_service(**request.form.to_dict())
+        flash("Lab removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/lab/modify")
 def modify_lab():
-    modify_lab_service(
-        old_name=request.form.get("old_name").strip(),
-        new_name=request.form.get("new_name").strip(),
-    )
-    flash("Lab modified.", "success")
+    try:   
+        modify_lab_service(**request.form.to_dict())
+        flash("Lab modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error") 
     return redirect(url_for("config.editor"))
+
 
 # Course
 @bp.post("/course/add")
 def course_add():
-    add_course_service(
-        request.form.get("course_id").strip(),
-        int(request.form.get("credits")),
-        request.form.get("room").strip(),
-        request.form.get("lab") or None,
-        faculty=request.form.get("faculty"),
-    )
-    flash("Course added.", "success")
+    try: 
+        add_course_service(**request.form.to_dict())
+        flash("Course added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/course/remove")
 def course_remove():
-    remove_course_service(request.form.get("course_id").strip())
-    flash("Course removed.", "success")
+    try:
+        remove_course_service(**request.form.to_dict())
+        flash("Course removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/course/modify")
 def course_modify():
-    modify_course_service(
-        old_name=request.form.get("course_id").strip(),
-        new_name=request.form.get("new_course_id") or None,
-        credits=int(request.form.get("credits")) if request.form.get("credits") else None,
-        room=request.form.get("room") or None,
-        lab=request.form.get("lab") or None,
-        faculty=request.form.getlist("faculty") or None,
-    )
-    flash("Course modified.", "success")
+    try:
+        modify_course_service(**request.form.to_dict())
+        flash("Course modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Conflict
-
 @bp.post("/conflict/add")
 def conflict_add():
-    add_conflict_service(
-        request.form.get("course_id").strip(),
-        request.form.get("conflict_course_id").strip(),
-    )
-    flash("Conflict added.", "success")
+    try:
+        add_conflict_service(**request.form.to_dict())
+        flash("Conflict added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
-
 
 @bp.post("/conflict/remove")
 def conflict_remove():
-    remove_conflict_service(
-        request.form.get("course_id").strip(),
-        request.form.get("conflict_course_id").strip(),
-    )
-    flash("Conflict removed.", "success")
+    try:
+        remove_conflict_service(**request.form.to_dict())
+        flash("Conflict removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 @bp.post("/conflict/modify")
 def conflict_modify():
-    modify_conflict_service(
-        request.form.get("course_id").strip(),
-        request.form.get("old_conflict_course_id").strip(),
-        request.form.get("new_conflict_course_id").strip(),
-    )
-    flash("Conflict modified.", "success")
+    try:
+        modify_conflict_service(**request.form.to_dict())
+        flash("Conflict modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
