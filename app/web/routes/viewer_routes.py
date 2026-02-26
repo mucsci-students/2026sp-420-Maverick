@@ -1,4 +1,4 @@
-# Author: Antonio Corona
+# Author: Antonio Corona, Tanner Ness
 # Date: 2026-02-25
 """
 Schedule Viewer Routes
@@ -24,6 +24,7 @@ from app.web.services.schedule_service import (
     select_schedule,              
     export_schedules_to_file,
     import_schedules_from_file,
+    is_export_enabled,
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -36,7 +37,8 @@ def viewer():
     Retrieves fully prepared view data from the service layer.
     """
     data = get_view_data()
-    return render_template("viewer.html", data=data)
+    export_enabled = is_export_enabled()
+    return render_template("viewer.html", data=data, is_export_enabled = export_enabled)
 
 
 @bp.post("/next")
@@ -79,7 +81,7 @@ def select():
         pass
     return redirect(url_for("viewer.viewer"))
 
-
+  
 @bp.post("/export")
 def export():
     """
