@@ -51,6 +51,9 @@ SESSION_SCHEDULES_KEY = "schedules"
 # Stores the currently selected schedule index for navigation
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
+# Tracks whether the user has explicitly selected a schedule via the dropdown
+SESSION_USER_SELECTED_KEY = "viewer_user_selected"
+
 
 # ------------------------------
 # Session Access Helpers
@@ -77,6 +80,10 @@ def _get_index():
     """
     # The `or 0` guards against None/""
     return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
+
+def _get_user_selected() -> bool:
+    """Returns True if user has made an explicit dropdown selection."""
+    return bool(session.get(SESSION_USER_SELECTED_KEY, False))
 
 
 # ------------------------------
@@ -157,6 +164,9 @@ def select_schedule(index: int) -> None:
     # Store new selected index in session
     session[SESSION_SELECTED_INDEX_KEY] = clamped
 
+    # lock dropdown to selection in viewer
+    session[SESSION_USER_SELECTED_KEY] = True
+
 
 # -------------------------------------------------------------------------
 # Import / Export Operations (Just initial/temp/placeholder code for now )
@@ -209,6 +219,9 @@ def import_schedules_from_file(path: str):
     # Reset navigation to first schedule for consistency.
     session[SESSION_SELECTED_INDEX_KEY] = 0
 
+    # show placeholder initially
+    session[SESSION_USER_SELECTED_KEY] = False 
+
 
 # ------------------------------
 # Viewer Grouping Helpers
@@ -259,10 +272,12 @@ def get_view_data():
                 "current_meta": metadata for selected schedule,
                 "assignments": flat assignment list,
                 "by_room": grouped assignments by room,
+                "by_lab": grouped assignments by lab,
                 "by_faculty": grouped assignments by faculty,
                 "has_schedules": bool,
                 "is_first": bool,
                 "is_last": bool
+                "user_selected": user_selected,
             }
 
     Architectural Intent:
@@ -282,6 +297,7 @@ def get_view_data():
 
     schedules = _get_schedules()
     index = _get_index()
+    user_selected = _get_user_selected()
 
     count = len(schedules)
     has_schedules = count > 0
@@ -316,6 +332,7 @@ def get_view_data():
 
         # Tabular groupings for the Viewer: Rooms/Labs and Faculty
         "by_room": _group_by(assignments, "room"),
+        "by_lab": _group_by(assignments, "lab"),
         "by_faculty": _group_by(assignments, "faculty"),
 
         # Navigation state for disabling Prev/Next in the template
