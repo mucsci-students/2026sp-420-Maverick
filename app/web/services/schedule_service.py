@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Tanner Ness
-# Date: 2026-02-24
+# Date: 2026-02-25
 """
 Schedule Viewing Service
 
@@ -52,6 +52,9 @@ SESSION_SCHEDULES_KEY = "schedules"
 # Stores the currently selected schedule index for navigation
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
+# Tracks whether the user has explicitly selected a schedule via the dropdown
+SESSION_USER_SELECTED_KEY = "viewer_user_selected"
+
 
 # ------------------------------
 # Session Access Helpers
@@ -78,6 +81,10 @@ def _get_index():
     """
     # The `or 0` guards against None/""
     return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
+
+def _get_user_selected() -> bool:
+    """Returns True if user has made an explicit dropdown selection."""
+    return bool(session.get(SESSION_USER_SELECTED_KEY, False))
 
 
 # ------------------------------
@@ -126,6 +133,40 @@ def prev_schedule():
     # Clamp to valid range: 0..len(schedules)-1
     index = max(_get_index() - 1, 0)
     session[SESSION_SELECTED_INDEX_KEY] = index
+
+
+# ------------------------------
+# Direct Selection Operation
+# ------------------------------
+
+def select_schedule(index: int) -> None:
+    """
+    Directly sets the selected schedule index from the Viewer dropdown.
+
+    Parameters:
+        index (int):
+            0-based schedule index submitted from the UI.
+
+    Behavior:
+        - If no schedules exist, this is a no-op.
+        - The index is clamped to the valid range (0..len(schedules)-1)
+          to prevent out-of-bounds access.
+        - Updates the session-selected schedule index.
+    """
+    schedules = _get_schedules()
+
+    # If no schedules exist, nothing to select
+    if not schedules:
+        return
+
+    # Clamp index safely within valid bounds
+    clamped = max(0, min(int(index), len(schedules) - 1))
+
+    # Store new selected index in session
+    session[SESSION_SELECTED_INDEX_KEY] = clamped
+
+    # lock dropdown to selection in viewer
+    session[SESSION_USER_SELECTED_KEY] = True
 
 
 # -------------------------------------------------------------------------
@@ -192,6 +233,9 @@ def import_schedules_from_file(path: str):
 
     # Reset navigation to first schedule for consistency.
     session[SESSION_SELECTED_INDEX_KEY] = 0
+
+    # show placeholder initially
+    session[SESSION_USER_SELECTED_KEY] = False 
 
 
 # Checks the file being imported fits the general schema of the configuration file.
@@ -309,10 +353,12 @@ def get_view_data():
                 "current_meta": metadata for selected schedule,
                 "assignments": flat assignment list,
                 "by_room": grouped assignments by room,
+                "by_lab": grouped assignments by lab,
                 "by_faculty": grouped assignments by faculty,
                 "has_schedules": bool,
                 "is_first": bool,
                 "is_last": bool
+                "user_selected": user_selected,
             }
 
     Architectural Intent:
@@ -332,6 +378,7 @@ def get_view_data():
 
     schedules = _get_schedules()
     index = _get_index()
+    user_selected = _get_user_selected()
 
     count = len(schedules)
     has_schedules = count > 0
@@ -366,6 +413,7 @@ def get_view_data():
 
         # Tabular groupings for the Viewer: Rooms/Labs and Faculty
         "by_room": _group_by(assignments, "room"),
+        "by_lab": _group_by(assignments, "lab"),
         "by_faculty": _group_by(assignments, "faculty"),
 
         # Navigation state for disabling Prev/Next in the template

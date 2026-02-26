@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-23
+# Date: 2026-02-25
 """
 Schedule Execution Service
 
@@ -42,6 +42,9 @@ SESSION_SCHEDULES_KEY = "schedules"
 
 # Stores currently selected schedule index for navigation
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
+
+# Stores whether the user has explicitly selected a schedule via dropdown
+SESSION_USER_SELECTED_KEY = "viewer_user_selected"
 
 
 # -------------------------------------------------
@@ -235,5 +238,6 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     
     session[SESSION_SCHEDULES_KEY] = schedules
     session[SESSION_SELECTED_INDEX_KEY] = 0     # Reset navigation to first schedule
+    session[SESSION_USER_SELECTED_KEY] = False     # show "Select Schedule" placeholder initially
 
     return len(schedules)

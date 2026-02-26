@@ -1,8 +1,6 @@
 <!--
 Author: Antonio Corona, Tanner Ness
-Date: 2026-02-24
-
-Schedule Viewer Template
+Date: 2026-02-25
 
 Schedule Viewer Template
 
@@ -12,10 +10,11 @@ Purpose:
 
 UI Responsibilities:
   - Navigate between generated schedules (Prev/Next)
+  - Directly select a schedule (dropdown)
   - Display schedule metadata (debug/traceability)
   - Render tabular views grouped by:
-      * Room (Rooms + Labs)
-      * Faculty
+      * Master schedules (Faculty / Room / Lab)
+      * Filtered schedules (by Faculty / Room / Lab)
   - Import schedules from a JSON file into the viewer
   - Export schedules currently in session to a JSON file
 
@@ -27,12 +26,19 @@ Template Inputs (from Controller / Service):
       * assignments (list[dict]): assignment rows for selected schedule
       * by_room (dict[str, list[dict]]): grouped rows by room
       * by_faculty (dict[str, list[dict]]): grouped rows by faculty
+      * by_lab (dict[str, list[dict]]): grouped rows by lab (labs optional)
       * has_schedules (bool): convenience flag for empty-state handling
       * is_first (bool): True if index == 0 (disable Prev)
       * is_last (bool): True if index == count-1 (disable Next)
+      * user_selected (bool): True if user explicitly selected schedule via dropdown
 
 Extends:
   - base.html
+
+Notes:
+  - This template intentionally uses POST for state-changing actions
+    (navigation, selection, import/export).
+  - The "Tables" section uses two dropdown menus (Master Schedule / Filter By)
 -->
 
 {% extends "base.html" %}
@@ -43,7 +49,6 @@ Extends:
 <h1>Schedule Viewer</h1>
 
 <section class="card">
-
   <!--
     Navigation Bar:
       - Prev/Next are implemented as POSTs to avoid state-changing GETs.
@@ -52,8 +57,17 @@ Extends:
           * data.is_first disables Prev at the first schedule
           * data.is_last disables Next at the last schedule
       - The schedule counter is displayed as 1-based for the user.
+      - Dropdown for direct selection of schedules
   -->
   <div class="row">
+
+    <!--
+      Prev Button:
+        - POST /viewer/prev
+        - Disabled when:
+            * no schedules are loaded, OR
+            * current schedule is the first schedule
+    -->
     <form method="post" action="/viewer/prev">
       <button type="submit"
               {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
@@ -61,18 +75,71 @@ Extends:
       </button>
     </form>
 
+    <!--
+      Schedule Counter:
+        - Shows current schedule position (1-based for user readability)
+        - If no schedules exist, shows 0 / 0
+    -->
     <div>
       <strong>Schedule:</strong>
       {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
     </div>
 
+    <!--
+      Next Button:
+        - POST /viewer/next
+        - Disabled when:
+            * no schedules are loaded, OR
+            * current schedule is the last schedule
+    -->
     <form method="post" action="/viewer/next">
       <button type="submit"
               {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
         Next
       </button>
     </form>
+
+    <!-- 
+      Direct Schedule Selection Dropdown 
+        - POST /viewer/select
+        - Submits a 0-based index (value="{{ idx }}")
+        - Displays user-friendly 1-based labels (Schedule 1, Schedule 2, ...)
+        - Placeholder behavior:
+            * Shows "Select Schedule" initially
+            * Once user selects a schedule, the selection stays in sync with
+              the currently active schedule (via data.user_selected + data.index)
+        - Disabled when no schedules exist
+    -->
+    <form method="post"
+          action="/viewer/select"
+          class="row"
+          style="gap: 8px; align-items: center; margin-left: auto;">
+
+      <select id="schedule_index"
+              name="index"
+              {% if not data.has_schedules %}disabled{% endif %}
+              onchange="if(this.value !== '') this.form.submit()">
+
+        <!-- Placeholder shows initially until user selects something -->
+        <option value=""
+                disabled
+                {% if not data.user_selected %}selected{% endif %}>
+          Select Schedule
+        </option>
+
+        <!-- Real schedule options (0-based values, 1-based labels) -->
+        {% for idx in range(data.count) %}
+          <option value="{{ idx }}"
+                  {% if data.user_selected and idx == data.index %}selected{% endif %}>
+            Schedule {{ idx + 1 }}
+          </option>
+        {% endfor %}
+
+      </select>
+    </form>
+
   </div>
+
 
   <!--
     Import / Export Controls:
@@ -102,76 +169,319 @@ Extends:
 
   <!--
     Metadata (Debug / Traceability):
-      - Renders current schedule meta as pretty JSON.
-      - Useful for confirming schedule_id, generation timestamp, optimization flags, etc.
-      - When no schedules exist, current_meta is an empty dict.
+      - Displays the "meta" object for the currently selected schedule
+      - Useful for confirming:
+          * schedule_id
+          * generated_at timestamp
+          * optimizer flags
+          * row_count
+      - When no schedules exist, current_meta is an empty dict
   -->
   <h2>Meta</h2>
   <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
+
 </section>
 
 <section class="card">
 
   <!--
-    Table: By Room
-      - Shows all assignments grouped by room.
-      - Primary use case: validate room usage and quickly spot conflicts.
-      - Empty-state message appears when no schedules are loaded.
+    Tables Section:
+      - Uses two dropdown menus to reduce UI clutter:
+          1) "Master Schedule" selects one of the master schedule views
+          2) "Filter By" selects one of the filtered views
+      - JavaScript (app.js) is expected to:
+          * Hide all .tab-panel blocks by default
+          * Show the selected panel based on dropdown selection
+          * Reset the other dropdown back to its placeholder
   -->
-  <h2>Table: By Room</h2>
+  <div class="row" style="align-items: center; gap: 10px;">
+    <h2 style="margin: 0;">Tables</h2>
 
-  {% if data.count == 0 %}
-    <p class="hint">No schedules loaded. Generate or import schedules.</p>
-  {% else %}
+    <!-- Menus aligned right inside the header row -->
+    <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
 
-    {% for room, rows in data.by_room.items() %}
-      <h3>{{ room }}</h3>
-      <table>
-        <thead>
-          <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-            <tr>
-              <td>{{ r.course_id }}</td>
-              <td>{{ r.faculty }}</td>
-              <td>{{ r.time }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% endfor %}
-  {% endif %}
-</section>
+      <!--
+        Master Schedule Dropdown:
+          - Placeholder "Master Schedule" does nothing
+          - Selecting an option should reveal the matching tab panel:
+              "master-faculty-table" -> #tab-master-faculty-table
+              "master-room-table"    -> #tab-master-room-table
+              "master-lab-table"     -> #tab-master-lab-table
+      -->
+      <select id="master_menu" class="mode-select" data-group="master">
+        <option value="" selected disabled>Select Master Schedule</option>
+        <option value="master-faculty-table">Faculty Master Schedule</option>
+        <option value="master-room-table">Room Master Schedule</option>
+        <option value="master-lab-table">Lab Master Schedule</option>
+      </select>
 
-<section class="card">
+      <!--
+        Filter By Dropdown:
+          - Placeholder "Filter By" does nothing
+          - Selecting an option should reveal the matching tab panel:
+              "filter-by-faculty-table" -> #tab-filter-by-faculty-table
+              "filter-by-room-table"    -> #tab-filter-by-room-table
+              "filter-by-lab-table"     -> #tab-filter-by-lab-table
+      -->
+      <select id="filter_menu" class="mode-select" data-group="filter">
+        <option value="" selected disabled>Select Filtered Schedule</option>
+        <option value="filter-by-faculty-table">Filter By Faculty</option>
+        <option value="filter-by-room-table">Filter By Room</option>
+        <option value="filter-by-lab-table">Filter By Lab</option>
+      </select>
 
-  <!--
-    Table: By Faculty
-      - Shows all assignments grouped by faculty.
-      - Primary use case: validate teaching loads and quickly spot conflicts.
-      - Only rendered when schedules exist (matches service "has_schedules" logic).
-  -->
-  <h2>Table: By Faculty</h2>
+    </div>
+  </div>
   
-  {% if data.count > 0 %}
-    {% for fac, rows in data.by_faculty.items() %}
-      <h3>{{ fac }}</h3>
-      <table>
-        <thead>
-          <tr><th>Course</th><th>Room</th><th>Time</th></tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-            <tr>
-              <td>{{ r.course_id }}</td>
-              <td>{{ r.room }}</td>
-              <td>{{ r.time }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% endfor %}
-  {% endif %}
+  <!-- =========================================================
+       MASTER SCHEDULE PANELS
+       ========================================================= -->
+
+  <!--
+    Panel: Faculty Master Schedule
+      - Groups assignments by faculty (data.by_faculty)
+      - Use case: validate faculty load + conflicts
+      - Hidden by default; shown when Master dropdown selects it
+  -->
+  <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
+    <h3>Table: By Faculty</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      {% for fac, rows in data.by_faculty.items() %}
+        <h4>{{ fac }}</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Room</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.room }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!--
+    Panel: Room Master Schedule
+      - Groups assignments by room (data.by_room)
+      - Use case: validate room usage + conflicts
+  -->
+  <div class="tab-panel" id="tab-master-room-table" style="display:none;">
+    <h3>Table: By Room</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      {% for room, rows in data.by_room.items() %}
+        <h4>{{ room }}</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!--
+    Panel: Lab Master Schedule
+      - Groups assignments by lab (data.by_lab)
+      - Labs are optional:
+          * Some assignments may have lab == "" (empty)
+          * Those rows are displayed under "No Labs Assigned"
+      - Rendering strategy:
+          1) Display real lab names first
+          2) Display empty-lab group last as "No Labs Assigned"
+  -->
+  <div class="tab-panel" id="tab-master-lab-table" style="display:none;">
+    <h3>Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
+      {% for lab, rows in data.by_lab.items() %}
+        {% if lab %}
+          <h4>{{ lab }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+    {% endif %}
+  </div>
+
+  <!-- =========================================================
+       FILTERED PANELS
+       ========================================================= -->
+
+  <!--
+    Panel: Filter By Faculty
+      - Intended behavior: show table filtered by the selected faculty
+      - Current behavior: renders full faculty grouping (placeholder)
+  -->
+  <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
+    <h3>Table: By Faculty</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      {% for fac, rows in data.by_faculty.items() %}
+        <h4>{{ fac }}</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Room</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.room }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!--
+    Panel: Filter By Room
+      - Intended behavior: show table filtered by the selected room
+      - Current behavior: renders full room grouping (placeholder)
+  -->
+  <div class="tab-panel" id="tab-filter-by-room-table" style="display:none;">
+    <h3>Table: By Room</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      {% for room, rows in data.by_room.items() %}
+        <h4>{{ room }}</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!--
+    Panel: Filter By Lab
+      - Intended behavior: show table matching the selected lab
+      - Current behavior: renders full lab grouping (placeholder)
+      - Uses the same "real labs first, empty labs last" strategy
+  -->
+  <div class="tab-panel" id="tab-filter-by-lab-table" style="display:none;">
+    <h3>Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
+      {% for lab, rows in data.by_lab.items() %}
+        {% if lab %}
+          <h4>{{ lab }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      
+    {% endif %}
+  </div>
+
 </section>
+
 {% endblock %}
