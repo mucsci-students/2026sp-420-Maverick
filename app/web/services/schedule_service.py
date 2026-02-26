@@ -1,4 +1,4 @@
-# Author: Antonio Corona, Ian Swartz
+# Author: Antonio Corona, Ian Swartz, Tanner Ness
 # Date: 2026-02-24
 """
 Schedule Viewing Service
@@ -38,7 +38,8 @@ Design Notes:
 
 import json                    # Serialize/deserialize schedules to/from JSON
 from flask import session      # Per-user session storage (viewer state + schedules)
-
+from typing import List, Dict, Any, Optional, Literal
+from pydantic import BaseModel, ValidationError
 
 # ------------------------------
 # Session Keys (Viewer State)
@@ -50,6 +51,9 @@ SESSION_SCHEDULES_KEY = "schedules"
 
 # Stores the currently selected schedule index for navigation
 SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
+
+# Tracks whether the user has explicitly selected a schedule via the dropdown
+SESSION_USER_SELECTED_KEY = "viewer_user_selected"
 
 
 # ------------------------------
@@ -77,6 +81,10 @@ def _get_index():
     """
     # The `or 0` guards against None/""
     return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
+
+def _get_user_selected() -> bool:
+    """Returns True if user has made an explicit dropdown selection."""
+    return bool(session.get(SESSION_USER_SELECTED_KEY, False))
 
 
 # ------------------------------
@@ -127,6 +135,40 @@ def prev_schedule():
     session[SESSION_SELECTED_INDEX_KEY] = index
 
 
+# ------------------------------
+# Direct Selection Operation
+# ------------------------------
+
+def select_schedule(index: int) -> None:
+    """
+    Directly sets the selected schedule index from the Viewer dropdown.
+
+    Parameters:
+        index (int):
+            0-based schedule index submitted from the UI.
+
+    Behavior:
+        - If no schedules exist, this is a no-op.
+        - The index is clamped to the valid range (0..len(schedules)-1)
+          to prevent out-of-bounds access.
+        - Updates the session-selected schedule index.
+    """
+    schedules = _get_schedules()
+
+    # If no schedules exist, nothing to select
+    if not schedules:
+        return
+
+    # Clamp index safely within valid bounds
+    clamped = max(0, min(int(index), len(schedules) - 1))
+
+    # Store new selected index in session
+    session[SESSION_SELECTED_INDEX_KEY] = clamped
+
+    # lock dropdown to selection in viewer
+    session[SESSION_USER_SELECTED_KEY] = True
+
+
 # -------------------------------------------------------------------------
 # Import / Export Operations (Just initial/temp/placeholder code for now )
 # -------------------------------------------------------------------------
@@ -151,6 +193,14 @@ def export_schedules_to_file(path: str):
 
 # Old import_schedules_from_file commented out
 # def import_schedules_from_file(path: str):
+# Disables the 'Export Schedules' button if there are no schedules to export.
+def is_export_enabled() -> bool:
+    count = len(_get_schedules())
+    return count != 0
+
+
+
+def import_schedules_from_file(path: str):
     """
     Imports schedules from a JSON file and loads them into session.
 
@@ -168,11 +218,20 @@ def export_schedules_to_file(path: str):
     """
     """
     with open(path, "r", encoding="utf-8") as f:
+    with open('./configs/config_base.json', "r", encoding="utf-8") as f:
         schedules = json.load(f)
+
 
     # Basic structural validation: the Viewer expects a list of schedules
     if not isinstance(schedules, list):
         raise ValueError("Imported schedules file must contain a JSON list.")
+    
+    # in-depth validation of each schedule's structure against the schema.
+    scheduleschema = Schema()
+    for s in schedules:
+        is_valid_file(s, scheduleschema)
+
+    is_export_enabled()
 
     session[SESSION_SCHEDULES_KEY] = schedules
 
@@ -228,6 +287,75 @@ def import_schedules_from_file(source):
     except Exception as e:
         raise e
 
+    # show placeholder initially
+    session[SESSION_USER_SELECTED_KEY] = False 
+
+
+# Checks the file being imported fits the general schema of the configuration file.
+def is_valid_file(schedule: Dict[str, Any], scheduleschema) -> None:
+    try:
+        # checks if schedules' schema matches 
+        scheduleschema.model_validate(schedule)
+        
+    except ValidationError as e:
+        raise ValueError(f"Invalid file: {e}")
+
+# returns the schema of a properly configured json file
+def Schema():
+
+    class Course(BaseModel):
+        course_id: str
+        credits: int
+        room: List[str]
+        lab: Optional[List[str]] = None
+        conflicts: Optional[List[str]] = None
+        faculty: List[str]
+
+    class Faculty(BaseModel):
+        name: str
+        maximum_credits: int
+        minimum_credits: int
+        unique_course_limit: int
+        maximum_days: Optional[int] = None
+        mandatory_days: Optional[List[str]] = None
+        times: Dict[str, List[str]]
+        course_preferences: Optional[Dict[str, int]] = None
+        room_preferences: Optional[Dict[str, int]] = None
+        lab_preferences: Optional[Dict[str, int]] = None
+
+    class Meeting(BaseModel):
+        day: Literal["MON", "TUE", "WED", "THU", "FRI"]
+        duration: int
+        lab: Optional[bool] = None
+
+    class Class(BaseModel):
+        credits: int
+        meetings: List[Meeting]
+        start_time: Optional[str] = None
+        disabled: Optional[bool] = None
+    
+    class TimeSlot(BaseModel):
+        start: str
+        spacing: int
+        end: str
+
+    class TimeSlotConfig(BaseModel):
+        times: Dict[Literal["MON", "TUE", "WED", "THU", "FRI"], List[TimeSlot]]
+        classes: List[Class]
+
+    class Config(BaseModel):
+        rooms: List[str]
+        labs: List[str]
+        courses: List[Course]
+        faculty: List[Faculty]
+
+    class ScheduleSchema(BaseModel):
+        config: Config
+        time_slot_config: TimeSlotConfig
+        limit: int
+        optimizer_flags: List[str]
+        
+    return ScheduleSchema
 
 # ------------------------------
 # Viewer Grouping Helpers
@@ -278,10 +406,12 @@ def get_view_data():
                 "current_meta": metadata for selected schedule,
                 "assignments": flat assignment list,
                 "by_room": grouped assignments by room,
+                "by_lab": grouped assignments by lab,
                 "by_faculty": grouped assignments by faculty,
                 "has_schedules": bool,
                 "is_first": bool,
                 "is_last": bool
+                "user_selected": user_selected,
             }
 
     Architectural Intent:
@@ -301,6 +431,7 @@ def get_view_data():
 
     schedules = _get_schedules()
     index = _get_index()
+    user_selected = _get_user_selected()
 
     count = len(schedules)
     has_schedules = count > 0
@@ -335,6 +466,7 @@ def get_view_data():
 
         # Tabular groupings for the Viewer: Rooms/Labs and Faculty
         "by_room": _group_by(assignments, "room"),
+        "by_lab": _group_by(assignments, "lab"),
         "by_faculty": _group_by(assignments, "faculty"),
 
         # Navigation state for disabling Prev/Next in the template

@@ -1,6 +1,6 @@
 <!--
-Author: Antonio Corona
-Date: 2026-02-20
+Author: Antonio Corona, Jacob Karasow
+Date: 2026-02-25
 
 Config Editor Template
 
@@ -48,3 +48,138 @@ Extends base.html.
   {% endif %}
 </section>
 {% endblock %}
+
+
+<!-- Faculty -->
+<section class="card">
+  <h2>Faculty Management</h2>
+
+  <h3>Add Faculty</h3>
+  <form method="post" action="/config/faculty/add">
+    <input name="name" placeholder="Faculty Name" required>
+    <input name="max_courses" type="number" placeholder="Max Courses" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Remove Faculty</h3>
+  <form method="post" action="/config/faculty/remove">
+    <input name="name" placeholder="Faculty Name" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <h3>Modify Faculty</h3>
+  <form method="post" action="/config/faculty/modify">
+    <input name="name" placeholder="Current Name" required>
+    <input name="new_name" placeholder="New Name" required>
+    <input name="max_load" placeholder="New Max Load">
+    <button type="submit">Modify</button>
+  </form>
+</section>
+
+<!-- Room -->
+<section class="card">
+  <h2>Room Management</h2>
+
+  <h3>Add Room</h3>
+  <form method="post" action="/config/room/add">
+    <input name="name" placeholder="Room Name" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Remove Room</h3>
+  <form method="post" action="/config/room/remove">
+    <input name="name" placeholder="Room Name" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <h3>Modify Room</h3>
+  <form method="post" action="/config/room/modify">
+    <input name="name" placeholder="Current Name" required>
+    <input name="new_name" placeholder="New Name">
+    <button type="submit">Modify</button>
+  </form>
+</section>
+
+
+<!-- Lab -->
+<section class="card">
+  <h2>Lab Management</h2>
+
+  <h3>Add Lab</h3>
+  <form method="post" action="/config/lab/add">
+    <input name="name" placeholder="Lab Name" required>
+    <input name="capacity"placeholder="Capacity" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Remove Lab</h3>
+  <form method="post" action="/config/lab/remove">
+    <input name="name" placeholder="Lab Name" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <h3>Modify Lab</h3>
+  <form method="post" action="/config/lab/modify">
+    <input name="name" placeholder="Current Name" required>
+    <input name="new_name" placeholder="New Name">
+    <input name="capacity" type="number" placeholder="New Capacity">
+    <button type="submit">Modify</button>
+  </form>
+</section>
+
+
+<!-- Course -->
+<section class="card">
+  <h2>Course Management</h2>
+
+  <h3>Add Course</h3>
+  <form method="post" action="/config/course/add">
+    <input name="id" placeholder="Course ID (e.g., CS101)" required>
+    <input name="name" placeholder="Course Name" required>
+    <input name="credits" placeholder="Credits" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Remove Course</h3>
+  <form method="post" action="/config/course/remove">
+    <input name="id" placeholder="Course ID" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <h3>Modify Course</h3>
+  <form method="post" action="/config/course/modify">
+    <input name="id" placeholder="Course ID" required>
+    <input name="new_id" placeholder="New Course ID">
+    <input name="credits" placeholder="New Credits">
+    <button type="submit">Modify</button>
+  </form>
+</section>
+
+
+<!-- Conflicts -->
+<section class="card">
+  <h2>Conflict Management</h2>
+
+  <h3>Add Conflict</h3>
+  <form method="post" action="/config/conflict/add">
+    <input name="course_a" placeholder="Course A ID" required>
+    <input name="course_b" placeholder="Course B ID" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Remove Conflict</h3>
+  <form method="post" action="/config/conflict/remove">
+    <input name="course_a" placeholder="Course A ID" required>
+    <input name="course_b" placeholder="Course B ID" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <h3>Modify Conflict</h3>
+  <form method="post" action="/config/conflict/modify">
+    <input name="course_a" placeholder="Course A ID" required>
+    <input name="course_b" placeholder="Course B ID" required>
+    <input name="new_course_a" placeholder="New Course A ID">
+    <input name="new_course_b" placeholder="New Course B ID">
+    <button type="submit">Modify</button>
+  </form>
+</section>

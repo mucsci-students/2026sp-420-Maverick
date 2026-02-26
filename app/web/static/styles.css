@@ -1,6 +1,6 @@
 /*
 Author: Antonio Corona
-Date: 2026-02-21
+Date: 2026-02-25
 
 Stylesheet
 
@@ -191,6 +191,7 @@ th {
     background: rgba(248, 250, 252, 0.9);
 }
 
+/* Row hover effect for readability */
 tr:hover td {
     background: rgba(56, 189, 248, 0.08);
 }
@@ -207,6 +208,36 @@ pre {
     border-radius: 10px;
 }
 
+/* Tab Buttons */
+.tab-btn {
+  border: 1px solid #444;
+  background: var(--accent);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Active tab styling */
+.tab-btn.active,
+.tab-btn[aria-selected="true"] {
+  border-color: #888;
+  font-weight: 500;
+}
+
+/* Tab content spacing */
+.tab-panel {
+  margin-top: 12px;
+}
+
+/* Dropdown mode selectors (Master / Filter) */
+.mode-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
 /* ==========================================================================
    6) Utilities
    ========================================================================== */
@@ -214,3 +245,5 @@ pre {
 .hint {
     color: var(--muted);
 }
+
+
