@@ -1,4 +1,4 @@
-# Author: Antonio Corona
+# Author: Antonio Corona, Ian Swartz
 # Date: 2026-02-24
 """
 Schedule Viewing Service
@@ -149,8 +149,8 @@ def export_schedules_to_file(path: str):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(schedules, f, indent=2)
 
-
-def import_schedules_from_file(path: str):
+# Old import_schedules_from_file commented out
+# def import_schedules_from_file(path: str):
     """
     Imports schedules from a JSON file and loads them into session.
 
@@ -166,6 +166,7 @@ def import_schedules_from_file(path: str):
         - Overwrites session schedules
         - Resets selected index to 0 (first schedule)
     """
+    """
     with open(path, "r", encoding="utf-8") as f:
         schedules = json.load(f)
 
@@ -177,6 +178,55 @@ def import_schedules_from_file(path: str):
 
     # Reset navigation to first schedule for consistency.
     session[SESSION_SELECTED_INDEX_KEY] = 0
+    """
+
+# New import_schedules_from_file:
+# app/web/services/schedule_service.py
+
+def import_schedules_from_file(source):
+    """
+    Imports schedules from a JSON source and APPENDS them to the existing 
+    session list. Returns a tuple of (number_added, new_total_count).
+    """
+    try:
+        # 1. Parse the incoming data (Repo Path vs System Upload)
+        if isinstance(source, str):
+            with open(source, "r", encoding="utf-8") as f:
+                new_data = json.load(f)
+        else:
+            # Handle files from System Upload with potential Notepad BOM
+            raw_data = source.read().decode('utf-8-sig')
+            new_data = json.loads(raw_data)
+
+        # 2. Structural Validation: Ensure we have a list
+        if not isinstance(new_data, list):
+            # If the user uploaded a single schedule (dict), wrap it in a list
+            new_data = [new_data]
+
+        added_count = len(new_data)
+
+        # 3. Retrieve existing schedules from session (default to empty list)
+        current_list = session.get(SESSION_SCHEDULES_KEY, [])
+
+        # 4. APPEND: Add the new schedules to the end of the current list
+        current_list.extend(new_data)
+
+        # 5. Save and Update Navigation
+        session[SESSION_SCHEDULES_KEY] = current_list
+        new_total = len(current_list)
+        
+        # Set the viewer index to the last schedule added
+        session[SESSION_SELECTED_INDEX_KEY] = new_total - 1
+        
+        # Mark session as modified so Flask saves the cookie
+        session.modified = True
+
+        return added_count, new_total
+
+    except json.JSONDecodeError:
+        raise ValueError("The selected file is not a valid JSON document.")
+    except Exception as e:
+        raise e
 
 
 # ------------------------------
