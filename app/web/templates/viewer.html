@@ -189,15 +189,7 @@ Notes:
       POST /viewer/export
   -->
   <!-- <div class="row"> -->
-  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
-    
-    <form method="post" action="/viewer/import" class="row" style="margin: 0;">
-      <label>Import from Repo Path</label>
-      <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Import</button>
-      </div>
-    </form>
+  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;"> 
 
   <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0;">
     <label>Upload/Import from System</label>
@@ -206,14 +198,6 @@ Notes:
       <button type="submit">Upload/Import File</button>
     </div>
   </form>
-
-    <form method="post" action="/viewer/export" class="row" style="margin: 0;"">
-      <label>Export path</label>
-      <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Export</button>
-      </div>
-      </form>
 
   <div class="row">
     <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">

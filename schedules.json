@@ -134,20 +134,7 @@
       {
         "course_id": "CMSC 161.02",
         "credits": "4",
-        "day": "WED",
-        "duration": "110",
-        "faculty": "Rogers",
-        "lab": "Linux",
-        "meeting_index": 1,
-        "room": "Roddy 136",
-        "schedule_id": 1,
-        "start": "17:00",
-        "time": "WED 17:00"
-      },
-      {
-        "course_id": "CMSC 161.03",
-        "credits": "4",
-        "day": "THU",
+        "day": "TUE",
         "duration": "110",
         "faculty": "Wertz",
         "lab": "Linux",
@@ -155,7 +142,20 @@
         "room": "Roddy 136",
         "schedule_id": 1,
         "start": "08:00",
-        "time": "THU 08:00"
+        "time": "TUE 08:00"
+      },
+      {
+        "course_id": "CMSC 161.03",
+        "credits": "4",
+        "day": "THU",
+        "duration": "110",
+        "faculty": "Rogers",
+        "lab": "Linux",
+        "meeting_index": 1,
+        "room": "Roddy 136",
+        "schedule_id": 1,
+        "start": "17:10",
+        "time": "THU 17:10"
       },
       {
         "course_id": "CMSC 162.01",
@@ -323,8 +323,8 @@
         "meeting_index": 1,
         "room": "Roddy 136",
         "schedule_id": 1,
-        "start": "14:00",
-        "time": "MON 14:00"
+        "start": "13:00",
+        "time": "MON 13:00"
       },
       {
         "course_id": "CMSC 366.02",
@@ -336,8 +336,8 @@
         "meeting_index": 2,
         "room": "Roddy 136",
         "schedule_id": 1,
-        "start": "14:00",
-        "time": "FRI 14:00"
+        "start": "13:00",
+        "time": "FRI 13:00"
       },
       {
         "course_id": "CMSC 380.01",
@@ -368,15 +368,15 @@
       {
         "course_id": "CMSC 420.01",
         "credits": "4",
-        "day": "WED",
+        "day": "THU",
         "duration": "110",
         "faculty": "Hobbs",
         "lab": "Mac",
         "meeting_index": 1,
         "room": "Roddy 140",
         "schedule_id": 1,
-        "start": "16:00",
-        "time": "WED 16:00"
+        "start": "17:10",
+        "time": "THU 17:10"
       },
       {
         "course_id": "CMSC 453.01",
@@ -432,7 +432,7 @@
       }
     ],
     "meta": {
-      "generated_at": "2026-02-26T18:53:54",
+      "generated_at": "2026-02-27T16:02:04",
       "optimizer_flags": [
         "faculty_course",
         "faculty_room",
@@ -577,20 +577,7 @@
       {
         "course_id": "CMSC 161.02",
         "credits": "4",
-        "day": "THU",
-        "duration": "110",
-        "faculty": "Wertz",
-        "lab": "Linux",
-        "meeting_index": 1,
-        "room": "Roddy 136",
-        "schedule_id": 2,
-        "start": "08:00",
-        "time": "THU 08:00"
-      },
-      {
-        "course_id": "CMSC 161.03",
-        "credits": "4",
-        "day": "THU",
+        "day": "TUE",
         "duration": "110",
         "faculty": "Rogers",
         "lab": "Linux",
@@ -598,7 +585,20 @@
         "room": "Roddy 136",
         "schedule_id": 2,
         "start": "17:10",
-        "time": "THU 17:10"
+        "time": "TUE 17:10"
+      },
+      {
+        "course_id": "CMSC 161.03",
+        "credits": "4",
+        "day": "TUE",
+        "duration": "110",
+        "faculty": "Wertz",
+        "lab": "Linux",
+        "meeting_index": 1,
+        "room": "Roddy 136",
+        "schedule_id": 2,
+        "start": "08:00",
+        "time": "TUE 08:00"
       },
       {
         "course_id": "CMSC 162.01",
@@ -875,7 +875,7 @@
       }
     ],
     "meta": {
-      "generated_at": "2026-02-26T18:53:54",
+      "generated_at": "2026-02-27T16:02:04",
       "optimizer_flags": [
         "faculty_course",
         "faculty_room",
@@ -1254,15 +1254,15 @@
       {
         "course_id": "CMSC 420.01",
         "credits": "4",
-        "day": "WED",
+        "day": "THU",
         "duration": "110",
         "faculty": "Hobbs",
         "lab": "Mac",
         "meeting_index": 1,
         "room": "Roddy 140",
         "schedule_id": 3,
-        "start": "17:00",
-        "time": "WED 17:00"
+        "start": "17:10",
+        "time": "THU 17:10"
       },
       {
         "course_id": "CMSC 453.01",
@@ -1318,7 +1318,7 @@
       }
     ],
     "meta": {
-      "generated_at": "2026-02-26T18:53:54",
+      "generated_at": "2026-02-27T16:02:04",
       "optimizer_flags": [
         "faculty_course",
         "faculty_room",
