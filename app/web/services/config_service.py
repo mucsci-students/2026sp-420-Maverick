@@ -53,9 +53,9 @@ SESSION_CONFIG_PATH_KEY = "config_path"
 # Global flag to track if update_schedules has been run
 _schedules_updated = False
 
-def set_schedules_updated(value: bool):
+def set_schedules_updated(is_updated: bool):
     global _schedules_updated
-    _schedules_updated = value
+    _schedules_updated = is_updated
 
 def get_schedules_updated() -> bool:
     return _schedules_updated
@@ -110,21 +110,21 @@ def add_faculty_service(**kwargs):
     add_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def remove_faculty_service(**kwargs):
     cfg = _get_cgf()
     remove_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def modify_faculty_service(**kwargs):
     cfg = _get_cgf()
     modify_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 
 # Room Management
@@ -133,21 +133,21 @@ def add_room_service(room: str):
     add_room(cfg, room)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def remove_room_service(room: str):
     cfg = _get_cgf()
     remove_room(cfg, room)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def modify_room_service(room: str, new_name: str):
     cfg = _get_cgf()
     modify_room(cfg, room, new_name)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 
 # Lab Management
@@ -156,21 +156,21 @@ def add_lab_service(**kwargs):
     add_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def remove_lab_service(**kwargs):
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def modify_lab_service(**kwargs):
     cfg = _get_cgf()
     modify_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 
 # Course Management
@@ -179,21 +179,21 @@ def add_course_service(**kwargs):
     add_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def remove_course_service(**kwargs):
     cfg = _get_cgf()
     remove_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def modify_course_service(**kwargs):
     cfg = _get_cgf()
     modify_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 
 # Conflict Management
@@ -202,21 +202,21 @@ def add_conflict_service(**kwargs):
     add_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def remove_conflict_service(**kwargs):
     cfg = _get_cgf()
     remove_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True)
 
 def modify_conflict_service(**kwargs):
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
 
-    update_schedules(cfg)
+    set_schedules_updated(True) 
 
 
 # only called when user modifies the config
@@ -227,8 +227,5 @@ def update_schedules(cfg):
     limit = cfg.get("limit", 0)
     optimizer_flags = cfg.get("optimizer_flags", None)
     generate_schedules_into_session(limit, optimizer_flags)
-    
-    
-    set_schedules_updated(True)
 
     return session.get('schedules', [])
