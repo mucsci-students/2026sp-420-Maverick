@@ -80,19 +80,19 @@ Extends base.html.
 
   <h3>Add Room</h3>
   <form method="post" action="/config/room/add">
-    <input name="name" placeholder="Room Name" required>
+    <input name="room" placeholder="Room Name" required>
     <button type="submit">Add</button>
   </form>
 
   <h3>Remove Room</h3>
   <form method="post" action="/config/room/remove">
-    <input name="name" placeholder="Room Name" required>
+    <input name="room" placeholder="Room Name" required>
     <button type="submit">Remove</button>
   </form>
 
   <h3>Modify Room</h3>
   <form method="post" action="/config/room/modify">
-    <input name="name" placeholder="Current Name" required>
+    <input name="room" placeholder="Current Name" required>
     <input name="new_name" placeholder="New Name">
     <button type="submit">Modify</button>
   </form>
@@ -105,22 +105,20 @@ Extends base.html.
 
   <h3>Add Lab</h3>
   <form method="post" action="/config/lab/add">
-    <input name="name" placeholder="Lab Name" required>
-    <input name="capacity"placeholder="Capacity" required>
+    <input name="lab" placeholder="Lab Name" required>
     <button type="submit">Add</button>
   </form>
 
   <h3>Remove Lab</h3>
   <form method="post" action="/config/lab/remove">
-    <input name="name" placeholder="Lab Name" required>
+    <input name="lab" placeholder="Lab Name" required>
     <button type="submit">Remove</button>
   </form>
 
   <h3>Modify Lab</h3>
   <form method="post" action="/config/lab/modify">
-    <input name="name" placeholder="Current Name" required>
+    <input name="lab" placeholder="Current Name" required>
     <input name="new_name" placeholder="New Name">
-    <input name="capacity" type="number" placeholder="New Capacity">
     <button type="submit">Modify</button>
   </form>
 </section>
