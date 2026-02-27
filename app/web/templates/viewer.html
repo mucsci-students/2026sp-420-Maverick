@@ -1,6 +1,8 @@
 <!--
-Author: Antonio Corona, Tanner Ness
-Date: 2026-02-25
+Author: Antonio Corona, Ian Swartz, Tanner Ness
+Date: 2026-02-24
+
+Schedule Viewer Template
 
 Schedule Viewer Template
 
@@ -59,6 +61,33 @@ Notes:
       - The schedule counter is displayed as 1-based for the user.
       - Dropdown for direct selection of schedules
   -->
+
+  <!-- Old code for next/prev buttons and schdule count -->
+  <!-- <div class="row">
+    <form method="post" action="/viewer/prev">
+      <button type="submit"
+              {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
+        Prev
+      </button>
+    </form>
+
+    <div>
+      <strong>Schedule:</strong>
+      {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
+    </div>
+
+    <form method="post" action="/viewer/next">
+      <button type="submit"
+              {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
+        Next
+      </button>
+    </form>
+  </div> -->
+
+  <!-- New code for the next/prev buttons, schedule count, and reset viewer button -->
+  <div class="row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+  
+  <div style="display: flex; gap: 15px; align-items: center;">
   <div class="row">
 
     <!--
@@ -140,6 +169,14 @@ Notes:
 
   </div>
 
+  <form method="post" action="/viewer/reset">
+    <button type="submit" class="button-outline" 
+            style="background-color: #ff4444; color: white; border: none;"
+            onclick="return confirm('Are you sure you want to clear all schedules?')">
+      Reset/Clear Schedule Viewer
+    </button>
+  </form>
+</div>
 
   <!--
     Import / Export Controls:
@@ -151,6 +188,33 @@ Notes:
       POST /viewer/import
       POST /viewer/export
   -->
+  <!-- <div class="row"> -->
+  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
+    
+    <form method="post" action="/viewer/import" class="row" style="margin: 0;">
+      <label>Import from Repo Path</label>
+      <div style="display: flex; gap: 10px; width: 60%;">
+        <input name="path" value="schedules.json">
+        <button type="submit">Import</button>
+      </div>
+    </form>
+
+  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0;">
+    <label>Upload/Import from System</label>
+    <div style="display: flex; gap: 10px; width: 60%;">
+      <input type="file" name="schedule_file" accept=".json" required>
+      <button type="submit">Upload/Import File</button>
+    </div>
+  </form>
+
+    <form method="post" action="/viewer/export" class="row" style="margin: 0;"">
+      <label>Export path</label>
+      <div style="display: flex; gap: 10px; width: 60%;">
+        <input name="path" value="schedules.json">
+        <button type="submit">Export</button>
+      </div>
+      </form>
+
   <div class="row">
     <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">
       <label>Import path</label>
