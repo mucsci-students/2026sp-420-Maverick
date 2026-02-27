@@ -17,7 +17,7 @@ Acts as the Controller layer for schedule viewing functionality.
 
 # app/web/routes/viewer_routes.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from app.web.services.config_service import update_schedules, SESSION_CONFIG_KEY, _get_cgf
+from app.web.services.config_service import update_schedules, _get_cgf, get_schedules_updated, set_schedules_updated
 from app.web.services.schedule_service import (
     get_view_data,
     next_schedule,
@@ -40,8 +40,12 @@ def viewer():
     Retrieves fully prepared view data from the service layer.
     """
     
-    cfg = _get_cgf()
-    update_schedules(cfg)
+    if get_schedules_updated():
+        
+        cfg = _get_cgf()
+        update_schedules(cfg)
+
+        set_schedules_updated(False)
 
     data = get_view_data()
     export_enabled = is_export_enabled()
