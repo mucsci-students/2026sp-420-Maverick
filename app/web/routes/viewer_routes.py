@@ -16,7 +16,7 @@ Acts as the Controller layer for schedule viewing functionality.
 """
 
 # app/web/routes/viewer_routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, Response
 from app.web.services.config_service import update_schedules, _get_cgf, get_schedules_updated, set_schedules_updated
 from app.web.services.schedule_service import (
     get_view_data,
@@ -28,6 +28,7 @@ from app.web.services.schedule_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     is_export_enabled,
+    get_schedules_for_export
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -155,6 +156,31 @@ def import_file():
         
     # 5. Redirect back to the viewer to trigger a re-render
     return redirect(url_for("viewer.viewer"))
+
+
+# route for exporting schedule(s) to a file
+import json
+
+@bp.post("/export_file")
+def export_file():
+    """
+    Streams the current session schedules to the user's browser as a JSON file.
+    """
+    schedules = get_schedules_for_export()
+    
+    if not schedules:
+        flash("No schedules to export.", "error")
+        return redirect(url_for("viewer.viewer"))
+
+    # Convert the list of dicts into a formatted JSON string
+    json_data = json.dumps(schedules, indent=2)
+    
+    # Create the downloadable response
+    return Response(
+        json_data,
+        mimetype="application/json",
+        headers={"Content-disposition": "attachment; filename=schedules_export.json"}
+    )
 
 
 # Added a route for allowing the user to reset (clear) the scheulde viewer

@@ -191,29 +191,40 @@ Notes:
   <!-- <div class="row"> -->
   <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
     
-    <form method="post" action="/viewer/import" class="row" style="margin: 0;">
-      <label>Import from Repo Path</label>
-      <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Import</button>
-      </div>
-    </form>
-
-  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0;">
-    <label>Upload/Import from System</label>
+  <form method="post" action="/viewer/import" class="row" style="margin: 0; display: flex; align-items: center;">
+    <label style="min-width: 200px;">Import from Repo Path</label>
     <div style="display: flex; gap: 10px; width: 60%;">
-      <input type="file" name="schedule_file" accept=".json" required>
-      <button type="submit">Upload/Import File</button>
+      <input name="path" value="schedules.json">
+      <button type="submit">Import</button>
     </div>
   </form>
 
-    <form method="post" action="/viewer/export" class="row" style="margin: 0;"">
-      <label>Export path</label>
-      <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Export</button>
-      </div>
-      </form>
+  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0; display: flex; align-items: center;">
+    <label style="min-width: 200px;">Upload/Import from System</label>
+    <div style="display: flex; gap: 10px; width: 60%;">
+      <input type="file" name="schedule_file" accept=".json" required style="flex-grow: 1;">
+      <button type="submit" style="white-space: nowrap;">Upload/Import File</button>
+    </div>
+  </form>
+
+  <form method="post" action="/viewer/export" class="row" style="margin: 0; display: flex; align-items: center;">
+    <label style="min-width: 200px;">Export to Repo Path</label>
+    <div style="display: flex; gap: 10px; width: 60%;">
+      <input name="path" value="schedules.json">
+      <button type="submit">Export</button>
+    </div>
+  </form>
+
+  <form method="post" action="/viewer/export_file" class="row" style="margin: 0; display: flex; align-items: center;">
+    <label style="min-width: 200px;">Download to System</label>
+    <div style="display: flex; gap: 10px; width: 60%;">
+      <button type="submit" style="width: 100%;" {% if not is_export_enabled %}disabled{% endif %}>
+        Export to JSON File
+      </button>
+    </div>
+  </form>
+
+</div>
 
   <div class="row">
     <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">
