@@ -129,32 +129,33 @@ import os
 # import file route made for importing/uploading a file from user's local system
 @bp.post("/import_file")
 def import_file():
-    """Handles uploading a file from the user's local system and appending it."""
+    """Handles uploading multiple files from the user's local system and appending them."""
     
-    # 1. Validation: Did the request actually include a file?
-    if 'schedule_file' not in request.files:
-        flash("No file part found", "error")
-        return redirect(url_for("viewer.viewer"))
+    # Use getlist to capture all files from the 'multiple' input
+    uploaded_files = request.files.getlist("schedule_file")
     
-    file = request.files['schedule_file']
-    
-    # 2. Validation: Did the user actually select a file?
-    if file.filename == '':
-        flash("No file selected", "error")
+    if not uploaded_files or uploaded_files[0].filename == '':
+        flash("No files selected.", "error")
         return redirect(url_for("viewer.viewer"))
 
+    total_added = 0
+    final_count = 0
+    files_count = 0
+
     try:
-        # 3. Call the service and 'unpack' the two returned values
-        added, total = import_schedules_from_file(file)
+        for file in uploaded_files:
+            if file and file.filename.endswith('.json'):
+                # Your existing service function handles individual file objects perfectly
+                added, total = import_schedules_from_file(file)
+                total_added += added
+                final_count = total
+                files_count += 1
         
-        # 4. Format the success message for the user
-        flash(f"Added {added} schedule(s)! The limit has been increased to {total}.", "success")
+        flash(f"Successfully imported {files_count} file(s)! Added {total_added} new schedule(s).", "success")
         
     except Exception as e:
-        # Catch any errors (Invalid JSON, etc.) and flash them as errors
         flash(f"Upload failed: {e}", "error")
         
-    # 5. Redirect back to the viewer to trigger a re-render
     return redirect(url_for("viewer.viewer"))
 
 
