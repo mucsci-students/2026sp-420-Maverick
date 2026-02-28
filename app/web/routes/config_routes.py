@@ -15,7 +15,9 @@ These routes act as Controllers in the MVC architecture.
 """
 
 # app/web/routes/config_routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+import json
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+
 from app.web.services.config_service import (
     load_config_into_session,
     save_config_from_session,

@@ -41,7 +41,6 @@ Extends base.html.
         <li>{{ k }}: {{ v }}</li>
       {% endfor %}
     </ul>
-    <p class="hint">Next: wire CRUD forms here (add/edit/remove faculty/rooms/labs/courses).</p>
   {% else %}
     <p><strong>Loaded:</strong> No</p>
     <p class="hint">Load a config to enable schedule generation.</p>
@@ -54,23 +53,22 @@ Extends base.html.
 
   <h3>Add Faculty</h3>
   <form method="post" action="/config/faculty/add">
-    <input name="name" placeholder="Faculty Name" required>
-    <input name="max_courses" type="number" placeholder="Max Courses" required>
-    <button type="submit">Add</button>
+    <input name = "name" placeholder = "Faculty Name (e.g, Dr. Johnson)" required>
+    <input name = "appointment_type" placeholder="Appointment Type (e.g., Full-Time, Adjunct)" required>
+    <button type="submit">Add Faculty</button>
   </form>
 
   <h3>Remove Faculty</h3>
   <form method="post" action="/config/faculty/remove">
-    <input name="name" placeholder="Faculty Name" required>
-    <button type="submit">Remove</button>
+    <input name="name" placeholder="Faculty Name (e.g, Dr. Johnson)" required>
+    <button type="submit">Remove Faculty</button>
   </form>
 
   <h3>Modify Faculty</h3>
   <form method="post" action="/config/faculty/modify">
-    <input name="name" placeholder="Current Name" required>
-    <input name="new_name" placeholder="New Name" required>
-    <input name="max_load" placeholder="New Max Load">
-    <button type="submit">Modify</button>
+    <input name="name" placeholder="Current Name (e.g, Dr. Johnson)" required>
+    <input name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
+    <button type="submit">Modify Faculty</button>
   </form>
 </section>
 
@@ -80,21 +78,21 @@ Extends base.html.
 
   <h3>Add Room</h3>
   <form method="post" action="/config/room/add">
-    <input name="name" placeholder="Room Name" required>
-    <button type="submit">Add</button>
+    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
+    <button type="submit">Add Room</button>
   </form>
 
   <h3>Remove Room</h3>
   <form method="post" action="/config/room/remove">
-    <input name="name" placeholder="Room Name" required>
-    <button type="submit">Remove</button>
+    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
+    <button type="submit">Remove Room</button>
   </form>
 
   <h3>Modify Room</h3>
   <form method="post" action="/config/room/modify">
-    <input name="name" placeholder="Current Name" required>
-    <input name="new_name" placeholder="New Name">
-    <button type="submit">Modify</button>
+    <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
+    <input name="new_name" placeholder="New Name (e.g., Roddy  141)">
+    <button type="submit">Modify Room</button>
   </form>
 </section>
 
@@ -105,23 +103,21 @@ Extends base.html.
 
   <h3>Add Lab</h3>
   <form method="post" action="/config/lab/add">
-    <input name="name" placeholder="Lab Name" required>
-    <input name="capacity"placeholder="Capacity" required>
-    <button type="submit">Add</button>
+    <input name="lab" placeholder="Lab Name (e.g., LinuxLab)" required>
+    <button type="submit">Add Lab</button>
   </form>
 
   <h3>Remove Lab</h3>
   <form method="post" action="/config/lab/remove">
-    <input name="name" placeholder="Lab Name" required>
-    <button type="submit">Remove</button>
+    <input name="lab" placeholder="Lab Name (e.g., LinuxLab)" required>
+    <button type="submit">Remove Lab</button>
   </form>
 
   <h3>Modify Lab</h3>
   <form method="post" action="/config/lab/modify">
-    <input name="name" placeholder="Current Name" required>
-    <input name="new_name" placeholder="New Name">
-    <input name="capacity" type="number" placeholder="New Capacity">
-    <button type="submit">Modify</button>
+    <input name="lab" placeholder="Existing Lab Name (e.g., LinuxLab)" required>
+    <input name="new_name" placeholder="New Lab Name (e.g., MacLab)">
+    <button type="submit">Modify Lab</button>
   </form>
 </section>
 
@@ -132,24 +128,24 @@ Extends base.html.
 
   <h3>Add Course</h3>
   <form method="post" action="/config/course/add">
-    <input name="id" placeholder="Course ID (e.g., CS101)" required>
-    <input name="name" placeholder="Course Name" required>
-    <input name="credits" placeholder="Credits" required>
-    <button type="submit">Add</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="credits" type = "number" placeholder="Credits (e.g., 3)" required>
+    <input name = "room" placeholder="Room Name (Must Exist) (e.g., Roddy140)" required>
+    <button type="submit">Add Course</button>
   </form>
 
   <h3>Remove Course</h3>
   <form method="post" action="/config/course/remove">
-    <input name="id" placeholder="Course ID" required>
-    <button type="submit">Remove</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <button type="submit">Remove Course</button>
   </form>
 
   <h3>Modify Course</h3>
   <form method="post" action="/config/course/modify">
-    <input name="id" placeholder="Course ID" required>
-    <input name="new_id" placeholder="New Course ID">
-    <input name="credits" placeholder="New Credits">
-    <button type="submit">Modify</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
+    <input name="credits" placeholder="New Credits (e.g., 4)">
+    <button type="submit">Modify Course</button>
   </form>
 </section>
 
@@ -160,25 +156,24 @@ Extends base.html.
 
   <h3>Add Conflict</h3>
   <form method="post" action="/config/conflict/add">
-    <input name="course_a" placeholder="Course A ID" required>
-    <input name="course_b" placeholder="Course B ID" required>
-    <button type="submit">Add</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
+    <button type="submit">Add Conflict</button>
   </form>
 
   <h3>Remove Conflict</h3>
   <form method="post" action="/config/conflict/remove">
-    <input name="course_a" placeholder="Course A ID" required>
-    <input name="course_b" placeholder="Course B ID" required>
-    <button type="submit">Remove</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
+    <button type="submit">Remove Conflict</button>
   </form>
 
   <h3>Modify Conflict</h3>
   <form method="post" action="/config/conflict/modify">
-    <input name="course_a" placeholder="Course A ID" required>
-    <input name="course_b" placeholder="Course B ID" required>
-    <input name="new_course_a" placeholder="New Course A ID">
-    <input name="new_course_b" placeholder="New Course B ID">
-    <button type="submit">Modify</button>
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="old_conflict_course_id" placeholder="Old Conflicting Course ID (e.g., CMSC 201)" required>
+    <input name="new_conflict_course_id" placeholder="New Conflicting Course ID (e.g., CMSC 301)">
+    <button type="submit">Modify Conflict</button>
   </form>
 </section>
 {% endblock %}

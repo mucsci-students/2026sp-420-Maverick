@@ -76,7 +76,7 @@ def save_config_from_session(path: str):
         raise ValueError("No config loaded. Load a config first.")
 
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
+        json.dump(cfg, f, indent=4)
 
     session[SESSION_CONFIG_PATH_KEY] = path
 
@@ -104,27 +104,37 @@ def _get_cgf():
         raise ValueError("No config loaded. Load a config first.")
     return cfg
 
+# Helper 
+def _write_session_to_file():
+    cfg = session.get(SESSION_CONFIG_KEY)
+    path = session.get(SESSION_CONFIG_PATH_KEY)
+
+    if cfg is None or path is None:
+        raise ValueError("No config loaded. Load a config first.")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent = 2)
+
 # Faculty Management
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
     add_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def remove_faculty_service(**kwargs):
     cfg = _get_cgf()
     remove_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def modify_faculty_service(**kwargs):
     cfg = _get_cgf()
     modify_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 
 # Room Management
@@ -132,22 +142,22 @@ def add_room_service(room: str):
     cfg = _get_cgf()
     add_room(cfg, room)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def remove_room_service(room: str):
     cfg = _get_cgf()
     remove_room(cfg, room)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def modify_room_service(room: str, new_name: str):
     cfg = _get_cgf()
     modify_room(cfg, room, new_name)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 
 # Lab Management
@@ -155,22 +165,22 @@ def add_lab_service(**kwargs):
     cfg = _get_cgf()
     add_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def remove_lab_service(**kwargs):
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def modify_lab_service(**kwargs):
     cfg = _get_cgf()
     modify_lab(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 
 # Course Management
@@ -178,22 +188,22 @@ def add_course_service(**kwargs):
     cfg = _get_cgf()
     add_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def remove_course_service(**kwargs):
     cfg = _get_cgf()
     remove_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def modify_course_service(**kwargs):
     cfg = _get_cgf()
     modify_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 
 # Conflict Management
@@ -201,22 +211,23 @@ def add_conflict_service(**kwargs):
     cfg = _get_cgf()
     add_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 def remove_conflict_service(**kwargs):
     cfg = _get_cgf()
     remove_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
+    _write_session_to_file()
+    set_schedules_updated(True)
 
-    update_schedules(cfg)
 
 def modify_conflict_service(**kwargs):
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-
-    update_schedules(cfg)
+    _write_session_to_file()
+    set_schedules_updated(True)
 
 
 # only called when user modifies the config
@@ -224,11 +235,11 @@ def update_schedules(cfg):
 
     from app.web.services.run_service import generate_schedules_into_session
 
-    limit = cfg.get("limit", 0)
-    optimizer_flags = cfg.get("optimizer_flags", None)
+    cfg = _get_cgf()
+    config_section = cfg.get("config", {}) 
+    limit = config_section.get("limit", 0)
+    optimizer_flags = config_section.get("optimizer_flags", None)
+
     generate_schedules_into_session(limit, optimizer_flags)
     
-    
-    set_schedules_updated(True)
-
     return session.get('schedules', [])
