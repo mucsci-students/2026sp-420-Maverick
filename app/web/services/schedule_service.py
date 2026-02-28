@@ -291,6 +291,14 @@ def import_schedules_from_file(source):
     session[SESSION_USER_SELECTED_KEY] = False 
 
 
+# function for exporting a schedule(s) to a file
+def get_schedules_for_export():
+    """
+    Returns the raw list of schedules from the session for browser download.
+    """
+    return _get_schedules()
+
+
 # Checks the file being imported fits the general schema of the configuration file.
 def is_valid_file(schedule: Dict[str, Any], scheduleschema) -> None:
     try:

@@ -189,31 +189,70 @@ Notes:
       POST /viewer/export
   -->
   <!-- <div class="row"> -->
-  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
-    
-    <form method="post" action="/viewer/import" class="row" style="margin: 0;">
-      <label>Import from Repo Path</label>
-      <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Import</button>
-      </div>
-    </form>
+<div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;"> 
 
-  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0;">
-    <label>Upload/Import from System</label>
+  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0; display: flex; align-items: center;">
+    <label style="min-width: 200px;">Upload/Import from System</label>
     <div style="display: flex; gap: 10px; width: 60%;">
-      <input type="file" name="schedule_file" accept=".json" required>
-      <button type="submit">Upload/Import File</button>
+      <input type="file" name="schedule_file" accept=".json" required style="flex-grow: 1;">
+      <button type="submit" style="white-space: nowrap;">Upload/Import File</button>
     </div>
   </form>
 
-    <form method="post" action="/viewer/export" class="row" style="margin: 0;"">
-      <label>Export path</label>
+  {% if data.has_schedules %}
+  <form method="post" action="/viewer/export_file" class="row" style="margin: 0; display: flex; align-items: flex-start;">
+    <label style="min-width: 200px; margin-top: 8px;">Export to System</label>
+    
+    <div style="display: flex; gap: 10px; width: 60%; align-items: flex-start;">
+      <details style="border: 1px solid #ccc; border-radius: 4px; background: white; width: 100%; max-width: 350px;">
+        <summary style="padding: 8px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;">
+          <span>Select Schedules...</span>
+          <span style="font-size: 0.7em; color: #666;">▼</span>
+        </summary>
+
+        <div style="padding: 10px 12px; border-top: 1px solid #eee; max-height: 150px; overflow-y: auto;">
+          
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-left: -100px;">
+            <input type="checkbox" id="export_all" onchange="toggleAllSchedules(this)" style="margin: 0;">
+            <span style="font-weight: bold; font-size: 0.9em; margin-left: -50px;">All Schedules</span>
+          </label>
+
+          {% for idx in range(data.count) %}
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 4px; margin-left: -100px;">
+            <input type="checkbox" name="schedule_indices" value="{{ idx }}" class="schedule-checkbox" style="margin: 0;">
+            <span style="font-size: 0.9em; margin-left: -50px;">Schedule {{ idx + 1 }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </details>
+
+      <button type="submit" style="white-space: nowrap; padding: 7px 15px;">
+        Export Selected
+      </button>
+    </div>
+  </form>
+
+  <script>
+    function toggleAllSchedules(source) {
+      const checkboxes = document.getElementsByClassName('schedule-checkbox');
+      for(let i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = source.checked;
+      }
+    }
+  </script>
+  {% endif %}
+</div>
+
+
+    <!-- <form method="post" action="/viewer/export_file" class="row" style="margin: 0; display: flex; align-items: center;">
+      <label style="min-width: 200px;">Download to System</label>
       <div style="display: flex; gap: 10px; width: 60%;">
-        <input name="path" value="schedules.json">
-        <button type="submit">Export</button>
+        <button type="submit" style="width: 100%;" {% if not is_export_enabled %}disabled{% endif %}>
+          Export to JSON File
+        </button>
       </div>
-      </form>
+    </form> -->
+
 
   <div class="row">
     <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">

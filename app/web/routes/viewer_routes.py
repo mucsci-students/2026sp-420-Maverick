@@ -16,7 +16,7 @@ Acts as the Controller layer for schedule viewing functionality.
 """
 
 # app/web/routes/viewer_routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, Response
 from app.web.services.config_service import update_schedules, _get_cgf, get_schedules_updated, set_schedules_updated
 from app.web.services.schedule_service import (
     get_view_data,
@@ -28,6 +28,7 @@ from app.web.services.schedule_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     is_export_enabled,
+    get_schedules_for_export
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -155,6 +156,41 @@ def import_file():
         
     # 5. Redirect back to the viewer to trigger a re-render
     return redirect(url_for("viewer.viewer"))
+
+
+# route for exporting schedule(s) to a file
+import json
+
+@bp.post("/export_file")
+def export_file():
+    # Get the list of indices from the checkboxes (e.g., ['0', '2'])
+    selected_indices = request.form.getlist("schedule_indices")
+    
+    if not selected_indices:
+        flash("Please select at least one schedule to export.", "error")
+        return redirect(url_for("viewer.viewer"))
+
+    # Get all schedules from the session
+    all_schedules = get_schedules_for_export()
+    
+    # Filter the list based on what the user checked
+    export_data = []
+    for idx_str in selected_indices:
+        idx = int(idx_str)
+        if 0 <= idx < len(all_schedules):
+            export_data.append(all_schedules[idx])
+
+    # Convert to JSON string
+    json_data = json.dumps(export_data, indent=2)
+    
+    # Determine filename (mention 'partial' if not all were selected)
+    filename = "schedules_export.json" if len(export_data) == len(all_schedules) else "selected_schedules.json"
+
+    return Response(
+        json_data,
+        mimetype="application/json",
+        headers={"Content-disposition": f"attachment; filename={filename}"}
+    )
 
 
 # Added a route for allowing the user to reset (clear) the scheulde viewer

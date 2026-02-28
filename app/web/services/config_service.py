@@ -53,9 +53,9 @@ SESSION_CONFIG_PATH_KEY = "config_path"
 # Global flag to track if update_schedules has been run
 _schedules_updated = False
 
-def set_schedules_updated(value: bool):
+def set_schedules_updated(is_updated: bool):
     global _schedules_updated
-    _schedules_updated = value
+    _schedules_updated = is_updated
 
 def get_schedules_updated() -> bool:
     return _schedules_updated
@@ -220,14 +220,14 @@ def remove_conflict_service(**kwargs):
     session[SESSION_CONFIG_KEY] = cfg
     _write_session_to_file()
     set_schedules_updated(True)
-
+    set_schedules_updated(True)
 
 def modify_conflict_service(**kwargs):
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
     _write_session_to_file()
-    set_schedules_updated(True)
+    set_schedules_updated(True) 
 
 
 # only called when user modifies the config
@@ -235,11 +235,9 @@ def update_schedules(cfg):
 
     from app.web.services.run_service import generate_schedules_into_session
 
-    cfg = _get_cgf()
-    config_section = cfg.get("config", {}) 
-    limit = config_section.get("limit", 0)
-    optimizer_flags = config_section.get("optimizer_flags", None)
+    limit = cfg.get("limit", 0)
+    optimizer_flags = cfg.get("optimizer_flags", None)
 
     generate_schedules_into_session(limit, optimizer_flags)
-    
+
     return session.get('schedules', [])
