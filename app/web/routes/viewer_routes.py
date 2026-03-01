@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-02-20
+# Date: 2026-02-28
 """
 Schedule Viewer Routes
 
@@ -28,7 +28,8 @@ from app.web.services.schedule_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     is_export_enabled,
-    get_schedules_for_export
+    get_schedules_for_export,
+    export_schedules_to_csv
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -192,6 +193,40 @@ def export_file():
         mimetype="application/json",
         headers={"Content-disposition": f"attachment; filename={filename}"}
     )
+
+# route for exporting the schedule(s) to a csv
+@bp.post("/export_csv")
+def export_csv():
+    selected_indices = request.form.getlist("schedule_indices")
+    
+    if not selected_indices:
+        flash("Please select at least one schedule to export.", "error")
+        return redirect(url_for("viewer.viewer"))
+
+    try:
+        # Convert string indices from form to ints
+        indices = [int(i) for i in selected_indices]
+        csv_data = export_schedules_to_csv(indices)
+        
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=schedules_export.csv"}
+        )
+    except Exception as e:
+        flash(f"CSV Export failed: {e}", "error")
+        return redirect(url_for("viewer.viewer"))
+
+# route for exporting the schedule(s) to a calendar schedule view
+@bp.get("/visual_view")
+def visual_view():
+    """Renders the high-fidelity calendar grid for the current schedule."""
+    data = get_view_data()
+    if not data["has_schedules"]:
+        flash("No schedules found to visualize.", "error")
+        return redirect(url_for("viewer.viewer"))
+    
+    return render_template("visual_schedule.html", data=data)
 
 
 # Added a route for allowing the user to reset (clear) the scheulde viewer
