@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-02-24
+# Date: 2026-02-28
 """
 Schedule Viewing Service
 
@@ -290,13 +290,42 @@ def import_schedules_from_file(source):
     # show placeholder initially
     session[SESSION_USER_SELECTED_KEY] = False 
 
-
 # function for exporting a schedule(s) to a file
 def get_schedules_for_export():
     """
     Returns the raw list of schedules from the session for browser download.
     """
     return _get_schedules()
+
+# function for exporting the schedule(s) to a csv file
+import csv
+import io
+
+def export_schedules_to_csv(indices: List[int]) -> str:
+    """
+    Converts selected schedules into a single CSV string.
+    """
+    schedules = _get_schedules()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header row
+    writer.writerow(["Schedule #", "Course ID", "Faculty", "Room", "Lab", "Time"])
+    
+    for idx in indices:
+        if 0 <= idx < len(schedules):
+            assignments = schedules[idx].get("assignments", [])
+            for a in assignments:
+                writer.writerow([
+                    idx + 1,
+                    a.get("course_id", ""),
+                    a.get("faculty", ""),
+                    a.get("room", ""),
+                    a.get("lab", ""),
+                    a.get("time", "")
+                ])
+    
+    return output.getvalue()
 
 
 # Checks the file being imported fits the general schema of the configuration file.
