@@ -114,6 +114,56 @@ def _write_session_to_file():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent = 2)
 
+# Config Validation 
+def validate_config(cfg: dict) -> None:
+    config = cfg.get("config", {})
+
+    courses = config.get("courses", [])
+    rooms = config.get("rooms", [])
+    labs = config.get("labs", [])
+    faculty_list = config.get("faculty", [])
+
+    faculty_names = {f["name"] for f in faculty_list}
+
+    seen_ids = set()
+
+    for course in courses:
+
+        cid = course.get("course_id")
+        if not cid:
+            raise ValueError(f"Course with empty course_id found.")
+        
+        # Prevent duplicate IDs
+        if cid in seen_ids:
+            raise ValueError(f"Duplicate course_id detected: {cid}")
+        seen_ids.add(cid)
+
+        # Credits should be a positive integer
+        credits = course.get("credits")
+        if not isinstance(credits, int) or credits <= 0:
+            raise ValueError(f"Invalid credits for course {cid}")
+        
+        # Room Validation
+        for r in course.get("room", []):
+            if r not in rooms:
+                raise ValueError(f"Course {cid} references unknown room: {r}")
+
+        # Lab Validation
+        for l in course.get("lab", []):
+            if l not in labs:
+                raise ValueError(f"Course {cid} references invalid lab: {l}")
+
+        # Faculty Validation
+        for f in course.get("faculty", []):
+            if f not in faculty_names:
+                raise ValueError(f"Course {cid} references unknown faculty: {f}")
+        
+        # Conflict Validation 
+        for conflict in course.get("conflicts", []):
+            if conflict not in [c.get("course_id") for c in courses]:
+                raise ValueError(f"Course {cid} has conflict with unknown course: {conflict}")
+
+
 # Faculty Management
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
@@ -186,20 +236,30 @@ def modify_lab_service(**kwargs):
 # Course Management
 def add_course_service(**kwargs):
     cfg = _get_cgf()
+
+    # Convert credits to int if provided and not empty
+    if "credits" in kwargs and kwargs["credits"]:
+        kwargs["credits"] = int(kwargs["credits"])
+
     add_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
     _write_session_to_file()
     set_schedules_updated(True)
 
-def remove_course_service(**kwargs):
+def remove_course_service(course_id: str):
     cfg = _get_cgf()
-    remove_course(cfg, **kwargs)
+    remove_course(cfg, course_id)
     session[SESSION_CONFIG_KEY] = cfg
     _write_session_to_file()
     set_schedules_updated(True)
 
 def modify_course_service(**kwargs):
     cfg = _get_cgf()
+
+    # Convert credits to int if provided and not empty
+    if "credits" in kwargs and kwargs["credits"]:
+        kwargs["credits"] = int(kwargs["credits"])
+
     modify_course(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
     _write_session_to_file()
