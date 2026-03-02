@@ -18,10 +18,17 @@ These routes act as Controllers in the MVC architecture.
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
+from app.web.services.run_service import (
+    SESSION_SCHEDULES_KEY,
+    SESSION_SELECTED_INDEX_KEY,
+    SESSION_USER_SELECTED_KEY,
+)
+
 from app.web.services.config_service import (
     load_config_into_session,
     save_config_from_session,
     get_config_status,
+    set_schedules_updated,
 
     # Faculty 
     add_faculty_service,
@@ -77,6 +84,75 @@ def save():
         flash(f"Saved config: {path}", "success")
     except Exception as e:
         flash(f"Save failed: {e}", "error")
+    return redirect(url_for("config.editor"))
+
+# Clear Input JSON
+@bp.post("/clear")
+def clear():
+    """
+    Route: POST /config/clear
+
+    Purpose:
+        Clears the currently loaded configuration and all related
+        schedule/viewer session state.
+
+    Responsibilities:
+        - Resets the application to a "no configuration loaded" state.
+        - Redirects back to the Config Editor view        
+
+    Side Effects:
+        - Removes loaded configuration path.
+        - Removes in-memory configuration object.
+        - Clears any generated schedules.
+        - Resets schedule navigation state.
+        - Resets any user-selected schedule state.
+        - Marks schedules as not updated.
+
+    Post-Condition:
+        The system behaves as if no configuration has been loaded.
+        The user must load a config again before generating schedules.
+    """
+    # ----------------------------------------
+    # 1. Remove Loaded Configuration State
+    # ----------------------------------------
+
+    # Remove stored config file path
+    session.pop("config_path", None)
+
+    # Remove the in-session configuration objectS
+    session.pop("config", None)
+
+    # ----------------------------------------
+    # 2. Remove Schedule Data (If Present)
+    # ----------------------------------------
+
+    # fallback schedule key 
+    session.pop("schedules", None)
+
+    # Remove generated schedules used in Viewer
+    session.pop(SESSION_SCHEDULES_KEY, None)
+
+    # Remove current selected schedule index
+    session.pop(SESSION_SELECTED_INDEX_KEY, None)
+
+    # Remove any per-user schedule selection state
+    session.pop(SESSION_USER_SELECTED_KEY, None)
+
+    # ----------------------------------------
+    # 3. Reset Application Flags
+    # ----------------------------------------
+
+    # Mark schedules as not updated so UI reflects cleared state
+    set_schedules_updated(False)
+
+    # ----------------------------------------
+    # 4. Notify User + Redirect
+    # ----------------------------------------
+
+    # Flash confirmation message for UI feedback
+    flash("Cleared loaded configuration.", "success")
+
+    # Redirect back to Config Editor page
     return redirect(url_for("config.editor"))
 
 
