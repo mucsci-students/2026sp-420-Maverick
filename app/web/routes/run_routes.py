@@ -1,13 +1,16 @@
 # Author: Antonio Corona
-# Date: 2026-02-23
+# Date: 2026-03-02
 """
 Schedule Generator Routes
 
-Defines Flask endpoints for generating schedules.
+Purpose:
+    Defines Flask endpoints for generating schedules.
 
 Responsibilities:
-    - Accept limit override input
-    - Accept optimization override selection (multi-flag)
+    - Render the Schedule Generator UI.
+    - Accept per-run limit overrides.
+    - Accept per-run optimizer flag overrides (multi-select).
+    - Persist override state in session.
     - Trigger schedule generation
     - Redirect to the Schedule Viewer upon completion
 
@@ -38,7 +41,9 @@ from flask import session  # Session access for checking loaded config defaults
 
 from app.web.services.run_service import (
     generate_schedules_into_session,
-    KNOWN_OPTIMIZER_FLAGS  # Shared list of valid optimizer flags for UI + validation
+    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
 )
 from app.web.services.config_service import SESSION_CONFIG_KEY  # Where the loaded config is stored
 
@@ -84,11 +89,13 @@ def generator():
     available_flags = KNOWN_OPTIMIZER_FLAGS   # Full supported list for checkbox rendering
 
     if cfg:
-        # Default limit comes from config when available
-        default_limit = int(cfg.get("limit", 5))
+        # JSON defaults
+        json_default_limit = int(cfg.get("limit", 5))
+        json_selected_flags = cfg.get("optimizer_flags", []) or []
 
-        # Default selected optimizer flags come from config when available
-        selected_flags = cfg.get("optimizer_flags", []) or []
+        # If user has overrides saved, use them; otherwise use JSON defaults
+        default_limit = int(session.get(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, json_default_limit))
+        selected_flags = session.get(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, json_selected_flags) or []
 
         # Optional: If config contains a flag not listed in KNOWN_OPTIMIZER_FLAGS,
         # include it to avoid hiding/losing that config state in the UI.
@@ -150,6 +157,10 @@ def generate():
     # ----------------------------------------
 
     try:
+        # Persist Generator overrides so the UI stays consistent after generating
+        session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
+        session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
+
         count = generate_schedules_into_session(
             limit=limit,
             optimizer_flags=optimizer_flags
@@ -162,3 +173,16 @@ def generate():
         # Catch-all so UI doesn’t crash on user-facing errors
         flash(f"Generate failed: {e}", "error")
         return redirect(url_for("run.generator"))
+
+
+@bp.post("/reset")
+def reset():
+    """
+    Resets Generator overrides back to JSON config defaults by clearing
+    any per-user override state stored in session.
+    """
+    session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
+    session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
+
+    flash("Reset Generator settings to config defaults.", "success")
+    return redirect(url_for("run.generator"))
