@@ -29,6 +29,12 @@ Extends base.html.
     <input name="path" value="{{ status.path or 'configs/config_dev.json' }}">
     <button type="submit">Save</button>
   </form>
+
+  <form method="post" action="/config/clear" class="row">
+    <label>Clear loaded</label>
+    <input value="{{ status.path or 'configs/config_dev.json' }}" disabled>
+    <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
+  </form>
 </section>
 
 <section class="card">
