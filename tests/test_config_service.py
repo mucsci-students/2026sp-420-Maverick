@@ -9,7 +9,7 @@ from app.web.services.config_service import (
 def test_load_existing_configuration(app_context, repo_root):
     """Ensures a config can be loaded."""
 
-    path = repo_root / "configs" /"config_base.json"
+    path = repo_root / "configs" /"config_test.json"
 
     load_config_into_session(path)
      
