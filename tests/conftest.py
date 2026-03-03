@@ -1,5 +1,5 @@
-# Author: Antonio Corona
-# Date: 2026-03-02
+# Author: Antonio Corona, Tanner Ness
+# Date: 2026-03-03
 """
 Pytest Fixtures for Configuration-Based Tests
 
@@ -31,6 +31,7 @@ from pathlib import Path  # Filesystem path resolution (cross-platform safe)
 import json               # JSON file parsing
 import copy               # Deep copy to isolate test state
 import pytest             # Pytest framework for fixtures
+from flask import Flask
 
 
 # ==================================================
@@ -79,7 +80,7 @@ def config_test(repo_root):
         - Ensures tests start from known, stable data.
     """
 
-    path = repo_root / "configs" / "config_test.json"
+    path = repo_root / "configs" / "config_base.json"
 
     # Open file safely with explicit UTF-8 encoding
     with path.open("r", encoding="utf-8") as file:
@@ -112,3 +113,28 @@ def example(config_test):
     """
 
     return copy.deepcopy(config_test)
+
+# ==================================================
+# Fixture: Create flask application
+# ==================================================
+@pytest.fixture
+def app():
+    """
+    creates and configures a flask application for testing
+    """
+    app = Flask(__name__)
+    app.config['TESTING'] = True
+    app.config['SECRET_KEY'] = 'test-secret-key'
+    return app
+
+# ==================================================
+# Fixture: Create flask application context
+# ==================================================
+
+@pytest.fixture
+def app_context(app):
+    """
+    Create a request context for testing.
+    """
+    with app.test_request_context():
+        yield app
