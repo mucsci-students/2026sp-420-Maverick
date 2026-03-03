@@ -1,37 +1,16 @@
-# Author: Tanner Ness,
-
-import pytest
-from flask import Flask
+# Author: Tanner Ness
+# Date: 2026-03-03
 
 from app.web.services.config_service import (
     load_config_into_session,
     get_config_status,
 )
 
-
-@pytest.fixture
-def app():
-    """
-    creates and configures a flask application for testing
-    """
-    app = Flask(__name__)
-    app.config['TESTING'] = True
-    app.config['SECRET_KEY'] = 'test-secret-key'
-    return app
-
-
-@pytest.fixture
-def app_context(app):
-    """
-    Create a request context for testing.
-    """
-    with app.test_request_context():
-        yield app
-
+Path = "configs/config_base.json"
 
 def test_load_existing_configuration(app_context):
-
-    load_config_into_session('configs/config_base.json')
+    """Ensures a config can be loaded."""
+    load_config_into_session(Path)
      
     status = get_config_status()
-    assert status['loaded'] is True
+    assert status["loaded"] is True
