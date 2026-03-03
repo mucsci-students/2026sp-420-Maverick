@@ -80,7 +80,7 @@ def config_test(repo_root):
         - Ensures tests start from known, stable data.
     """
 
-    path = repo_root / "configs" / "config_base.json"
+    path = repo_root / "configs" / "config_test.json"
 
     # Open file safely with explicit UTF-8 encoding
     with path.open("r", encoding="utf-8") as file:
