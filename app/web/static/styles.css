@@ -1,6 +1,6 @@
 /*
 Author: Antonio Corona
-Date: 2026-02-25
+Date: 2026-03-02
 
 Stylesheet
 
@@ -144,6 +144,12 @@ button {
 button:hover {
     background: var(--accent-hover);
     border-color: var(--accent-hover);
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 /* Messages / Alerts */

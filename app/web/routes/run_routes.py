@@ -1,13 +1,16 @@
 # Author: Antonio Corona
-# Date: 2026-02-23
+# Date: 2026-03-02
 """
 Schedule Generator Routes
 
-Defines Flask endpoints for generating schedules.
+Purpose:
+    Defines Flask endpoints for generating schedules.
 
 Responsibilities:
-    - Accept limit override input
-    - Accept optimization override selection (multi-flag)
+    - Render the Schedule Generator UI.
+    - Accept per-run limit overrides.
+    - Accept per-run optimizer flag overrides (multi-select).
+    - Persist override state in session.
     - Trigger schedule generation
     - Redirect to the Schedule Viewer upon completion
 
@@ -15,56 +18,74 @@ Architectural Role (MVC):
     - Acts as the Controller layer for schedule generation.
     - Receives user input from the Generator View (HTML form).
     - Delegates scheduling work to the Model/Service layer.
+    - Manages session-based UI override state.
 
 High-Level Flow:
-    1. GET /run/
-        - Render Generator page
-        - Default UI fields to JSON config values (limit + optimizer_flags)
+    1. GET  /run/
+       - Render Generator page.
+       - Default UI fields to JSON config values.
+       - Apply session overrides if previously set.
+
     2. POST /run/generate
-        - Validate form inputs
-        - Apply per-run overrides
-        - Generate schedules and store results in session
-        - Redirect to Viewer
+       - Validate form inputs.
+       - Persist per-run overrides in session.
+       - Call Service layer to generate schedules.
+       - Redirect to Viewer on success.
+
+    3. POST /run/reset
+       - Clear per-run overrides from session.
+       - Restore UI defaults to JSON config values.
 """
 
 # app/web/routes/run_routes.py
 
-# ------------------------------
+# ==================================================
 # Imports
-# ------------------------------
+# ==================================================
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask import session  # Session access for checking loaded config defaults
 
 from app.web.services.run_service import (
     generate_schedules_into_session,
-    KNOWN_OPTIMIZER_FLAGS  # Shared list of valid optimizer flags for UI + validation
+    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
 )
 from app.web.services.config_service import SESSION_CONFIG_KEY  # Where the loaded config is stored
 
 
-# ------------------------------
+# ==================================================
 # Blueprint Setup
-# ------------------------------
+# ==================================================
 
+# Blueprint:
+#   - Name: "run"
+#   - URL Prefix: /run
+#   - All generator-related routes are grouped under this namespace.
 bp = Blueprint("run", __name__, url_prefix="/run")
 
 
-# ------------------------------
+# ==================================================
 # Route: Generator Page (GET)
-# ------------------------------
+# ==================================================
 
 @bp.get("/")
 def generator():
     """
-    Renders the schedule generator page.
+    Purpose:
+        Renders the schedule generator page.
 
     Behavior:
-        - If a config is loaded, defaults the form fields to:
-            * limit from JSON (cfg["limit"])
-            * selected optimizer flags from JSON (cfg["optimizer_flags"])
-        - If no config is loaded, the UI should display a "no config loaded"
-          state (handled in the template).
+        - If a configuration is loaded:
+            * Default limit comes from JSON config.
+            * Default optimizer flags come from JSON config.
+            * Session overrides (if present) take precedence.
+        - If no configuration is loaded:
+            * UI will render in disabled state (handled in template).
+
+    Returns:
+        Rendered generator.html with UI state context.
     """
 
     # ----------------------------------------
@@ -79,16 +100,21 @@ def generator():
     # These values drive the Generator template defaults.
 
     config_loaded = bool(cfg)                 # Used to disable/enable Generate UI
-    default_limit = 5                         # Fallback if config does not specify limit
-    selected_flags = []                       # Flags to pre-check in UI
+
+    # Fallback defaults (used if config missing limit)
+    default_limit = 5                         
+    selected_flags = [] 
+
     available_flags = KNOWN_OPTIMIZER_FLAGS   # Full supported list for checkbox rendering
 
     if cfg:
-        # Default limit comes from config when available
-        default_limit = int(cfg.get("limit", 5))
+        # JSON defaults
+        json_default_limit = int(cfg.get("limit", 5))
+        json_selected_flags = cfg.get("optimizer_flags", []) or []
 
-        # Default selected optimizer flags come from config when available
-        selected_flags = cfg.get("optimizer_flags", []) or []
+        # Apply session overrides if present
+        default_limit = int(session.get(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, json_default_limit))
+        selected_flags = session.get(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, json_selected_flags) or []
 
         # Optional: If config contains a flag not listed in KNOWN_OPTIMIZER_FLAGS,
         # include it to avoid hiding/losing that config state in the UI.
@@ -108,21 +134,25 @@ def generator():
     )
 
 
-# ------------------------------
+# ==================================================
 # Route: Generate Schedules (POST)
-# ------------------------------
-
+# ==================================================
 @bp.post("/generate")
 def generate():
     """
-    Handles schedule generation requests from the Generator UI.
+    Purpose:
+        Handles schedule generation requests from the Generator UI.
 
-    Validates per-run overrides:
-        - limit: integer >= 1
-        - optimizer_flags: multi-select list (can be empty)
+    Validations:
+        - limit must be an integer >= 1
+        - optimizer_flags may be empty (valid case)
 
-    Delegates actual scheduling work to the Service layer and redirects
-    to the Viewer on success.
+    Flow:
+        1. Parse + validate user input.
+        2. Persist overrides in session.
+        3. Delegate generation to Service layer.
+        4. Redirect to Viewer on success.
+        5. Flash user-facing error messages on failure.
     """
 
     # ----------------------------------------
@@ -150,15 +180,46 @@ def generate():
     # ----------------------------------------
 
     try:
+        # Persist Generator overrides so the UI stays consistent after generating
+        session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
+        session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
+
         count = generate_schedules_into_session(
             limit=limit,
             optimizer_flags=optimizer_flags
         )
 
         flash(f"Generated {count} schedule(s).", "success")
+
+        # Redirect to Viewer upon success
         return redirect(url_for("viewer.viewer"))
 
     except Exception as e:
         # Catch-all so UI doesn’t crash on user-facing errors
         flash(f"Generate failed: {e}", "error")
         return redirect(url_for("run.generator"))
+
+# ==================================================
+# Route: POST /run/reset
+# ==================================================
+
+@bp.post("/reset")
+def reset():
+    """
+    Purpose:
+        Clears per-run Generator override state from session.
+
+    Behavior:
+        - Removes stored limit override.
+        - Removes stored optimizer flag override.
+        - Restores Generator UI to JSON config defaults.
+
+    Does NOT:
+        - Modify the underlying configuration.
+        - Delete generated schedules.
+    """
+    session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
+    session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
+
+    flash("Reset Generator settings to config defaults.", "success")
+    return redirect(url_for("run.generator"))

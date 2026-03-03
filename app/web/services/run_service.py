@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-25
+# Date: 2026-03-02
 """
 Schedule Execution Service
 
@@ -45,6 +45,10 @@ SESSION_SELECTED_INDEX_KEY = "selected_schedule_index"
 
 # Stores whether the user has explicitly selected a schedule via dropdown
 SESSION_USER_SELECTED_KEY = "viewer_user_selected"
+
+# Generator UI override persistence Keys (per-user)
+SESSION_GENERATOR_LIMIT_OVERRIDE_KEY = "generator_limit_override"
+SESSION_GENERATOR_FLAGS_OVERRIDE_KEY = "generator_optimizer_flags_override"
 
 
 # -------------------------------------------------
