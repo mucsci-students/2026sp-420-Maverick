@@ -22,9 +22,9 @@ Scope:
         Confirms that rooms can be removed and no longer appear in the configuration.
 
 Testing Strategy:
-    - Uses temporary or test configuration files to avoid modifying real data.
+    - Uses a fresh deep-copied base configuration for each test (pytest fixture)
+      to avoid modifying real data.
     - Validates both successful operations and expected failure cases.
-    - Ensures service-layer functions properly update and persist configuration data.
 
 Related User Stories:
     A4.1 — Add Room
@@ -33,12 +33,6 @@ Related User Stories:
 """
 import pytest
 from app.room_management import room_management
-    
-# def get_example():
-#     with open('..configs/config_base.json', 'r') as file:
-#         return json.load(file)
-    
-# example = get_example().copy()
 
 
 # ---------------------------
