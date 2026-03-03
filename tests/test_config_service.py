@@ -6,11 +6,12 @@ from app.web.services.config_service import (
     get_config_status,
 )
 
-Path = "configs/config_base.json"
-
-def test_load_existing_configuration(app_context):
+def test_load_existing_configuration(app_context, repo_root):
     """Ensures a config can be loaded."""
-    load_config_into_session(Path)
+
+    path = repo_root / "configs" /"config_base.json"
+
+    load_config_into_session(path)
      
     status = get_config_status()
     assert status["loaded"] is True
