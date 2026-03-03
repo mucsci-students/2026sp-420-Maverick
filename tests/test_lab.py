@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz, Jacob Karasow
+# Date: 2026-03-02
 """
 test_lab.py
 
@@ -31,13 +31,9 @@ Related User Stories:
     A3.2 — Modify Lab
     A3.3 — Delete Lab
 """
-from ..app.lab_management import lab_management
-import json
-import copy
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
+import pytest
+from app.lab_management import lab_management
 
 # the lab should be removed from 'lab'
 def delete_lab():
@@ -123,17 +119,3 @@ def test_modify_lab_nonexistent():
             )
     except ValueError:
         print("Modifying a nonexistent lab raises the correct error.")
-
-
-# Used to execute tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Lab Management Tests ---")
-    test_add_lab()
-    test_add_lab_duplicate()
-    test_modify_lab()
-    delete_lab()
-    delete_lab_nested()
-    delete_lab_nonexistent()
-    print("\nAll lab tests passed")
-"""

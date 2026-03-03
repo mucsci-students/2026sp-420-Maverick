@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz, Jacob Karasow
+# Date: 2026-03-02
 """
 test_room.py
 
@@ -22,90 +22,98 @@ Scope:
         Confirms that rooms can be removed and no longer appear in the configuration.
 
 Testing Strategy:
-    - Uses temporary or test configuration files to avoid modifying real data.
+    - Uses a fresh deep-copied base configuration for each test (pytest fixture)
+      to avoid modifying real data.
     - Validates both successful operations and expected failure cases.
-    - Ensures service-layer functions properly update and persist configuration data.
 
 Related User Stories:
     A4.1 — Add Room
     A4.2 — Modify Room
     A4.3 — Delete Room
 """
-from ..app.room_management import room_management
-import json
-import copy
+import pytest
+from app.room_management import room_management
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
-    
-example = get_example().copy()
 
-# the room should be removed from 'room'
-def delete_room():
+# ---------------------------
+# Delete Room
+# ---------------------------
 
-    example = copy.deepcopy(get_example())
+def test_delete_room(example):
+    """Removes an existing room from config."""
+    room_to_delete = example["config"]["rooms"][0]
 
-    room = 'Room B'
+    room_management.remove_room(example, room_to_delete)
 
+    assert room_to_delete not in example["config"]["rooms"]
+
+def test_delete_room_nested(example):
+    """
+    Ensures that when a room is removed:
+    - It is removed from the top-level rooms list
+    - It is removed from any course that referenced it
+    """
+
+    # Pick an actual existing room
+    room = example["config"]["rooms"][0]
+
+    # Make sure at least one course references this room (if none do,
+    # manually assign it to the first course to test nested behavior)
+    if example["config"]["courses"]:
+        example["config"]["courses"][0]["room"] = [room]
+
+    # Perform deletion
     room_management.remove_room(example, room)
 
-    assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
+    # Assert room removed from main room list
+    assert room not in example["config"]["rooms"]
 
-# the room should be removed from 'room' and 'courses'
-def delete_room_nested():
+    # Assert room removed from all courses
+    for course in example["config"]["courses"]:
+        assert room not in course.get("room", [])
 
-    example = copy.deepcopy(get_example())
+def test_delete_room_nonexistent(example):
+    """Ensures removing a room that doesn't exist raises ValueError."""
+    with pytest.raises(ValueError):
+        room_management.remove_room(example, "Room 999")
 
-    room = 'Room A'
+# ---------------------------
+# Add Room
+# ---------------------------
 
-    room_management.remove_room(room)
-
-    assert room not in example['config']['rooms'], f"Room {room} has not been removed from 'room'."
-
-    assert room not in any(r['room'] == room for r in example['config']['courses']), f"Room {room} has not been removed from 'courses'."
-
-# should raise an error
-def delete_room_nonexistent():
-
-    example = copy.deepcopy(get_example())
-
-    try:
-        room_management.remove_room(example, 'CS999')
-    except ValueError:
-        print(f"Removing a nonexistent room raises the correct error: {ValueError}")
-
-
-# Add room tests
-def test_add_room():
+def test_add_room(example):
     """A4.1 — Confirms new rooms are correctly inserted."""
-    example = get_example()
     room_name = "Roddy 300"
     
+    # Ensure we don't collide with an existing room name.
+    # If it already exists, tweak it slightly.
+    if room_name in example["config"]["rooms"]:
+        room_name = room_name + " (New)"
+
     room_management.add_room(example, room_name)
-    
-    assert room_name in example['config']['rooms'], f"Room {room_name} was not added."
-    print(f"PASSED: test_add_room")
 
-def test_add_room_duplicate():
+    assert room_name in example["config"]["rooms"], f"Room '{room_name}' was not added."
+
+def test_add_room_duplicate(example):
     """Ensures adding an existing room raises a ValueError."""
-    example = get_example()
-    # Assuming 'Roddy 145' exists in your config_base.json
-    room_name = 'Roddy 145' 
-    
-    try:
-        room_management.add_room(example, room_name)
-        assert False, "Should have raised ValueError for duplicate room."
-    except ValueError:
-        print(f"PASSED: test_add_room_duplicate")
+    existing_room = example["config"]["rooms"][0]
 
-# The room name should change
-def test_modify_room():
+    with pytest.raises(ValueError):
+        room_management.add_room(example, existing_room)
 
-    example = copy.deepcopy(get_example())
 
-    old_room = "Room A"
+# ---------------------------
+# Modify Room
+# ---------------------------
+
+def test_modify_room(example):
+    """Renames an existing room and updates the config list."""
+    old_room = example["config"]["rooms"][0]
     new_room = "Room Z"
+
+    # Avoid accidental collision if "Room Z" already exists.
+    if new_room in example["config"]["rooms"]:
+        new_room = "Room Z (Renamed)"
 
     room_management.modify_room(
         example, 
@@ -113,30 +121,10 @@ def test_modify_room():
         new_room
     )
 
-# Should raise an error
-def test_modify_room_nonexistent():
+    assert new_room in example["config"]["rooms"]
+    assert old_room not in example["config"]["rooms"]
 
-    example = copy.deepcopy(get_example())
-
-    try:
-        room_management.modify_room(
-            example, 
-            "Room 999", 
-            "Room X"
-        )
-    except ValueError:
-        print("Modifying a nonexistent room raises the correct error.")
-
-
-# Used to execute tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Room Management Tests ---")
-    test_add_room()
-    test_add_room_duplicate()
-    test_modify_room()
-    delete_room()
-    delete_room_nested()
-    delete_room_nonexistent()
-    print("\nAll room tests passed")
-    """
+def test_modify_room_nonexistent(example):
+    """Ensures renaming a room that doesn't exist raises ValueError."""
+    with pytest.raises(ValueError):
+        room_management.modify_room(example, "Room 999", "Room X")

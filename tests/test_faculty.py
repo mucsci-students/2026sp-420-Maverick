@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz
+# Date: 2026-03-02
 """
 test_faculty.py
 
@@ -34,13 +34,9 @@ Related User Stories:
     A1.3 — Modify Faculty Availability
     A1.4 — Delete Faculty
 """
-from ..app.faculty_management import faculty_management
-import json
-import copy
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
+import pytest
+from app.faculty_management import faculty_management
 
 # the faculty member should be removed from 'faculty' and 'courses'
 def delete_faculty_member():
@@ -129,14 +125,3 @@ def modify_faculty_member_nonexistent():
         )
     except ValueError:
         print("Modifying a nonexistent faculty member raises the correct error.")
-
-#Used to execute tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Faculty Management Tests ---")
-    test_add_faculty_full_time()
-    test_add_faculty_adjunct_with_prefs()
-    delete_faculty_member()
-    delete_faculty_member_nonexistent()
-    print("\nAll faculty tests passed")
-"""

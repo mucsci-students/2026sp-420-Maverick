@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz, Jacob Karasow
+# Date: 2026-03-02
 """
 test_course.py
 
@@ -39,14 +39,9 @@ Related User Stories:
     A2.6 — Delete Conflict
 """
 
-from doctest import Example
-from ..app.course_management import course_management
-import json
-import copy
+import pytest
+from app.course_management import course_management
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
 
 # the conflict should be removed from 'courses'
 def delete_conflict():
@@ -148,19 +143,3 @@ def modify_course_nonexistent():
         )
     except ValueError:
         print("Modifying a nonexistent course raises the correct error.")
-
-
-# Used to execute the tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Course Management Tests ---")
-    try:
-        test_add_course_success()
-        test_add_course_duplicate()
-        test_delete_course()
-        test_delete_course_nonexistent()
-        test_delete_conflict()
-        print("\nAll tests passed sucessfully")
-    except AssertionError as e:
-        print(f"\nTest failed: {e}")
-"""
