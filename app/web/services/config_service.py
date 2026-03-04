@@ -50,25 +50,25 @@ from app.lab_management.lab_management import (
 )
 
 #================================================================
-
-SESSION_CONFIG_KEY = "config"
-SESSION_CONFIG_PATH_KEY = "config_path"
-
-WORKING_PATH = "configs/working_config.json"
-
-# Global flag to track if update_schedules has been run
-_schedules_updated = False
+# Absolute Paths
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../")
+)
+CONFIGS_DIR = os.path.join(PROJECT_ROOT, "configs")
+WORKING_PATH = os.path.join(CONFIGS_DIR, "working_config.json")
 
 #================================================================
-
-def set_schedules_updated(value: bool):
-    global _schedules_updated
-    _schedules_updated = value
-
-def get_schedules_updated() -> bool:
-    return _schedules_updated
+# Session Keys
+SESSION_CONFIG_KEY = "working_config"
+SESSION_CONFIG_PATH_KEY = "working_path"
+SESSION_UNSAVED_KEY = "unsaved_changes"
+SESSION_SCHEDULES_UPDATED_KEY = "schedules_updated"
 
 #================================================================
+# Helpful Functions 
+def _ensure_configs_folder():
+    if not os.path.exists(CONFIGS_DIR):
+        os.makedirs(CONFIGS_DIR)
 
 def _empty_config():
     return {
@@ -83,40 +83,87 @@ def _empty_config():
         "optimizer_flags": None,
     }
 
-#================================================================
-
-def _ensure_working_file():
-    if not os.path.exists("configs"):
-        os.makedirs("configs")
-
-    if not os.path.exists(WORKING_PATH):
-        with open(WORKING_PATH, "w", encoding="utf-8") as f:
-            json.dump(_empty_config(), f, indent = 4)
-
-#================================================================
-
-def _reset_working_file():
-    _ensure_working_file()
-
+def _write_working_file(cfg):
+    _ensure_configs_folder()
     with open(WORKING_PATH, "w", encoding="utf-8") as f:
-        json.dump(_empty_config(), f, indent = 4)
+        json.dump(cfg, f, indent = 4)
 
-#================================================================
+def _set_unsaved(value: bool):
+    session[SESSION_UNSAVED_KEY] = value
 
-# Helper
-def _get_cgf():
+def get_unsaved() -> bool:
+    return session.get(SESSION_UNSAVED_KEY, False)
+
+def set_schedules_updated(value: bool):
+    session[SESSION_SCHEDULES_UPDATED_KEY] = value
+
+def get_schedules_updated() -> bool:
+    return session.get(SESSION_SCHEDULES_UPDATED_KEY, False)
+
+def _get_working_config():
     cfg = session.get(SESSION_CONFIG_KEY)
 
     if cfg is None:
-        _ensure_working_file()
-
-        with open(WORKING_PATH, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-
+        cfg = _empty_config()
         session[SESSION_CONFIG_KEY] = cfg
         session[SESSION_CONFIG_PATH_KEY] = WORKING_PATH
+        _write_working_file(cfg)
+        _set_unsaved(False)
+        set_schedules_updated(False)
 
     return cfg
+
+def _get_cgf():
+    return _get_working_config()
+
+def _commit_change(cfg):
+    session[SESSION_CONFIG_KEY] = cfg
+    _write_working_file(cfg)
+    _set_unsaved(True)
+    set_schedules_updated(False)
+
+#================================================================
+# Load / Save
+def load_config_into_session(path: str):
+
+    # Minimal working version: read JSON file and store it in session
+    with open(path, "r", encoding="utf-8") as f:
+        loaded_config = json.load(f)
+
+    working_copy = copy.deepcopy(loaded_config)
+
+    session[SESSION_CONFIG_KEY] = working_copy
+    session[SESSION_CONFIG_PATH_KEY] = path
+
+    _write_working_file(working_copy)
+
+    _set_unsaved(False)
+    set_schedules_updated(False)
+
+#================================================================
+# Save
+def save_config_from_session(path: str):
+    cfg = _get_working_config()
+    validate_config(cfg)
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent = 4)
+
+    session[SESSION_CONFIG_PATH_KEY] = path
+    _set_unsaved(False)
+
+#================================================================
+# Clear / Reset
+def clear_config():
+    blank = _empty_config()
+
+    session[SESSION_CONFIG_KEY] = blank
+    session[SESSION_CONFIG_PATH_KEY] = WORKING_PATH
+
+    _write_working_file(blank)
+
+    _set_unsaved(False)
+    set_schedules_updated(False)
 
 #================================================================
 # Config Validation 
@@ -173,74 +220,15 @@ def validate_config(cfg: dict):
                 raise ValueError(f"Invalid conflict '{conflict}' in course {course_id}")
 
 #================================================================
-# Load / Save
-def load_config_into_session(path: str):
-
-    _reset_working_file()
-    # Minimal working version: read JSON file and store it in session
-    with open(path, "r", encoding="utf-8") as f:
-        original = json.load(f)
-
-    cfg_copy = copy.deepcopy(original)
-
-    session[SESSION_CONFIG_KEY] = cfg_copy
-    session[SESSION_CONFIG_PATH_KEY] = path
-
-    set_schedules_updated(False)
-
-#================================================================
-# Save
-def save_config_from_session(path: str):
-    cfg = _get_cgf()
-    
-    validate_config(cfg)
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=4)
-
-    session[SESSION_CONFIG_PATH_KEY] = path
-    set_schedules_updated(False)
-
-#================================================================
-# Clear / Reset
-def clear_config():
-    _reset_working_file()
-
-    session[SESSION_CONFIG_KEY] = _empty_config()
-    session[SESSION_CONFIG_PATH_KEY] = WORKING_PATH
-
-    set_schedules_updated(False)
-
-#================================================================
 # Status
 def get_config_status():
     cfg = session.get(SESSION_CONFIG_KEY)
-    path = session.get(SESSION_CONFIG_PATH_KEY)
 
-    if not cfg:
-        return {
-            "loaded": False, 
-            "path": None, 
-            "counts": {},
-            "unsaved": False,
-        }
-    
-    config = cfg.get("config", {})
-
-    # Helpful summary counts (works regardless of exact schema, as long as lists exist)
-    counts = {
-        "faculty": len(config.get("faculty", [])),
-        "courses": len(config.get("courses", [])),
-        "rooms": len(config.get("rooms", [])),
-        "labs": len(config.get("labs", [])),
-        "conflicts": len(config.get("conflicts", [])),
-    }
-    
     return {
-        "loaded": True, 
-        "path": path, 
-        "counts": counts,
-        "unsaved": get_schedules_updated(),
+        "loaded_config": cfg is not None,
+        "unsaved_changes": get_unsaved(),
+        "schedules_updated": get_schedules_updated(),
+        "current_path": session.get(SESSION_CONFIG_PATH_KEY, None),
     }
 
 #================================================================
@@ -248,60 +236,53 @@ def get_config_status():
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
     add_faculty(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def remove_faculty_service(**kwargs):
     cfg = _get_cgf()
     remove_faculty(cfg, **kwargs)
     session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def modify_faculty_service(**kwargs):
     cfg = _get_cgf()
     modify_faculty(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 
 # Room Management
 def add_room_service(room: str):
     cfg = _get_cgf()
     add_room(cfg, room)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def remove_room_service(room: str):
     cfg = _get_cgf()
     remove_room(cfg, room)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def modify_room_service(room: str, new_name: str):
     cfg = _get_cgf()
     modify_room(cfg, room, new_name)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 
 # Lab Management
 def add_lab_service(**kwargs):
     cfg = _get_cgf()
     add_lab(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def remove_lab_service(**kwargs):
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
+    _commit_change(cfg)
     set_schedules_updated(True)
 
 def modify_lab_service(**kwargs):
     cfg = _get_cgf()
     modify_lab(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 
 # Course Management
@@ -313,14 +294,12 @@ def add_course_service(**kwargs):
         kwargs["credits"] = int(kwargs["credits"])
 
     add_course(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def remove_course_service(course_id: str):
     cfg = _get_cgf()
     remove_course(cfg, course_id)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def modify_course_service(**kwargs):
     cfg = _get_cgf()
@@ -330,28 +309,24 @@ def modify_course_service(**kwargs):
         kwargs["credits"] = int(kwargs["credits"])
 
     modify_course(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 
 # Conflict Management
 def add_conflict_service(**kwargs):
     cfg = _get_cgf()
     add_conflict(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def remove_conflict_service(**kwargs):
     cfg = _get_cgf()
     remove_conflict(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True)
+    _commit_change(cfg)
 
 def modify_conflict_service(**kwargs):
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
-    session[SESSION_CONFIG_KEY] = cfg
-    set_schedules_updated(True) 
+    _commit_change(cfg) 
 
 
 # only called when user modifies the config
@@ -364,4 +339,4 @@ def update_schedules(cfg):
 
     generate_schedules_into_session(limit, optimizer_flags)
 
-    return session.get('schedules', [])
+    return session.get('schedules', []);
