@@ -151,6 +151,7 @@ def save_config_from_session(path: str):
 
     session[SESSION_CONFIG_PATH_KEY] = path
     _set_unsaved(False)
+    set_schedules_updated(True)
 
 #================================================================
 # Clear / Reset
@@ -255,7 +256,7 @@ def add_room_service(room: str):
     cfg = _get_cgf()
     add_room(cfg, room)
     _commit_change(cfg)
-
+    
 def remove_room_service(room: str):
     cfg = _get_cgf()
     remove_room(cfg, room)
@@ -277,7 +278,6 @@ def remove_lab_service(**kwargs):
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
     _commit_change(cfg)
-    set_schedules_updated(True)
 
 def modify_lab_service(**kwargs):
     cfg = _get_cgf()
@@ -339,4 +339,4 @@ def update_schedules(cfg):
 
     generate_schedules_into_session(limit, optimizer_flags)
 
-    return session.get('schedules', []);
+    return session.get('schedules', [])
