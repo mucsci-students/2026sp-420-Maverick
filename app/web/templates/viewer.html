@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Ian Swartz, Tanner Ness
-Date: 2026-02-28
+Date: 2026-03-05
 
 Schedule Viewer Template
 
@@ -200,65 +200,74 @@ Notes:
   </form>
 
   {% if data.has_schedules %}
-    <form method="post" class="row" style="margin: 0; display: flex; align-items: flex-start;">
-      <label style="min-width: 200px; margin-top: 8px;">Export to System</label>
-      
-      <div style="display: flex; flex-direction: column; gap: 10px; width: 60%;">
-        
-        <details style="border: 1px solid #ccc; border-radius: 4px; background: white; width: 100%; max-width: 350px;">
-          <summary style="padding: 8px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;">
-            <span>Select Schedules...</span>
-            <span style="font-size: 0.7em; color: #666;">▼</span>
-          </summary>
-
-          <div style="padding: 10px 12px; border-top: 1px solid #eee; max-height: 150px; overflow-y: auto;">
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-left: -100px;">
-              <input type="checkbox" id="export_all" onchange="toggleAllSchedules(this)" style="margin: 0;">
-              <span style="font-weight: bold; font-size: 0.9em;">All Schedules</span>
-            </label>
-
-            {% for idx in range(data.count) %}
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 4px; margin-left: -100px;">
-              <input type="checkbox" name="schedule_indices" value="{{ idx }}" class="schedule-checkbox" style="margin: 0;">
-              <span style="font-size: 0.9em;">Schedule {{ idx + 1 }}</span>
-            </label>
-            {% endfor %}
-          </div>
-        </details>
-
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <form method="post" class="row" style="margin: 0; display: flex; align-items: flex-start;">
+          <label style="min-width: 200px; margin-top: 8px;">Export to System</label>
           
-          <button type="submit" formaction="{{ url_for('viewer.export_file') }}" style="white-space: nowrap; padding: 7px 15px;">
-            Export JSON
-          </button>
+          <div style="display: flex; flex-direction: column; gap: 10px; width: 60%;">
+              
+              <details style="border: 1px solid #ccc; border-radius: 4px; background: white; width: 100%; max-width: 350px;">
+                  <summary style="padding: 8px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;">
+                      <span>Select Schedules... (for JSON/CSV)</span>
+                      <span style="font-size: 0.7em; color: #666;">▼</span>
+                  </summary>
 
-          <button type="submit" formaction="{{ url_for('viewer.export_csv') }}" 
-                  style="white-space: nowrap; padding: 7px 15px; background-color: #28a745; border-color: #218838;">
-            Export CSV
-          </button>
+                  <div style="padding: 10px 12px; border-top: 1px solid #eee; max-height: 150px; overflow-y: auto;">
+                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                          <input type="checkbox" id="export_all" onchange="toggleAllSchedules(this)" style="margin: 0; margin-left: -120px;">
+                          <span style="font-weight: bold; font-size: 0.9em;">All Schedules</span>
+                      </label>
 
-          <a href="{{ url_for('viewer.visual_view') }}" target="_blank" class="button" 
-            style="white-space: nowrap; padding: 8px 15px; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; border: 1px solid #138496;">
-            Visual View (Current)
-          </a>
+                      {% for idx in range(data.count) %}
+                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 4px;">
+                          <input type="checkbox" name="schedule_indices" value="{{ idx }}" class="schedule-checkbox" style="margin: 0;  margin-left: -120px;">
+                          <span style="font-size: 0.9em;">Schedule {{ idx + 1 }}</span>
+                      </label>
+                      {% endfor %}
+                  </div>
+              </details>
 
-        </div>
-      </div>
-    </form>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                  
+                  <button type="submit" formaction="{{ url_for('viewer.export_file') }}" style="white-space: nowrap; padding: 7px 15px;">
+                      Export JSON
+                  </button>
 
-    <script>
-      /**
-      * Checks/Unchecks all schedule checkboxes based on the "All Schedules" master checkbox.
-      */
-      function toggleAllSchedules(source) {
-        const checkboxes = document.getElementsByClassName('schedule-checkbox');
-        for(let i = 0; i < checkboxes.length; i++) {
-          checkboxes[i].checked = source.checked;
-        }
-      }
-    </script>
+                  <button type="submit" formaction="{{ url_for('viewer.export_csv') }}" 
+                          style="white-space: nowrap; padding: 7px 15px;">
+                      Export CSV
+                  </button>
+
+                  {% if not data.has_conflicts %}
+                      <a href="{{ url_for('viewer.visual_view') }}" 
+                        target="_blank" 
+                        class="button" 
+                        style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; line-height: normal; white-space: nowrap; transition: background 0.15s ease;"
+                        onmouseover="this.style.backgroundColor='var(--accent-hover)';"
+                        onmouseout="this.style.backgroundColor='var(--accent)';"
+                      >
+                          Visual View (Current)
+                      </a>
+                  {% else %}
+                      <button type="button" 
+                              onclick="alert('Cannot create visual schedule: Time conflicts (overlapping classes) were detected in this schedule. Please resolve the conflicts to enable this view.')"
+                              style="background-color: #6c757d; color: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid #6c757d; font-size: 13.33px; cursor: help; white-space: nowrap;">
+                          Visual View (Blocked)
+                      </button>
+                  {% endif %}
+
+              </div>
+          </div>
+      </form>
+
+      <script>
+          function toggleAllSchedules(source) {
+              const checkboxes = document.getElementsByClassName('schedule-checkbox');
+              for(let i = 0; i < checkboxes.length; i++) {
+                  checkboxes[i].checked = source.checked;
+              }
+          }
+      </script>
   {% endif %}
-</div>
 
 
     <!-- <form method="post" action="/viewer/export_file" class="row" style="margin: 0; display: flex; align-items: center;">

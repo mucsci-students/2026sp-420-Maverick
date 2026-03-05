@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-02-28
+# Date: 2026-03-05
 """
 Schedule Viewer Routes
 
@@ -222,10 +222,14 @@ def export_csv():
 # route for exporting the schedule(s) to a calendar schedule view
 @bp.get("/visual_view")
 def visual_view():
-    """Renders the high-fidelity calendar grid for the current schedule."""
     data = get_view_data()
     if not data["has_schedules"]:
-        flash("No schedules found to visualize.", "error")
+        flash("No schedules found.", "error")
+        return redirect(url_for("viewer.viewer"))
+    
+    # Safety check for conflicts
+    if data.get("has_conflicts"):
+        flash("Cannot generate visual view for a schedule with conflicts.", "error")
         return redirect(url_for("viewer.viewer"))
     
     return render_template("visual_schedule.html", data=data)
