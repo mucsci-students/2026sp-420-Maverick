@@ -42,7 +42,9 @@ def viewer():
     Retrieves fully prepared view data from the service layer.
     """
     
-    if get_schedules_updated():
+    ref = (request.referrer or "")
+
+    if get_schedules_updated() & ('/config' in ref):
         
         cfg = _get_cgf()
         update_schedules(cfg)

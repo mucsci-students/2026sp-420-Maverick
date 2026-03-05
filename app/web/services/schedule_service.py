@@ -261,6 +261,10 @@ def import_schedules_from_file(source):
         if not isinstance(new_data, list):
             # If the user uploaded a single schedule (dict), wrap it in a list
             new_data = [new_data]
+        
+        # Checks if the schedules are correctly formatted
+        is_valid_file(new_data)
+
 
         added_count = len(new_data)
 
@@ -329,68 +333,41 @@ def export_schedules_to_csv(indices: List[int]) -> str:
 
 
 # Checks the file being imported fits the general schema of the configuration file.
-def is_valid_file(schedule: Dict[str, Any], scheduleschema) -> None:
+def is_valid_file(data: List) -> None:
+    Scheduleschema = Schema()
     try:
-        # checks if schedules' schema matches 
-        scheduleschema.model_validate(schedule)
+        # checks if data's schema matches 
+        for d in data:
+            Scheduleschema.model_validate(d)
         
     except ValidationError as e:
-        raise ValueError(f"Invalid file: {e}")
+        raise ValueError(f"Invalid file: {json.dumps(e.errors(), indent = 2)}")
 
-# returns the schema of a properly configured json file
+# returns the schema of a configured json file
 def Schema():
 
-    class Course(BaseModel):
+    class Assignments(BaseModel):
         course_id: str
-        credits: int
-        room: List[str]
-        lab: Optional[List[str]] = None
-        conflicts: Optional[List[str]] = None
-        faculty: List[str]
-
-    class Faculty(BaseModel):
-        name: str
-        maximum_credits: int
-        minimum_credits: int
-        unique_course_limit: int
-        maximum_days: Optional[int] = None
-        mandatory_days: Optional[List[str]] = None
-        times: Dict[str, List[str]]
-        course_preferences: Optional[Dict[str, int]] = None
-        room_preferences: Optional[Dict[str, int]] = None
-        lab_preferences: Optional[Dict[str, int]] = None
-
-    class Meeting(BaseModel):
+        credits: str
         day: Literal["MON", "TUE", "WED", "THU", "FRI"]
-        duration: int
-        lab: Optional[bool] = None
-
-    class Class(BaseModel):
-        credits: int
-        meetings: List[Meeting]
-        start_time: Optional[str] = None
-        disabled: Optional[bool] = None
-    
-    class TimeSlot(BaseModel):
+        duration: str
+        faculty: str
+        lab: Optional[str] = None
+        meeting_index: int
+        room: str
+        schedule_id: int
         start: str
-        spacing: int
-        end: str
-
-    class TimeSlotConfig(BaseModel):
-        times: Dict[Literal["MON", "TUE", "WED", "THU", "FRI"], List[TimeSlot]]
-        classes: List[Class]
-
-    class Config(BaseModel):
-        rooms: List[str]
-        labs: List[str]
-        courses: List[Course]
-        faculty: List[Faculty]
+        time: str
+    
+    class Meta(BaseModel):
+        generated_at: str
+        optimizer_flags:  Optional[List[str]] = None
+        row_count: int
+        schedule_id: int
 
     class ScheduleSchema(BaseModel):
-        config: Config
-        time_slot_config: TimeSlotConfig
-        limit: int
-        optimizer_flags: List[str]
+        assignments: List[Assignments]
+        meta: Meta
         
     return ScheduleSchema
 
