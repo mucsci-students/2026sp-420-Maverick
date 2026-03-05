@@ -100,6 +100,60 @@ def set_schedules_updated(value: bool):
 def get_schedules_updated() -> bool:
     return session.get(SESSION_SCHEDULES_UPDATED_KEY, False)
 
+def detect_conflicts(cfg):
+    conflicts = []
+    config = cfg.get("config", {})
+
+    faculty_names = set()
+    room_names = set()
+    lab_names = set()
+    course_ids = set()
+
+    for f in config.get("faculty", []):
+        name = f if isinstance(f, str) else f.get("name")
+
+        if not name:
+            conflicts.append("Faculty member with missing name.")
+            continue
+
+        if name in faculty_names:
+            conflicts.append(f"Duplicate faculty name: {name}")
+        faculty_names.add(name)
+
+    for r in config.get("rooms", []):
+        name = r if isinstance(r, str) else r.get("name")
+        if not name:
+            conflicts.append("Room with missing name.")
+            continue
+
+        if name in room_names:
+            conflicts.append(f"Duplicate room name: {name}")
+        room_names.add(name)
+
+    for l in config.get("labs", []):
+        name = l if isinstance(l, str) else l.get("name")
+
+        if not name:
+            conflicts.append("Lab with missing name.")
+            continue
+
+        if name in lab_names:
+            conflicts.append(f"Duplicate lab name: {name}")
+        lab_names.add(name)
+
+    for c in config.get("courses", []):
+        cid = c.get("course_id")
+
+        if not cid:
+            conflicts.append("Course with missing course_id.")
+            continue
+
+        if cid in course_ids:
+            conflicts.append(f"Duplicate course ID: {cid}")
+        course_ids.add(cid)
+
+    return conflicts
+
 def _get_working_config():
     cfg = session.get(SESSION_CONFIG_KEY)
 
@@ -140,6 +194,11 @@ def load_config_into_session(path: str):
     _set_unsaved(False)
     set_schedules_updated(False)
 
+    conflicts = detect_conflicts(working_copy)
+
+    if conflicts:
+        raise ValueError("Configuration loaded with conflicts:\n" + "\n".join(conflicts))
+
 #================================================================
 # Save
 def save_config_from_session(path: str):
@@ -179,7 +238,17 @@ def validate_config(cfg: dict):
     labs = config.get("labs", [])
     faculty_list = config.get("faculty", [])
 
-    faculty_names = {f.get("name") for f in faculty_list}
+    faculty_names = {f.get("name") for f in faculty_list if isinstance(f, dict)}
+
+    room_names = [
+        r if isinstance(r, str) else r.get("name") 
+        for r in rooms
+    ]
+
+    lab_names = [
+        l if isinstance(l, str) else l.get("name") 
+        for l in labs
+    ]
 
     course_ids = set()
 
@@ -202,7 +271,7 @@ def validate_config(cfg: dict):
         
         # Room Validation
         for r in course.get("room", []):
-            if r not in rooms:
+            if r not in room_names:
                 raise ValueError(f"Invalid room '{r}' in course {course_id}")
 
         # Lab Validation
