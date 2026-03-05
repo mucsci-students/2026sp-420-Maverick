@@ -117,10 +117,12 @@ def clear():
     # ----------------------------------------
 
     # Remove stored config file path
-    session.pop("config_path", None)
+    session.pop("working_config", None)
 
     # Remove the in-session configuration objectS
-    session.pop("config", None)
+    session.pop("working_path", None)
+
+    session.pop("unsaved_changes", None)
 
     # ----------------------------------------
     # 2. Remove Schedule Data (If Present)
