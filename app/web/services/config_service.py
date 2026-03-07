@@ -71,7 +71,7 @@ def _ensure_configs_folder():
 
 
 def _empty_config():
-    return {
+    cfg =  {
         "config": {
             "faculty": [],
             "courses": [],
@@ -82,6 +82,8 @@ def _empty_config():
         "limit": 1,
         "optimizer_flags": None,
     }
+
+    return apply_timeslot_defaults(cfg)
 
 
 def _write_working_file(cfg):
@@ -124,7 +126,6 @@ def has_conflicts():
 
 # ================================================================
 # Conflict Detection
-
 
 def detect_conflicts(cfg):
 
@@ -191,7 +192,6 @@ def detect_conflicts(cfg):
 # ================================================================
 # Working Config
 
-
 def _get_working_config():
     cfg = session.get(SESSION_CONFIG_KEY)
 
@@ -224,16 +224,36 @@ def _commit_change(cfg):
     _set_unsaved(True)
     set_schedules_updated(False)
 
+# ================================================================
+# Timeslot Defaults
+
+DEFAULT_TIMESLOT_CONFIG = {
+    "days": ["MON", "TUE", "WED", "THU", "FRI"],
+    "start_time": "08:00",
+    "end_time": "17:00",
+    "slot_length": 60
+}
+
+def apply_timeslot_defaults(cfg):
+
+    if "timeslot_config" not in cfg:
+        cfg["timeslot_config"] = DEFAULT_TIMESLOT_CONFIG.copy()
+
+    else:
+        for k, v in DEFAULT_TIMESLOT_CONFIG.items():
+            cfg["timeslot_config"].setdefault(k, v)
+
+    return cfg
 
 # ================================================================
 # Load / Save
 
 def load_config_into_session(path: str):
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding = "utf-8") as f:
         loaded_config = json.load(f)
 
-    working_copy = copy.deepcopy(loaded_config)
+    working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
     # store config
     session[SESSION_CONFIG_KEY] = working_copy
@@ -510,7 +530,7 @@ def update_schedules(cfg):
 
     conflicts = get_conflicts()
 
-    if conflicts():
+    if conflicts:
         raise ValueError(
             "Schedules cannot be generated until configuration conflicts are resolved."
         )
