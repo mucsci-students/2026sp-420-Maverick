@@ -126,7 +126,7 @@ Extends base.html.
 
   <style>
     input, select {
-      width: 100%;
+      width: 25%;
       padding: 8px 10px;
       margin: 4px 0;
       border: 1px solid #ccc;
@@ -145,7 +145,7 @@ Extends base.html.
   <!-- POST /config/faculty/add -->
   <h3>Add Faculty</h3>
   <form method="post" action="/config/faculty/add">
-    <input name = "name" placeholder = "Faculty Name (e.g, Dr. Johnson)" required>
+    <input name = "name" placeholder = "Faculty Name (e.g., Dr. Johnson)" required>
     
     <select name = "appointment_type" required>
       <option value="" disabled selected>Appointment Type</option>
@@ -160,7 +160,7 @@ Extends base.html.
   <!-- POST /config/faculty/remove -->
   <h3>Remove Faculty</h3>
   <form method="post" action="/config/faculty/remove">
-    <input name="name" placeholder="Faculty Name (e.g, Dr. Johnson)" required>
+    <input name="name" placeholder="Faculty Name (e.g., Dr. Johnson)" required>
     <button type="submit">Remove Faculty</button>
   </form>
 
@@ -168,7 +168,7 @@ Extends base.html.
   <!-- POST /config/faculty/modify -->
   <h3>Modify Faculty</h3>
   <form method="post" action="/config/faculty/modify">
-    <input name="name" placeholder="Current Name (e.g, Dr. Johnson)" required>
+    <input name="name" placeholder="Current Name (e.g., Dr. Johnson)" required>
     
     <select name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
       <option value="" disabled selected>Appointment Type</option>
@@ -205,7 +205,7 @@ Extends base.html.
   <h3>Modify Room</h3>
   <form method="post" action="/config/room/modify">
     <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
-    <input name="new_name" placeholder="New Name (e.g., Roddy  141)">
+    <input name="new_name" placeholder="New Name (e.g., Roddy 141)">
     <button type="submit">Modify Room</button>
   </form>
 </section>
@@ -218,19 +218,19 @@ Extends base.html.
 
   <h3>Add Lab</h3>
   <form method="post" action="/config/lab/add">
-    <input name="lab" placeholder="Lab Name (e.g., LinuxLab)" required>
+    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
     <button type="submit">Add Lab</button>
   </form>
 
   <h3>Remove Lab</h3>
   <form method="post" action="/config/lab/remove">
-    <input name="lab" placeholder="Lab Name (e.g., LinuxLab)" required>
+    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
     <button type="submit">Remove Lab</button>
   </form>
 
   <h3>Modify Lab</h3>
   <form method="post" action="/config/lab/modify">
-    <input name="lab" placeholder="Existing Lab Name (e.g., LinuxLab)" required>
+    <input name="lab" placeholder="Existing Lab Name (e.g., Linux Lab)" required>
     <input name="new_name" placeholder="New Lab Name (e.g., MacLab)">
     <button type="submit">Modify Lab</button>
   </form>
@@ -247,7 +247,7 @@ Extends base.html.
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
     
     <select name="credits" required>
-      <option value="" disabled selected>Credits</option>
+      <option value="" disabled selected>Number of Credits</option>
       <option value="0">0</option>
       <option value="1">1</option>
       <option value="2">2</option>
@@ -268,16 +268,17 @@ Extends base.html.
   <h3>Modify Course</h3>
   <form method="post" action="/config/course/modify">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
-    
+
     <select name="credits" required>
-      <option value="" disabled selected>Credits</option>
+      <option value="" disabled selected>Number of Credits</option>
       <option value="0">0</option>
       <option value="1">1</option>
       <option value="2">2</option>
       <option value="3">3</option>
       <option value="4">4</option>
     </select>
+
+    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
 
     <button type="submit">Modify Course</button>
   </form>
