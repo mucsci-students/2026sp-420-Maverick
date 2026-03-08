@@ -190,11 +190,9 @@ def detect_conflicts(cfg):
             conflicts.append("Course with missing course_id.")
             continue
 
-        if cid in course_ids:
-            conflicts.append(f"Duplicate course ID: {cid}")
-
-        course_ids.add(cid)
-
+        # Duplicate course_id values are allowed because they represent
+        # multiple sections of the same course in scheduler input JSON.
+        
     return conflicts
 
 
@@ -440,19 +438,12 @@ def validate_config(cfg):
         for l in labs
     ]
 
-    course_ids = set()
-
     for course in courses:
 
         cid = course.get("course_id")
 
         if not cid:
             raise ValueError("Course with missing course_id.")
-
-        if cid in course_ids:
-            raise ValueError(f"Duplicate course_id found: {cid}")
-
-        course_ids.add(cid)
 
         credits = course.get("credits")
 
