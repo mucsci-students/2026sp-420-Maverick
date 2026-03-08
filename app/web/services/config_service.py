@@ -87,8 +87,8 @@ def _empty_config():
             "labs": [],
             "conflicts": [],
         },
-        "limit": 1,
-        "optimizer_flags": None,
+        "limit": 3,
+        "optimizer_flags": [],
     }
 
     return apply_timeslot_defaults(cfg)
@@ -246,12 +246,11 @@ DEFAULT_TIMESLOT_CONFIG = {
 
 def apply_timeslot_defaults(cfg):
 
-    if "timeslot_config" not in cfg:
-        cfg["timeslot_config"] = DEFAULT_TIMESLOT_CONFIG.copy()
-
+    if "time_slot_config" not in cfg:
+        cfg["time_slot_config"] = copy.deepcopy(DEFAULT_TIMESLOT_CONFIG)
     else:
         for k, v in DEFAULT_TIMESLOT_CONFIG.items():
-            cfg["timeslot_config"].setdefault(k, v)
+            cfg["time_slot_config"].setdefault(k, copy.deepcopy(v))
 
     return cfg
 
