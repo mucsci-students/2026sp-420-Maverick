@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow
-# Date: 2026-03-07
+# Date: 2026-03-08
 """
 Configuration Routes
 
@@ -88,6 +88,57 @@ def save():
         flash(f"Saved config: {path}", "success")
     except Exception as e:
         flash(f"Save failed: {e}", "error")
+    return redirect(url_for("config.editor"))
+
+
+@bp.post("/load_file")
+def load_file():
+    """
+    Route: POST /config/load_file
+
+    Purpose:
+        Loads a configuration JSON file uploaded from the user's system
+        into the active working session.
+
+    Behavior:
+        - Reads the uploaded file from the submitted form
+        - Validates that a file was selected and that it is a JSON file
+        - Passes the uploaded file object to the service layer
+        - The service parses the JSON and stores it in the session
+        - Redirects back to the Config Editor page after completion
+    """
+
+    # Retrieve the uploaded file object from the form submission.
+    # The name "config_file" must match the HTML file input name.
+    uploaded_file = request.files.get("config_file")
+
+    # Validate that the user actually selected a file.
+    if not uploaded_file or uploaded_file.filename == "":
+        flash("No config file selected.", "error")
+        return redirect(url_for("config.editor"))
+
+
+    # Ensure the uploaded file appears to be a JSON configuration file.
+    # This is a basic safety check before attempting to parse it.
+    if not uploaded_file.filename.lower().endswith(".json"):
+        flash("Please upload a valid JSON config file.", "error")
+        return redirect(url_for("config.editor"))
+
+    try:
+        # Pass the uploaded file object to the service layer.
+        # The service reads the JSON contents and loads the config
+        # into the session as the current working configuration.
+        load_config_into_session(uploaded_file)
+
+        # Inform the user that the configuration was loaded successfully.
+        flash(f"Loaded config from system: {uploaded_file.filename}", "success")
+
+    except Exception as e:
+        # If parsing or loading fails, display the error message.
+        flash(f"Load failed: {e}", "error")
+
+    # Redirect back to the Config Editor so the user can view or edit
+    # the newly loaded configuration.
     return redirect(url_for("config.editor"))
 
 
