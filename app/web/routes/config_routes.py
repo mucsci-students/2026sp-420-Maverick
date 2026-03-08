@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow
-# Date: 2026-03-02
+# Date: 2026-03-07
 """
 Configuration Routes
 
@@ -15,8 +15,10 @@ These routes act as Controllers in the MVC architecture.
 """
 
 # app/web/routes/config_routes.py
-import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+
+# Flask utilities for routing, request handling, flashing messages,
+# session access, redirects, template rendering, and downloadable responses.
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, Response
 
 from app.web.services.run_service import (
     SESSION_SCHEDULES_KEY,
@@ -24,11 +26,13 @@ from app.web.services.run_service import (
     SESSION_USER_SELECTED_KEY,
 )
 
+# Config service helpers used by the Config Editor routes.
 from app.web.services.config_service import (
     load_config_into_session,
     save_config_from_session,
     get_config_status,
-    set_schedules_updated,
+    set_schedules_updated,    
+    export_config_bytes,
 
     # Faculty 
     add_faculty_service,
@@ -85,6 +89,46 @@ def save():
     except Exception as e:
         flash(f"Save failed: {e}", "error")
     return redirect(url_for("config.editor"))
+
+
+@bp.post("/export")
+def export():
+    """
+    Route: POST /config/export
+
+    Purpose:
+        Exports the current working configuration as a downloadable JSON file.
+
+    Behavior:
+        - Reads the optional requested filename from the submitted form
+        - Builds the export payload from the current in-session config
+        - Returns the config as a file download response
+        - Suggests a default filename to the browser for saving
+    """
+    # Read the filename the user typed into the Save field.
+    # If blank, the service layer will choose the default filename.
+    requested_name = request.form.get("filename", "").strip()
+
+    try:
+        # Ask the service layer to package the current working config
+        # as JSON bytes and determine the final safe filename.
+        payload, filename = export_config_bytes(requested_name)
+
+        # Return a downloadable file response.
+        # Content-Disposition tells the browser this is an attachment
+        # and suggests the filename to use in the save dialog.
+        return Response(
+            payload,
+            mimetype="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Export-Filename": filename,
+            },
+        )
+    except Exception as e:
+        # Return a simple error response if export fails.
+        # The front end will display this message to the user.
+        return Response(str(e), status=400, mimetype="text/plain")
 
 # Clear Input JSON
 @bp.post("/clear")
