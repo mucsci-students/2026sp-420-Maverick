@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow, Tanner Ness
-# Date: 2026-02-25
+# Date: 2026-03-07
 
 """
 Configuration Service
@@ -9,6 +9,10 @@ the scheduler configuration.
 
 Acts as part of the Model layer in MVC.
 """
+
+# ------------------------------
+# Imports
+# ------------------------------
 
 import json
 import os
@@ -44,6 +48,7 @@ from app.lab_management.lab_management import (
 
 # ================================================================
 # Paths
+# ================================================================
 
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../../")
@@ -52,8 +57,10 @@ PROJECT_ROOT = os.path.abspath(
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, "configs")
 WORKING_PATH = os.path.join(CONFIGS_DIR, "working_config.json")
 
+
 # ================================================================
 # Session Keys
+# ================================================================
 
 SESSION_CONFIG_KEY = "working_config"
 SESSION_CONFIG_PATH_KEY = "working_path"
@@ -61,9 +68,10 @@ SESSION_UNSAVED_KEY = "unsaved_changes"
 SESSION_SCHEDULES_UPDATED_KEY = "schedules_updated"
 SESSION_CONFLICTS_KEY = "config_conflicts"
 
+
 # ================================================================
 # Helper Functions
-
+# ================================================================
 
 def _ensure_configs_folder():
     if not os.path.exists(CONFIGS_DIR):
@@ -79,8 +87,8 @@ def _empty_config():
             "labs": [],
             "conflicts": [],
         },
-        "limit": 1,
-        "optimizer_flags": None,
+        "limit": 3,
+        "optimizer_flags": [],
     }
 
     return apply_timeslot_defaults(cfg)
@@ -110,7 +118,7 @@ def get_schedules_updated():
 
 # ================================================================
 # Conflict Helpers
-
+# ================================================================
 
 def set_conflicts(conflicts):
     session[SESSION_CONFLICTS_KEY] = conflicts
@@ -126,6 +134,7 @@ def has_conflicts():
 
 # ================================================================
 # Conflict Detection
+# ================================================================
 
 def detect_conflicts(cfg):
 
@@ -135,7 +144,6 @@ def detect_conflicts(cfg):
     faculty_names = set()
     room_names = set()
     lab_names = set()
-    course_ids = set()
 
     for f in config.get("faculty", []):
         name = f if isinstance(f, str) else f.get("name")
@@ -181,16 +189,15 @@ def detect_conflicts(cfg):
             conflicts.append("Course with missing course_id.")
             continue
 
-        if cid in course_ids:
-            conflicts.append(f"Duplicate course ID: {cid}")
-
-        course_ids.add(cid)
-
+        # Duplicate course_id values are allowed because they represent
+        # multiple sections of the same course in scheduler input JSON.
+        
     return conflicts
 
 
 # ================================================================
 # Working Config
+# ================================================================
 
 def _get_working_config():
     cfg = session.get(SESSION_CONFIG_KEY)
@@ -224,8 +231,10 @@ def _commit_change(cfg):
     _set_unsaved(True)
     set_schedules_updated(False)
 
+
 # ================================================================
 # Timeslot Defaults
+# ================================================================
 
 DEFAULT_TIMESLOT_CONFIG = {
     "days": ["MON", "TUE", "WED", "THU", "FRI"],
@@ -236,17 +245,18 @@ DEFAULT_TIMESLOT_CONFIG = {
 
 def apply_timeslot_defaults(cfg):
 
-    if "timeslot_config" not in cfg:
-        cfg["timeslot_config"] = DEFAULT_TIMESLOT_CONFIG.copy()
-
+    if "time_slot_config" not in cfg:
+        cfg["time_slot_config"] = copy.deepcopy(DEFAULT_TIMESLOT_CONFIG)
     else:
         for k, v in DEFAULT_TIMESLOT_CONFIG.items():
-            cfg["timeslot_config"].setdefault(k, v)
+            cfg["time_slot_config"].setdefault(k, copy.deepcopy(v))
 
     return cfg
 
+
 # ================================================================
 # Load / Save
+# ================================================================
 
 def load_config_into_session(path: str):
 
@@ -287,28 +297,130 @@ def save_config_from_session(path: str):
 
 # ================================================================
 # Clear / Reset
-
+# ================================================================
 
 def clear_config():
+    """
+    Clear the loaded configuration from session.
 
+    Post-condition:
+      - session has no loaded config/path (status.loaded becomes False)
+      - working_config.json is reset to a blank config on disk (safe fallback)
+      - unsaved + schedules_updated reset
+    """
     blank = _empty_config()
 
-    session[SESSION_CONFIG_KEY] = blank
-    session[SESSION_CONFIG_PATH_KEY] = WORKING_PATH
+    session.pop(SESSION_CONFIG_KEY, None)
+    session.pop(SESSION_CONFIG_PATH_KEY, None)
 
     _write_working_file(blank)
 
-    set_conflicts([])
     _set_unsaved(False)
     set_schedules_updated(False)
 
 
 # ================================================================
-# Validation
+# Export Config File (Input JSON)
+# ================================================================
 
+def get_default_export_filename() -> str:
+    """
+    Suggest a filename for exporting the working config.
+
+    Rules:
+      - If a real config was loaded, suggest its basename.
+      - If nothing loaded (or only working_config.json exists), suggest new_config_file.json.
+    """
+    path = session.get(SESSION_CONFIG_PATH_KEY)
+    if not path:
+        return "new_config_file.json"
+
+    base = os.path.basename(str(path))
+
+    # If the "loaded path" is the internal working file, treat it like "no loaded config"
+    if os.path.abspath(str(path)) == os.path.abspath(WORKING_PATH):
+        return "new_config_file.json"
+
+    return base if base else "new_config_file.json"
+
+
+def sanitize_export_filename(name: str | None) -> str:
+    """
+    Prevent path traversal + ensure .json extension.
+    """
+    if not name:
+        return get_default_export_filename()
+
+    safe = os.path.basename(name.strip())
+    if not safe:
+        safe = get_default_export_filename()
+
+    if not safe.lower().endswith(".json"):
+        safe += ".json"
+
+    return safe
+
+def export_config_bytes(filename: str | None = None):
+    """
+    Build the current working configuration as downloadable JSON bytes.
+
+    Purpose:
+        Prepares the in-session working configuration for export through
+        the web interface.    
+    
+    Behavior:
+        - Retrieves the current working configuration from session storage
+        - Validates the configuration before export
+        - Sanitizes the requested filename to ensure safe JSON output
+        - Serializes the configuration into formatted JSON text
+        - Encodes the JSON text into UTF-8 bytes for HTTP download
+
+    Default Filename Rules:
+        - If a filename is provided, it is sanitized and used
+        - If no filename is provided, the service falls back to the
+          currently loaded config filename
+        - If no config has been loaded, the default filename becomes
+          'new_config_file.json'
+
+    Returns:
+        tuple[bytes, str]:
+            - JSON payload as UTF-8 encoded bytes
+            - Safe export filename ending in '.json'
+    """
+    # Pull the current working config from the user session.
+    # This is the live config being edited in the Config Editor.
+    cfg = _get_working_config()
+
+    # Validate before export so the user does not download
+    # malformed or incomplete scheduler configuration data.
+    validate_config(cfg)
+
+    # Clean and normalize the export filename.
+    # Ensures safe basename usage and appends .json if needed.
+    safe_name = sanitize_export_filename(filename)
+
+    # Convert the config dictionary into nicely formatted JSON text
+    # so the saved file is readable when opened later.
+    payload = json.dumps(cfg, indent=4)
+
+    # Return bytes for the HTTP response body plus the final filename
+    # that the browser should suggest to the user.
+    return payload.encode("utf-8"), safe_name
+
+
+# ================================================================
+# Validation
+# ================================================================
 
 def validate_config(cfg):
+    """
+    Validate the scheduler configuration.
 
+    Notes:
+        - Duplicate course_id values are allowed.
+        - Repeated course_id entries represent multiple sections
+          of the same course in scheduler-library input.
+    """
     if "config" not in cfg:
         raise ValueError("Invalid configuration format.")
 
@@ -331,19 +443,12 @@ def validate_config(cfg):
         for l in labs
     ]
 
-    course_ids = set()
-
     for course in courses:
 
         cid = course.get("course_id")
 
         if not cid:
             raise ValueError("Course with missing course_id.")
-
-        if cid in course_ids:
-            raise ValueError(f"Duplicate course_id found: {cid}")
-
-        course_ids.add(cid)
 
         credits = course.get("credits")
 
@@ -369,10 +474,12 @@ def validate_config(cfg):
 
 # ================================================================
 # Status
+# ================================================================
 
 def get_config_status():
-    cfg = session.get("working_config")
-    path = session.get("working_path")
+    cfg = session.get(SESSION_CONFIG_KEY)
+    loaded = cfg is not None
+    path = session.get(SESSION_CONFIG_PATH_KEY)
 
     if not cfg:
         return {
@@ -381,23 +488,30 @@ def get_config_status():
             "counts": {}
         }
 
-    config = cfg.get("config", {})
+    counts = {}
+    if loaded and isinstance(cfg, dict):
+        c = cfg.get("config", {}) if isinstance(cfg.get("config", {}), dict) else {}
+        counts = {
+            "Faculty": len(c.get("faculty", []) or []),
+            "Courses": len(c.get("courses", []) or []),
+            "Rooms": len(c.get("rooms", []) or []),
+            "Labs": len(c.get("labs", []) or []),
+            "Conflicts": len(c.get("conflicts", []) or []),
+        }
 
     return {
-        "loaded": path is not None,
+        "loaded": loaded,
         "path": path,
-        "counts": {
-            "faculty": len(config.get("faculty", [])),
-            "courses": len(config.get("courses", [])),
-            "rooms": len(config.get("rooms", [])),
-            "labs": len(config.get("labs", [])),
-            "conflicts": sum(len(c.get("conflicts", [])) for c in config.get("courses", []))
-        }
+        "counts": counts,
+        "unsaved_changes": get_unsaved(),
+        "schedules_updated": get_schedules_updated(),
+        "default_filename": get_default_export_filename(),
     }
+
 
 # ================================================================
 # Faculty Management
-
+# ================================================================
 
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
@@ -419,7 +533,7 @@ def modify_faculty_service(**kwargs):
 
 # ================================================================
 # Room Management
-
+# ================================================================
 
 def add_room_service(room):
     cfg = _get_cgf()
@@ -441,7 +555,7 @@ def modify_room_service(room, new_name):
 
 # ================================================================
 # Lab Management
-
+# ================================================================
 
 def add_lab_service(**kwargs):
     cfg = _get_cgf()
@@ -463,7 +577,7 @@ def modify_lab_service(**kwargs):
 
 # ================================================================
 # Course Management
-
+# ================================================================
 
 def add_course_service(**kwargs):
 
@@ -500,7 +614,7 @@ def modify_course_service(**kwargs):
 
 # ================================================================
 # Conflict Management
-
+# ================================================================
 
 def add_conflict_service(**kwargs):
     cfg = _get_cgf()
@@ -522,7 +636,7 @@ def modify_conflict_service(**kwargs):
 
 # ================================================================
 # Schedule Generation
-
+# ================================================================
 
 def update_schedules(cfg):
 
