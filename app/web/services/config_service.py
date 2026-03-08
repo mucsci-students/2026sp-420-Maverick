@@ -368,19 +368,47 @@ def export_config_bytes(filename: str | None = None):
     """
     Build the current working configuration as downloadable JSON bytes.
 
+    Purpose:
+        Prepares the in-session working configuration for export through
+        the web interface.    
+    
     Behavior:
-      - Exports the current in-session working configuration
-      - Falls back to an empty/default config if nothing is loaded yet
-      - Uses the loaded filename as default when available
-      - Otherwise defaults to new_config_file.json
+        - Retrieves the current working configuration from session storage
+        - Validates the configuration before export
+        - Sanitizes the requested filename to ensure safe JSON output
+        - Serializes the configuration into formatted JSON text
+        - Encodes the JSON text into UTF-8 bytes for HTTP download
+
+    Default Filename Rules:
+        - If a filename is provided, it is sanitized and used
+        - If no filename is provided, the service falls back to the
+          currently loaded config filename
+        - If no config has been loaded, the default filename becomes
+          'new_config_file.json'
+
+    Returns:
+        tuple[bytes, str]:
+            - JSON payload as UTF-8 encoded bytes
+            - Safe export filename ending in '.json'
     """
+    # Pull the current working config from the user session.
+    # This is the live config being edited in the Config Editor.
     cfg = _get_working_config()
 
+    # Validate before export so the user does not download
+    # malformed or incomplete scheduler configuration data.
     validate_config(cfg)
 
+    # Clean and normalize the export filename.
+    # Ensures safe basename usage and appends .json if needed.
     safe_name = sanitize_export_filename(filename)
+
+    # Convert the config dictionary into nicely formatted JSON text
+    # so the saved file is readable when opened later.
     payload = json.dumps(cfg, indent=4)
 
+    # Return bytes for the HTTP response body plus the final filename
+    # that the browser should suggest to the user.
     return payload.encode("utf-8"), safe_name
 
 
