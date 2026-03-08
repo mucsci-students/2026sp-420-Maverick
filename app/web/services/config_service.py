@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow, Tanner Ness
-# Date: 2026-02-25
+# Date: 2026-03-07
 
 """
 Configuration Service
@@ -9,6 +9,10 @@ the scheduler configuration.
 
 Acts as part of the Model layer in MVC.
 """
+
+# ------------------------------
+# Imports
+# ------------------------------
 
 import json
 import os
@@ -44,6 +48,7 @@ from app.lab_management.lab_management import (
 
 # ================================================================
 # Paths
+# ================================================================
 
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../../")
@@ -52,8 +57,10 @@ PROJECT_ROOT = os.path.abspath(
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, "configs")
 WORKING_PATH = os.path.join(CONFIGS_DIR, "working_config.json")
 
+
 # ================================================================
 # Session Keys
+# ================================================================
 
 SESSION_CONFIG_KEY = "working_config"
 SESSION_CONFIG_PATH_KEY = "working_path"
@@ -61,9 +68,10 @@ SESSION_UNSAVED_KEY = "unsaved_changes"
 SESSION_SCHEDULES_UPDATED_KEY = "schedules_updated"
 SESSION_CONFLICTS_KEY = "config_conflicts"
 
+
 # ================================================================
 # Helper Functions
-
+# ================================================================
 
 def _ensure_configs_folder():
     if not os.path.exists(CONFIGS_DIR):
@@ -110,7 +118,7 @@ def get_schedules_updated():
 
 # ================================================================
 # Conflict Helpers
-
+# ================================================================
 
 def set_conflicts(conflicts):
     session[SESSION_CONFLICTS_KEY] = conflicts
@@ -126,6 +134,7 @@ def has_conflicts():
 
 # ================================================================
 # Conflict Detection
+# ================================================================
 
 def detect_conflicts(cfg):
 
@@ -191,6 +200,7 @@ def detect_conflicts(cfg):
 
 # ================================================================
 # Working Config
+# ================================================================
 
 def _get_working_config():
     cfg = session.get(SESSION_CONFIG_KEY)
@@ -224,8 +234,10 @@ def _commit_change(cfg):
     _set_unsaved(True)
     set_schedules_updated(False)
 
+
 # ================================================================
 # Timeslot Defaults
+# ================================================================
 
 DEFAULT_TIMESLOT_CONFIG = {
     "days": ["MON", "TUE", "WED", "THU", "FRI"],
@@ -245,8 +257,10 @@ def apply_timeslot_defaults(cfg):
 
     return cfg
 
+
 # ================================================================
 # Load / Save
+# ================================================================
 
 def load_config_into_session(path: str):
 
@@ -287,25 +301,73 @@ def save_config_from_session(path: str):
 
 # ================================================================
 # Clear / Reset
-
+# ================================================================
 
 def clear_config():
+    """
+    Clear the loaded configuration from session.
 
+    Post-condition:
+      - session has no loaded config/path (status.loaded becomes False)
+      - working_config.json is reset to a blank config on disk (safe fallback)
+      - unsaved + schedules_updated reset
+    """
     blank = _empty_config()
 
-    session[SESSION_CONFIG_KEY] = blank
-    session[SESSION_CONFIG_PATH_KEY] = WORKING_PATH
+    session.pop(SESSION_CONFIG_KEY, None)
+    session.pop(SESSION_CONFIG_PATH_KEY, None)
 
     _write_working_file(blank)
 
-    set_conflicts([])
     _set_unsaved(False)
     set_schedules_updated(False)
 
 
 # ================================================================
-# Validation
+# Export Config File (Input JSON)
+# ================================================================
 
+def get_default_export_filename() -> str:
+    """
+    Suggest a filename for exporting the working config.
+
+    Rules:
+      - If a real config was loaded, suggest its basename.
+      - If nothing loaded (or only working_config.json exists), suggest new_config_file.json.
+    """
+    path = session.get(SESSION_CONFIG_PATH_KEY)
+    if not path:
+        return "new_config_file.json"
+
+    base = os.path.basename(str(path))
+
+    # If the "loaded path" is the internal working file, treat it like "no loaded config"
+    if os.path.abspath(str(path)) == os.path.abspath(WORKING_PATH):
+        return "new_config_file.json"
+
+    return base if base else "new_config_file.json"
+
+
+def sanitize_export_filename(name: str | None) -> str:
+    """
+    Prevent path traversal + ensure .json extension.
+    """
+    if not name:
+        return get_default_export_filename()
+
+    safe = os.path.basename(name.strip())
+    if not safe:
+        safe = get_default_export_filename()
+
+    if not safe.lower().endswith(".json"):
+        safe += ".json"
+
+    return safe
+
+
+# ================================================================
+# Validation
+# ================================================================
 
 def validate_config(cfg):
 
@@ -369,10 +431,12 @@ def validate_config(cfg):
 
 # ================================================================
 # Status
+# ================================================================
 
 def get_config_status():
-    cfg = session.get("working_config")
-    path = session.get("working_path")
+    cfg = session.get(SESSION_CONFIG_KEY)
+    loaded = cfg is not None
+    path = session.get(SESSION_CONFIG_PATH_KEY)
 
     if not cfg:
         return {
@@ -381,23 +445,30 @@ def get_config_status():
             "counts": {}
         }
 
-    config = cfg.get("config", {})
+    counts = {}
+    if loaded and isinstance(cfg, dict):
+        c = cfg.get("config", {}) if isinstance(cfg.get("config", {}), dict) else {}
+        counts = {
+            "Faculty": len(c.get("faculty", []) or []),
+            "Courses": len(c.get("courses", []) or []),
+            "Rooms": len(c.get("rooms", []) or []),
+            "Labs": len(c.get("labs", []) or []),
+            "Conflicts": len(c.get("conflicts", []) or []),
+        }
 
     return {
-        "loaded": path is not None,
+        "loaded": loaded,
         "path": path,
-        "counts": {
-            "faculty": len(config.get("faculty", [])),
-            "courses": len(config.get("courses", [])),
-            "rooms": len(config.get("rooms", [])),
-            "labs": len(config.get("labs", [])),
-            "conflicts": sum(len(c.get("conflicts", [])) for c in config.get("courses", []))
-        }
+        "counts": counts,
+        "unsaved_changes": get_unsaved(),
+        "schedules_updated": get_schedules_updated(),
+        "default_filename": get_default_export_filename(),
     }
+
 
 # ================================================================
 # Faculty Management
-
+# ================================================================
 
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
@@ -419,7 +490,7 @@ def modify_faculty_service(**kwargs):
 
 # ================================================================
 # Room Management
-
+# ================================================================
 
 def add_room_service(room):
     cfg = _get_cgf()
@@ -441,7 +512,7 @@ def modify_room_service(room, new_name):
 
 # ================================================================
 # Lab Management
-
+# ================================================================
 
 def add_lab_service(**kwargs):
     cfg = _get_cgf()
@@ -463,7 +534,7 @@ def modify_lab_service(**kwargs):
 
 # ================================================================
 # Course Management
-
+# ================================================================
 
 def add_course_service(**kwargs):
 
@@ -500,7 +571,7 @@ def modify_course_service(**kwargs):
 
 # ================================================================
 # Conflict Management
-
+# ================================================================
 
 def add_conflict_service(**kwargs):
     cfg = _get_cgf()
@@ -522,7 +593,7 @@ def modify_conflict_service(**kwargs):
 
 # ================================================================
 # Schedule Generation
-
+# ================================================================
 
 def update_schedules(cfg):
 
