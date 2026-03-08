@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Jacob Karasow
-Date: 2026-03-02
+Date: 2026-03-07
 
 Config Editor Template
 
@@ -56,17 +56,47 @@ Extends base.html.
     <button type="submit">Load</button>
   </form>
 
-  <!--
-    Save Config Form 
-    POST /config/save
-    - Persists current session config to file
-    - Path defaults to loaded path if present
-  -->
-  <form method="post" action="/config/save" class="row">
-    <label>Save path</label>
-    <input name="path" value="{{ status.path or 'configs/config_dev.json' }}">
+<!--
+  Save / Export Configuration Form
+
+  Purpose:
+    Lets the user export the current working configuration to their local
+    machine using a browser save prompt.
+
+  Behavior:
+    - Displays the suggested export filename
+    - Lets the user adjust the filename before saving
+    - Triggers JavaScript-based export flow instead of direct server save
+-->
+<form id="export-config-form" class="row">
+  <label>Save config</label>
+
+    <!--
+      Filename input for export.
+      Uses the loaded config filename when available.
+      Falls back to new_config_file.json when no file has been loaded.
+    -->
+    <input
+      id="export_filename"
+      name="filename"
+      value="{{ status.default_filename or 'new_config_file.json' }}"
+      placeholder="new_config_file.json"
+    >
+
+    <!-- Save button triggers the export flow in app.js -->
     <button type="submit">Save</button>
   </form>
+
+  <!-- Helper text explaining what this action does -->
+  <p class="hint">
+    Save exports the current working configuration to your computer.
+  </p>
+
+  <!--
+    Confirmation message container.
+    Hidden by default and shown by JavaScript after export success/failure.
+  -->
+  <div id="save-confirmation" class="hint" style="display:none;"></div>
 
   <!--
     Clear Config Form
