@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow, Tanner Ness
-# Date: 2026-03-07
+# Date: 2026-03-08
 
 """
 Configuration Service
@@ -85,7 +85,6 @@ def _empty_config():
             "courses": [],
             "rooms": [],
             "labs": [],
-            "conflicts": [],
         },
         "limit": 3,
         "optimizer_flags": [],
@@ -236,21 +235,14 @@ def _commit_change(cfg):
 # Timeslot Defaults
 # ================================================================
 
-DEFAULT_TIMESLOT_CONFIG = {
-    "days": ["MON", "TUE", "WED", "THU", "FRI"],
-    "start_time": "08:00",
-    "end_time": "17:00",
-    "slot_length": 60
-}
-
 def apply_timeslot_defaults(cfg):
-
     if "time_slot_config" not in cfg:
-        cfg["time_slot_config"] = copy.deepcopy(DEFAULT_TIMESLOT_CONFIG)
-    else:
-        for k, v in DEFAULT_TIMESLOT_CONFIG.items():
-            cfg["time_slot_config"].setdefault(k, copy.deepcopy(v))
-
+        cfg["time_slot_config"] = {
+            "days": ["MON", "TUE", "WED", "THU", "FRI"],
+            "start_time": "08:00",
+            "end_time": "17:00",
+            "slot_length": 60
+        }
     return cfg
 
 
@@ -496,7 +488,6 @@ def get_config_status():
             "Courses": len(c.get("courses", []) or []),
             "Rooms": len(c.get("rooms", []) or []),
             "Labs": len(c.get("labs", []) or []),
-            "Conflicts": len(c.get("conflicts", []) or []),
         }
 
     return {
@@ -642,6 +633,8 @@ def update_schedules(cfg):
 
     from app.web.services.run_service import generate_schedules_into_session
 
+    cfg = apply_timeslot_defaults(cfg)
+
     conflicts = get_conflicts()
 
     if conflicts:
@@ -649,9 +642,6 @@ def update_schedules(cfg):
             "Schedules cannot be generated until configuration conflicts are resolved."
         )
 
-    limit = cfg.get("limit", 0)
-    optimizer_flags = cfg.get("optimizer_flags")
-
-    generate_schedules_into_session(limit, optimizer_flags)
+    generate_schedules_into_session(cfg)
 
     return session.get("schedules", [])
