@@ -144,7 +144,6 @@ def detect_conflicts(cfg):
     faculty_names = set()
     room_names = set()
     lab_names = set()
-    course_ids = set()
 
     for f in config.get("faculty", []):
         name = f if isinstance(f, str) else f.get("name")
@@ -414,7 +413,14 @@ def export_config_bytes(filename: str | None = None):
 # ================================================================
 
 def validate_config(cfg):
+    """
+    Validate the scheduler configuration.
 
+    Notes:
+        - Duplicate course_id values are allowed.
+        - Repeated course_id entries represent multiple sections
+          of the same course in scheduler-library input.
+    """
     if "config" not in cfg:
         raise ValueError("Invalid configuration format.")
 
