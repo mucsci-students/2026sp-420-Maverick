@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-03-05
+# Date: 2026-03-07
 """
 Schedule Viewing Service
 
@@ -375,14 +375,20 @@ def Schema():
 # Helper function that makes it so that only schedules without time conflicts 
 # can be made into visual schedules
 def _check_for_conflicts(assignments: List[Dict]) -> bool:
-    """Checks if any assignments in the list overlap in time."""
+    """Checks if any assignments in the list overlap in time and tags them."""
+    has_any_conflict = False
+    
+    # Initialize all to False first
+    for a in assignments:
+        a['is_conflict'] = False
+
     for i, a in enumerate(assignments):
-        # Convert start time "HH:MM" to minutes from midnight
         try:
             h, m = map(int, a['start'].split(':'))
             a_start = h * 60 + m
+            # Use 'duration' from the assignment to find the end time
             a_end = a_start + int(a['duration'])
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, TypeError):
             continue
 
         for j, other in enumerate(assignments):
@@ -397,10 +403,12 @@ def _check_for_conflicts(assignments: List[Dict]) -> bool:
                 
                 # Standard overlap formula: (StartA < EndB) and (EndA > StartB)
                 if a_start < o_end and a_end > o_start:
-                    return True
-            except (ValueError, KeyError):
+                    a['is_conflict'] = True
+                    has_any_conflict = True
+            except (ValueError, KeyError, TypeError):
                 continue
-    return False
+                
+    return has_any_conflict
 
 # ------------------------------
 # Viewer Grouping Helpers

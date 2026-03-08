@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-03-05
+# Date: 2026-03-07
 """
 Schedule Viewer Routes
 
@@ -219,7 +219,7 @@ def export_csv():
         flash(f"CSV Export failed: {e}", "error")
         return redirect(url_for("viewer.viewer"))
 
-# route for exporting the schedule(s) to a calendar schedule view
+# route for exporting the currnet schedule to a calendar schedule view
 @bp.get("/visual_view")
 def visual_view():
     data = get_view_data()
@@ -234,6 +234,21 @@ def visual_view():
     
     return render_template("visual_schedule.html", data=data)
 
+# route for exporting the schedule to a grid view like the ones in Roddy
+# Add this route near your visual_view route
+@bp.get("/grid_view")
+def grid_view():
+    data = get_view_data()
+    if not data["has_schedules"]:
+        flash("No schedules found.", "error")
+        return redirect(url_for("viewer.viewer"))
+    
+    # We can use the same conflict safety check (COMMENTED OUT, cause conflicts don't matter)
+    # if data.get("has_conflicts"):
+    #     flash("Cannot generate grid view for a schedule with conflicts.", "error")
+    #     return redirect(url_for("viewer.viewer"))
+    
+    return render_template("grid_schedule.html", data=data)
 
 # Added a route for allowing the user to reset (clear) the scheulde viewer
 @bp.post("/reset")

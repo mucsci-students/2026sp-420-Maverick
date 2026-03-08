@@ -1,0 +1,220 @@
+<!--
+Author: Ian Swartz
+Date: 2026-03-07
+
+Grid Schedule (used when exporting schedule(s) to a grid file).
+
+Purpose:
+  The grid visual file that is created when exporting a schedule(s).
+-->
+
+<!-- 
+BACKUP FOR THE "grid_schedule.html" file.
+Best working version.
+Issues:
+    - I wanted conflicting time classes to be red.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Grid View - Schedule {{ data.index + 1 }}</title>
+    <style>
+        :root {
+            --primary: #333;
+            --accent: #0D9488; 
+            --accent-hover: #0F766E;
+            --bg-page: #f8f9fa;
+            --card-bg: #ffffff;
+            --border: #dee2e6;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--primary);
+            margin: 0;
+            padding: 30px;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h1 { margin: 0; font-size: 24px; }
+
+        .grid-wrapper {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .day-column {
+            flex: 1;
+            min-width: 200px;
+            background-color: #f1f3f5;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-height: 650px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .day-header {
+            background-color: var(--accent);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-weight: bold;
+            border-radius: 9px 9px 0 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .class-list {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .class-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent);
+            padding: 12px;
+            border-radius: 6px;
+            transition: transform 0.15s ease;
+        }
+
+        .class-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .class-card.conflict-detected {
+            border-left: 5px solid #ff4444;
+            background-color: #fff5f5;
+        }
+
+        .conflict-tag {
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .class-time {
+            display: block;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .class-name {
+            display: block;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+
+        .class-meta {
+            font-size: 0.85em;
+            line-height: 1.4;
+            color: #555;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #adb5bd;
+            margin-top: 50px;
+            font-style: italic;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+        }
+
+        .btn-print { background: var(--accent); color: white; }
+        .btn-print:hover { background: var(--accent-hover); }
+
+        .btn-back { background: #6c757d; color: white; margin-right: 10px; }
+        .btn-back:hover { background: #5a6268; }
+
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; background: white; }
+            .day-column { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <h1>Schedule #{{ data.index + 1 }} - Weekly Grid</h1>
+        <div class="no-print">
+            <a href="{{ url_for('viewer.viewer') }}" class="btn btn-back">Return to Viewer</a>
+            <button onclick="window.print()" class="btn btn-print">Print to PDF</button>
+        </div>
+    </div>
+
+    <div class="grid-wrapper">
+        {% for day in ["MON", "TUE", "WED", "THU", "FRI"] %}
+        <div class="day-column">
+            <div class="day-header">{{ day }}</div>
+            <div class="class-list">
+                
+                {% set ns = namespace(found=false) %}
+                
+                {# Sorts assignments by start time string (e.g., "09:00") #}
+                {% for a in data.assignments | sort(attribute='start') %}
+                    {% if a.day|upper|trim == day %}
+                        {% set ns.found = true %}
+                        {# We assume the data object passed 'is_conflict' for this specific assignment #}
+                        <div class="class-card {% if a.is_conflict %}conflict-detected{% endif %}">
+                            {% if a.is_conflict %}
+                                <span class="conflict-tag">⚠ Time Conflict</span>
+                            {% endif %}
+                            <span class="class-time">{{ a.time }}</span>
+                            <span class="class-name">{{ a.course_id }}</span>
+                            <div class="class-meta">
+                                <strong>Faculty:</strong> {{ a.faculty }}<br>
+                                <strong>Room:</strong> {{ a.room }}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                {% if not ns.found %}
+                    <div class="empty-msg">No classes</div>
+                {% endif %}
+
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
