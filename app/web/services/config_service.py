@@ -364,6 +364,25 @@ def sanitize_export_filename(name: str | None) -> str:
 
     return safe
 
+def export_config_bytes(filename: str | None = None):
+    """
+    Build the current working configuration as downloadable JSON bytes.
+
+    Behavior:
+      - Exports the current in-session working configuration
+      - Falls back to an empty/default config if nothing is loaded yet
+      - Uses the loaded filename as default when available
+      - Otherwise defaults to new_config_file.json
+    """
+    cfg = _get_working_config()
+
+    validate_config(cfg)
+
+    safe_name = sanitize_export_filename(filename)
+    payload = json.dumps(cfg, indent=4)
+
+    return payload.encode("utf-8"), safe_name
+
 
 # ================================================================
 # Validation
