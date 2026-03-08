@@ -2,29 +2,56 @@
 # Date: 2026-03-08
 
 """
-Configuration Service
+config_service.py
 
-Provides business logic for loading, saving, and modifying
-the scheduler configuration.
+Purpose:
+    Provides the business logic for loading, saving, exporting, validating,
+    and modifying the scheduler configuration used by the web interface.
 
-Acts as part of the Model layer in MVC.
+Architectural Role (MVC):
+    - Acts as part of the Model / Service layer in MVC.
+    - Stores and retrieves the active working configuration from Flask session state.
+    - Coordinates edits made through the Config Editor before they are persisted.
+    - Validates config data before save/export/generation actions.
+    - Tracks unsaved changes, conflict state, and schedule freshness.
+
+High-Level Responsibilities:
+    - Maintain the in-session working configuration
+    - Load configuration from a repo path or browser-uploaded JSON file
+    - Save the current configuration to disk
+    - Export the current configuration as downloadable JSON
+    - Apply sane defaults for time slot configuration
+    - Detect lightweight configuration conflicts for UI feedback
+    - Validate scheduler data before saving/exporting/generating
+    - Expose service wrappers for faculty, room, lab, course, and conflict edits
+
+Notes:
+    - This module does not render templates or handle HTTP responses directly.
+    - Routes/controllers call into this service to perform config-related actions.
 """
 
 # ------------------------------
 # Imports
 # ------------------------------
 
+# Standard library imports used for JSON parsing, file path handling,
+# and safe deep-copying of configuration dictionaries.
 import json
 import os
 import copy
+
+# Flask session stores the user's active working configuration,
+# editor state, and related UI flags.
 from flask import session
 
+# Faculty management operations from the domain/application layer.
 from app.faculty_management.faculty_management import (
     add_faculty,
     remove_faculty,
     modify_faculty,
 )
 
+# Course + conflict management operations from the domain/application layer.
 from app.course_management.course_management import (
     add_course,
     remove_course,
@@ -34,12 +61,14 @@ from app.course_management.course_management import (
     modify_conflict,
 )
 
+# Room management operations.
 from app.room_management.room_management import (
     add_room,
     remove_room,
     modify_room,
 )
 
+# Lab management operations.
 from app.lab_management.lab_management import (
     add_lab,
     remove_lab,
@@ -50,11 +79,17 @@ from app.lab_management.lab_management import (
 # Paths
 # ================================================================
 
+# Resolve the absolute path to the project root so config files can be
+# accessed consistently regardless of where the app is launched from.
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../../")
 )
 
+# The configs directory contains baseline, dev, test, and working configs.
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, "configs")
+
+# working_config.json is the internal file mirror of the in-session config.
+# It serves as a safe current snapshot of the config being edited in the GUI.
 WORKING_PATH = os.path.join(CONFIGS_DIR, "working_config.json")
 
 
@@ -62,10 +97,19 @@ WORKING_PATH = os.path.join(CONFIGS_DIR, "working_config.json")
 # Session Keys
 # ================================================================
 
+# Session key for the actively edited scheduler configuration.
 SESSION_CONFIG_KEY = "working_config"
+
+# Session key for the currently loaded config path or uploaded filename.
 SESSION_CONFIG_PATH_KEY = "working_path"
+
+# Session key indicating whether the config has unsaved edits.
 SESSION_UNSAVED_KEY = "unsaved_changes"
+
+# Session key indicating whether schedules reflect the latest config state.
 SESSION_SCHEDULES_UPDATED_KEY = "schedules_updated"
+
+# Session key storing detected config conflicts for UI display.
 SESSION_CONFLICTS_KEY = "config_conflicts"
 
 
@@ -79,6 +123,17 @@ def _ensure_configs_folder():
 
 
 def _empty_config():
+    """
+    Build a blank scheduler configuration with safe defaults.
+
+    Returns:
+        dict:
+            A minimal valid configuration structure containing:
+            - empty faculty/course/room/lab collections
+            - default limit value
+            - empty optimizer flags
+            - default time slot configuration
+    """
     cfg =  {
         "config": {
             "faculty": [],
@@ -94,6 +149,16 @@ def _empty_config():
 
 
 def _write_working_file(cfg):
+    """
+    Persist the current working configuration to working_config.json.
+
+    Purpose:
+        Keeps a disk copy of the in-session configuration for debugging,
+        consistency, and internal fallback behavior.
+
+    Args:
+        cfg (dict): The scheduler configuration to write.
+    """
     _ensure_configs_folder()
     with open(WORKING_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=4)
@@ -199,6 +264,17 @@ def detect_conflicts(cfg):
 # ================================================================
 
 def _get_working_config():
+    """
+    Retrieve the active working configuration from session.
+
+    Behavior:
+        - If no config is currently loaded, create a blank default config
+        - Write the working config snapshot to disk
+        - Reset unsaved/schedule flags for this initial session setup
+
+    Returns:
+        dict: The active working configuration.
+    """
     cfg = session.get(SESSION_CONFIG_KEY)
 
     # If nothing has been loaded yet, do NOT auto-create one
@@ -207,7 +283,10 @@ def _get_working_config():
     
     session[SESSION_CONFIG_KEY] = cfg
 
+    # Keep the disk mirror in sync with session state.
     _write_working_file(cfg)
+
+    # Initial retrieval should not count as a user edit.
     _set_unsaved(False)
     set_schedules_updated(False)
 
@@ -250,30 +329,82 @@ def apply_timeslot_defaults(cfg):
 # Load / Save
 # ================================================================
 
-def load_config_into_session(path: str):
+def load_config_into_session(source):
+    """
+    Load a scheduler configuration into session.
 
-    with open(path, "r", encoding = "utf-8") as f:
-        loaded_config = json.load(f)
+    Supported Sources:
+        - A repo/disk path string pointing to a JSON config file
+        - An uploaded browser file object from request.files
 
+    Workflow:
+        - Read and parse the JSON source
+        - Apply missing time slot defaults
+        - Store the loaded config and source path/filename in session
+        - Refresh working_config.json on disk
+        - Reset unsaved + schedules_updated flags
+        - Detect and store conflicts for immediate UI feedback
+
+    Args:
+        source:
+            Either a filesystem path (str) or an uploaded file object.
+
+    Raises:
+        json.JSONDecodeError:
+            If the source content is not valid JSON.
+        OSError:
+            If a provided path cannot be opened.
+    """
+    if isinstance(source, str):
+        # Load config from a filesystem path, typically from inside the repo.
+        with open(source, "r", encoding="utf-8") as f:
+            loaded_config = json.load(f)
+        loaded_path = source
+    else:
+        # Load config from an uploaded browser file.
+        raw_data = source.read().decode("utf-8-sig")
+        loaded_config = json.loads(raw_data)
+        loaded_path = source.filename or "uploaded_config.json"
+
+    # Work on a copy so imported data can be normalized safely.
     working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
-    # store config
+    # Store the loaded config and its source identifier in session.
     session[SESSION_CONFIG_KEY] = working_copy
-    session[SESSION_CONFIG_PATH_KEY] = path
+    session[SESSION_CONFIG_PATH_KEY] = loaded_path
 
+    # Keep the internal working file synchronized with session state.
     _write_working_file(working_copy)
 
+    # Freshly loaded configs should not be marked as unsaved yet.
     _set_unsaved(False)
     set_schedules_updated(False)
 
-    # detect conflicts but DO NOT stop loading
+    # Immediately detect editor-level conflicts for display in the UI.
     conflicts = detect_conflicts(working_copy)
-
     session["config_conflicts"] = conflicts
 
 
 def save_config_from_session(path: str):
+    """
+    Save the current working configuration from session to a target JSON file.
 
+    Workflow:
+        - Retrieve the working config
+        - Validate it before writing
+        - Serialize it to the provided path
+        - Update session path to the new save location
+        - Mark unsaved edits as resolved
+
+    Args:
+        path (str): Destination JSON file path.
+
+    Raises:
+        ValueError:
+            If the configuration fails validation.
+        OSError:
+            If the path cannot be written.
+    """
     cfg = _get_working_config()
 
     validate_config(cfg)
@@ -299,7 +430,11 @@ def clear_config():
       - session has no loaded config/path (status.loaded becomes False)
       - working_config.json is reset to a blank config on disk (safe fallback)
       - unsaved + schedules_updated reset
-    """
+
+    Notes:
+        This does not delete real config files from the repo or user's system.
+        It only clears the current web-session working state.
+    """    
     blank = _empty_config()
 
     session.pop(SESSION_CONFIG_KEY, None)
@@ -339,6 +474,15 @@ def get_default_export_filename() -> str:
 def sanitize_export_filename(name: str | None) -> str:
     """
     Prevent path traversal + ensure .json extension.
+
+    Rules:
+        - Strip whitespace
+        - Reduce to basename only
+        - Fall back to default name if empty
+        - Append .json if the extension is missing
+    
+    Returns:
+        str: Safe filename suitable for download.
     """
     if not name:
         return get_default_export_filename()
@@ -469,6 +613,20 @@ def validate_config(cfg):
 # ================================================================
 
 def get_config_status():
+    """
+    Build a summary of the current configuration/editor state for the UI.
+
+    Returned data is typically used by routes/views to show:
+        - whether a config is loaded
+        - where it came from
+        - how many faculty/courses/rooms/labs exist
+        - whether unsaved edits exist
+        - whether schedules are current
+        - what filename should be suggested for export
+
+    Returns:
+        dict: Config editor status information.
+    """
     cfg = session.get(SESSION_CONFIG_KEY)
     loaded = cfg is not None
     path = session.get(SESSION_CONFIG_PATH_KEY)

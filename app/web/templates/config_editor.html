@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Jacob Karasow
-Date: 2026-03-07
+Date: 2026-03-08
 
 Config Editor Template
 
@@ -20,9 +20,22 @@ Primary Responsibilities:
         * Conflicts
 
 Template Inputs (from Controller):
-    - status.loaded (bool): whether a configuration is currently loaded
-    - status.path (str): path of currently loaded config
-    - status.counts (dict): summary counts (faculty, rooms, courses, etc.)
+    status.loaded (bool):
+        True if a configuration is currently loaded into session.
+
+    status.path (str):
+        Name/path of the currently loaded configuration source.
+
+    status.default_filename (str):
+        Suggested export filename for browser download.
+
+    status.counts (dict):
+        Summary counts for the loaded configuration contents
+        (faculty, rooms, labs, courses, etc.).
+
+    status.conflicts (list[str]):
+        A list of detected configuration conflicts to display
+        to the user when present.
 
 Architectural Role (MVC):
     - View layer for configuration management
@@ -41,40 +54,76 @@ Extends base.html.
 <!-- ========================================================= -->
 <!-- Load / Save / Clear Section                               -->
 <!-- ========================================================= -->
+<!--
+  This section contains the top-level file operations for the
+  configuration editor.
+
+  User actions available here:
+    - Load a config JSON from the local machine
+    - Export the current working config to the local machine
+    - Clear the currently loaded config from session
+-->
 <section class="card">
   <h2>Load / Save</h2>
-
+ 
   <!--
     Load Config Form
-    POST /config/load
-    - Loads oncfiguration into session
-    - Updates status panel on success
+
+    Route:
+      POST /config/load_file
+
+    Purpose:
+      Lets the user choose a JSON configuration file from their
+      computer and upload it into the current session.
+
+    Behavior:
+      - Browser file picker restricts selection to .json files
+      - Multipart form encoding is required for file uploads
+      - On success, the controller updates session state and the
+        status panel below will reflect the loaded config
   -->
-  <form method="post" action="/config/load" class="row">
-    <label>Config path</label>
-    <input name="path" value="{{ status.path or '' }}" placeholder="configs/config_dev.json">
+  <form method="post"
+        action="/config/load_file"
+        enctype="multipart/form-data"
+        class="row">
+    <label>Load config</label>
+    <input type="file" name="config_file" accept=".json" required>
     <button type="submit">Load</button>
   </form>
 
-<!--
-  Save / Export Configuration Form
+  <!-- Helper text explaining what this action does -->
+  <p class="hint">
+    Load imports a configuration JSON from your computer into the working session.
+  </p>
 
-  Purpose:
-    Lets the user export the current working configuration to their local
-    machine using a browser save prompt.
+  <!--
+    Save / Export Configuration Form
 
-  Behavior:
-    - Displays the suggested export filename
-    - Lets the user adjust the filename before saving
-    - Triggers JavaScript-based export flow instead of direct server save
--->
-<form id="export-config-form" class="row">
-  <label>Save config</label>
+    Purpose:
+      Lets the user export the current working configuration to their local
+      machine using a browser save prompt.
+
+    Behavior:
+      - Uses a suggested filename when one is available
+      - Allows the user to change the filename before export
+      - Submission is handled by JavaScript in app.js
+      - Does not directly submit to a Flask POST route
+  -->
+  <form id="export-config-form" class="row">
+    <label>Save config</label>
 
     <!--
-      Filename input for export.
-      Uses the loaded config filename when available.
-      Falls back to new_config_file.json when no file has been loaded.
+      Export filename input
+
+      Source:
+        status.default_filename if present
+
+      Fallback:
+        new_config_file.json
+
+      Purpose:
+        Gives the user control over the downloaded filename used
+        during the browser export flow.
     -->
     <input
       id="export_filename"
@@ -100,9 +149,16 @@ Extends base.html.
 
   <!--
     Clear Config Form
-    POST /config/clear
-    - Removes loaded config from session
-    - Button disabled if no config is loaded
+
+    Route:
+      POST /config/clear
+
+    Purpose:
+      Removes the currently loaded configuration from session state.
+
+    Behavior:
+      - Displays the currently loaded file/path in a disabled input
+      - Clear button is disabled when no config is currently loaded
   -->
   <form method="post" action="/config/clear" class="row">
     <label>Clear loaded</label>
@@ -114,14 +170,41 @@ Extends base.html.
 <!-- ========================================================= -->
 <!-- Configuration Status Panel                                -->
 <!-- ========================================================= -->
+<!--
+  This section displays the current load state of the configuration.
+
+  When a config is loaded:
+    - Shows loaded status
+    - Shows the source filename/path
+    - Shows summary counts of configuration entities
+    - Shows detected conflict messages when available
+
+  When no config is loaded:
+    - Shows unloaded state
+    - Instructs the user to load a config first
+-->
 <section class="card">
   <h2>Status</h2>
 
   {% if status.loaded %}
 
-    <p><strong>Loaded:</strong> Yes</p>
-    <p><strong>Path:</strong> {{ status.path }}</p>
+    <!-- Indicates that a configuration is currently active in session -->
+    <p><strong>Loaded Status:</strong> Yes</p>
 
+    <!-- Displays the source path or filename of the loaded config -->
+    <p><strong>File Loaded:</strong> {{ status.path }}</p>
+
+    <!--
+      Summary counts list
+
+      Example contents:
+        faculty: 3
+        rooms: 5
+        courses: 8
+
+      This gives the user a quick overview of the currently loaded
+      configuration contents.
+    -->
     <ul>
       {% for k, v in status.counts.items() %}
         <li>{{ k }}: {{ v }}</li>
@@ -141,7 +224,10 @@ Extends base.html.
 
   {% else %}
 
-    <p><strong>Loaded:</strong> No</p>
+    <!-- Indicates that no configuration is currently loaded -->
+    <p><strong>File Loaded:</strong> No</p>
+
+    <!-- Helper text guiding the user toward the next required step -->
     <p class="hint">Load a config to enable schedule generation.</p>
 
   {% endif %}
@@ -151,6 +237,24 @@ Extends base.html.
 <!-- ========================================================= -->
 <!-- Faculty Management                                        -->
 <!-- ========================================================= -->
+<!--
+  This section provides faculty CRUD operations.
+
+  Supported actions:
+    - Add faculty
+    - Remove faculty
+    - Modify faculty
+
+  Current exposed inputs:
+    - Faculty name
+    - Appointment type
+
+  Notes:
+    - Appointment type likely maps to backend rules for credit limits
+      and unique course limits.
+    - More advanced faculty attributes (times/preferences) may be
+      handled later or in a different UI revision.
+-->
 <section class="card">
   <h2>Faculty Management</h2>
 
