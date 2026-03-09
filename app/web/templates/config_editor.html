@@ -258,6 +258,7 @@ Extends base.html.
 <section class="card">
   <h2>Faculty Management</h2>
 
+  <!-- Input Fields -->
   <style>
     input, select {
       width: 25%;
@@ -274,13 +275,13 @@ Extends base.html.
     }
   </style>
 
-
   <!-- Add Faculty -->
   <!-- POST /config/faculty/add -->
   <h3>Add Faculty</h3>
   <form method="post" action="/config/faculty/add">
     <input name = "name" placeholder = "Faculty Name (e.g., Dr. Johnson)" required>
     
+    <!-- Appointment Type Drop-Down Selection -->
     <select name = "appointment_type" required>
       <option value="" disabled selected>Appointment Type</option>
       <option value="Full-Time">Full-Time</option>
@@ -304,24 +305,36 @@ Extends base.html.
   <form method="post" action="/config/faculty/modify">
     <input name="name" placeholder="Current Name (e.g., Dr. Johnson)" required>
     
+    <!-- Appointment Type Drop-Down Selection -->
     <select name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
       <option value="" disabled selected>Appointment Type</option>
       <option value="Full-Time">Full-Time</option>
       <option value="Adjunct">Adjunct</option>
     </select>
     
-    
     <button type="submit">Modify Faculty</button>
   </form>
 </section>
 
 <!-- ========================================================= -->
-<!-- Room Management                                           -->
+<!-- Room Management                                        -->
 <!-- ========================================================= -->
+<!--
+  This section provides room CRUD operations.
+
+  Supported actions:
+    - Add room
+    - Remove room
+    - Modify room
+
+  Current exposed inputs:
+    - Room name
+-->
 <section class="card">
   <h2>Room Management</h2>
 
   <!-- Add Room -->
+  <!-- POST /config/room/add -->
   <h3>Add Room</h3>
   <form method="post" action="/config/room/add">
     <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
@@ -329,6 +342,7 @@ Extends base.html.
   </form>
 
   <!-- Remove Room -->
+  <!-- POST /config/room/remove -->
   <h3>Remove Room</h3>
   <form method="post" action="/config/room/remove">
     <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
@@ -336,6 +350,7 @@ Extends base.html.
   </form>
 
   <!-- Modify Room -->
+  <!-- POST /config/room/modify -->
   <h3>Modify Room</h3>
   <form method="post" action="/config/room/modify">
     <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
@@ -345,23 +360,40 @@ Extends base.html.
 </section>
 
 <!-- ========================================================= -->
-<!-- Lab Management                                            -->
+<!-- Lab Management                                        -->
 <!-- ========================================================= -->
+<!--
+  This section provides lab CRUD operations.
+
+  Supported actions:
+    - Add lab
+    - Remove lab
+    - Modify lab
+
+  Current exposed inputs:
+    - Lab name
+-->
 <section class="card">
   <h2>Lab Management</h2>
 
+  <!-- Add Lab -->
+  <!-- POST /config/lab/add -->
   <h3>Add Lab</h3>
   <form method="post" action="/config/lab/add">
     <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
     <button type="submit">Add Lab</button>
   </form>
 
+  <!-- Remove Lab -->
+  <!-- POST /config/lab/remove -->
   <h3>Remove Lab</h3>
   <form method="post" action="/config/lab/remove">
     <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
     <button type="submit">Remove Lab</button>
   </form>
 
+  <!-- Modify Lab -->
+  <!-- POST /config/lab/modify -->
   <h3>Modify Lab</h3>
   <form method="post" action="/config/lab/modify">
     <input name="lab" placeholder="Existing Lab Name (e.g., Linux Lab)" required>
@@ -371,15 +403,32 @@ Extends base.html.
 </section>
 
 <!-- ========================================================= -->
-<!-- Course Management                                         -->
+<!-- Course Management                                        -->
 <!-- ========================================================= -->
+<!--
+  This section provides course CRUD operations.
+
+  Supported actions:
+    - Add course
+    - Remove course
+    - Modify course
+
+  Current exposed inputs:
+    - Course ID (e.g., CMSC 101)
+    - Number of credits
+    - Assigned room (must exist in config)
+    - New Course ID for modifications
+-->
 <section class="card">
   <h2>Course Management</h2>
 
+  <!-- Add Course -->
+  <!-- POST /config/course/add -->
   <h3>Add Course</h3>
   <form method="post" action="/config/course/add">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
     
+    <!-- Number of Credits Drop-Down Selection -->
     <select name="credits" required>
       <option value="" disabled selected>Number of Credits</option>
       <option value="0">0</option>
@@ -393,16 +442,21 @@ Extends base.html.
     <button type="submit">Add Course</button>
   </form>
 
+  <!-- Remove Course -->
+  <!-- POST /config/course/remove -->
   <h3>Remove Course</h3>
   <form method="post" action="/config/course/remove">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
     <button type="submit">Remove Course</button>
   </form>
 
+  <!-- Modify Course -->
+  <!-- POST /config/course/modify -->
   <h3>Modify Course</h3>
   <form method="post" action="/config/course/modify">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
 
+    <!-- Number of Credits Drop-Down Selection -->
     <select name="credits" required>
       <option value="" disabled selected>Number of Credits</option>
       <option value="0">0</option>
@@ -419,11 +473,26 @@ Extends base.html.
 </section>
 
 <!-- ========================================================= -->
-<!-- Conflict Management                                       -->
+<!-- Conflict Management                                        -->
 <!-- ========================================================= -->
-<section class="card">
+<!--
+  This section provides conflict CRUD operations.
+
+  Supported actions:
+    - Add conflict
+    - Remove conflict
+    - Modify conflict
+
+  Current exposed inputs:
+    - Course ID
+    - Conflicting Course ID
+    - New Conflicting Course ID for modifications
+-->
+  <section class="card">
   <h2>Conflict Management</h2>
 
+  <!-- Add Conflict -->
+  <!-- POST /config/conflict/add -->
   <h3>Add Conflict</h3>
   <form method="post" action="/config/conflict/add">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
@@ -431,6 +500,8 @@ Extends base.html.
     <button type="submit">Add Conflict</button>
   </form>
 
+  <!-- Remove Conflict -->
+  <!-- POST /config/conflict/remove -->
   <h3>Remove Conflict</h3>
   <form method="post" action="/config/conflict/remove">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
@@ -438,6 +509,8 @@ Extends base.html.
     <button type="submit">Remove Conflict</button>
   </form>
 
+  <!-- Modify Conflict -->
+  <!-- POST /config/conflict/modify -->
   <h3>Modify Conflict</h3>
   <form method="post" action="/config/conflict/modify">
     <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
