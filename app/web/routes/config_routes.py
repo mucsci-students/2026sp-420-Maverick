@@ -253,7 +253,7 @@ def clear():
     return redirect(url_for("config.editor"))
 
 
-# Faculty 
+# Tells user that a new faculty was added
 @bp.post("/faculty/add")
 def faculty_add():
     try:
@@ -263,6 +263,7 @@ def faculty_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a faculty was removed
 @bp.post("/faculty/remove")
 def faculty_remove():
     try: 
@@ -272,6 +273,7 @@ def faculty_remove():
         flash(str(e), "error")  
     return redirect(url_for("config.editor"))
 
+# Tells user that a faculty was modified
 @bp.post("/faculty/modify")
 def modify_faculty():
     try:
@@ -282,7 +284,7 @@ def modify_faculty():
     return redirect(url_for("config.editor"))
 
 
-# Room 
+# Tells user that a new room was added
 @bp.post("/room/add")
 def room_add():
     try:
@@ -292,6 +294,7 @@ def room_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a room was removed
 @bp.post("/room/remove")
 def room_remove():
     try:
@@ -301,6 +304,7 @@ def room_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a room was modified
 @bp.post("/room/modify")
 def modify_room():
     try:
@@ -313,8 +317,7 @@ def modify_room():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
-
-# Lab
+# Tells user that a new lab was added
 @bp.post("/lab/add")
 def lab_add():
     try:
@@ -324,6 +327,7 @@ def lab_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a lab was removed
 @bp.post("/lab/remove")
 def lab_remove():
     try:
@@ -333,6 +337,7 @@ def lab_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a lab was modified
 @bp.post("/lab/modify")
 def modify_lab():
     try:   
@@ -342,8 +347,7 @@ def modify_lab():
         flash(str(e), "error") 
     return redirect(url_for("config.editor"))
 
-
-# Course
+# Tells user that a new course was added
 @bp.post("/course/add")
 def course_add():
     try: 
@@ -353,6 +357,7 @@ def course_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a course was removed
 @bp.post("/course/remove")
 def course_remove():
     try:
@@ -362,6 +367,7 @@ def course_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a course was modified
 @bp.post("/course/modify")
 def course_modify():
     try:
@@ -371,8 +377,7 @@ def course_modify():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
-
-# Conflict
+# Tells user that a new conflict was added
 @bp.post("/conflict/add")
 def conflict_add():
     try:
@@ -382,6 +387,7 @@ def conflict_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a conflict was removed
 @bp.post("/conflict/remove")
 def conflict_remove():
     try:
@@ -391,6 +397,7 @@ def conflict_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+# Tells user that a conflict was modified
 @bp.post("/conflict/modify")
 def conflict_modify():
     try:

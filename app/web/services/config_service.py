@@ -729,35 +729,24 @@ def modify_lab_service(**kwargs):
 # ================================================================
 
 def add_course_service(**kwargs):
-
     cfg = _get_cgf()
-
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
-
     add_course(cfg, **kwargs)
-
     _commit_change(cfg)
 
 
 def remove_course_service(course_id):
-
     cfg = _get_cgf()
-
     remove_course(cfg, course_id)
-
     _commit_change(cfg)
 
 
 def modify_course_service(**kwargs):
-
     cfg = _get_cgf()
-
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
-
     modify_course(cfg, **kwargs)
-
     _commit_change(cfg)
 
 
