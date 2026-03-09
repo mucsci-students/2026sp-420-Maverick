@@ -4,8 +4,6 @@ Date: 2026-03-07
 
 Schedule Viewer Template
 
-Schedule Viewer Template
-
 Purpose:
   Provides the user interface for browsing and validating generated schedules
   stored in session state.
@@ -321,6 +319,8 @@ Notes:
 
 </section>
 
+
+
 <section class="card">
 
   <!--
@@ -352,19 +352,19 @@ Notes:
               "master-room-table"    -> #tab-master-room-table
               "master-lab-table"     -> #tab-master-lab-table
       -->
-      <!-- <select id="master_menu" class="mode-select" data-group="master">
+      <select id="master_menu" class="mode-select" data-group="master">
         <option value="" selected disabled>Select Master Schedule</option>
         <option value="master-faculty-table">Faculty Master Schedule</option>
         <option value="master-room-table">Room Master Schedule</option>
         <option value="master-lab-table">Lab Master Schedule</option>
-      </select> -->
+      </select>
 
-      <select id="master_menu" class="mode-select">
+      <!-- <select id="master_menu" class="mode-select">
           <option value="default" selected>Sort By (Currently All)...</option>
           <option value="faculty">Faculty</option>
           <option value="room">Room</option>
           <option value="lab">Lab</option>
-      </select>
+      </select> -->
 
       <!--
         Filter By Dropdown:
@@ -374,12 +374,12 @@ Notes:
               "filter-by-room-table"    -> #tab-filter-by-room-table
               "filter-by-lab-table"     -> #tab-filter-by-lab-table
       -->
-      <!-- <select id="filter_menu" class="mode-select" data-group="filter">
+      <select id="filter_menu" class="mode-select" data-group="filter">
         <option value="" selected disabled>Select Filtered Schedule</option>
         <option value="filter-by-faculty-table">Filter By Faculty</option>
         <option value="filter-by-room-table">Filter By Room</option>
         <option value="filter-by-lab-table">Filter By Lab</option>
-      </select> -->
+      </select>
 
       <select id="filter_value" class="mode-select" style="display: none; min-width: 150px;">
           <option value="all" selected disabled>Filter By (Currently All)...</option>
@@ -393,34 +393,13 @@ Notes:
        MASTER SCHEDULE PANELS
        ========================================================= -->
 
-  <!-- Master Schedule for when sorting/filtering is cleared. -->
-
-      <div class="tab-panel" id="tab-default">
-        <h3>Master Schedule (Full)</h3>
-        <table>
-            <thead>
-                <tr><th>Course</th><th>Faculty</th><th>Room</th><th>Time</th></tr>
-            </thead>
-            <tbody>
-                {% for r in data.assignments %}
-                <tr>
-                    <td>{{ r.course_id }}</td>
-                    <td>{{ r.faculty }}</td>
-                    <td>{{ r.room }}</td>
-                    <td>{{ r.time }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-      </div>
-
   <!--
     Panel: Faculty Master Schedule
       - Groups assignments by faculty (data.by_faculty)
       - Use case: validate faculty load + conflicts
       - Hidden by default; shown when Master dropdown selects it
   -->
-  <!-- <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
+  <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
     <h3>Table: By Faculty</h3>
 
     {% if data.count == 0 %}
@@ -444,14 +423,14 @@ Notes:
         </table>
       {% endfor %}
     {% endif %}
-  </div> -->
+  </div>
 
   <!--
     Panel: Room Master Schedule
       - Groups assignments by room (data.by_room)
       - Use case: validate room usage + conflicts
   -->
-  <!-- <div class="tab-panel" id="tab-master-room-table" style="display:none;">
+  <div class="tab-panel" id="tab-master-room-table" style="display:none;">
     <h3>Table: By Room</h3>
 
     {% if data.count == 0 %}
@@ -475,7 +454,7 @@ Notes:
         </table>
       {% endfor %}
     {% endif %}
-  </div> -->
+  </div>
 
   <!--
     Panel: Lab Master Schedule
@@ -487,7 +466,7 @@ Notes:
           1) Display real lab names first
           2) Display empty-lab group last as "No Labs Assigned"
   -->
-  <!-- <div class="tab-panel" id="tab-master-lab-table" style="display:none;">
+  <div class="tab-panel" id="tab-master-lab-table" style="display:none;">
     <h3>Table: By Lab</h3>
 
     {% if data.count == 0 %}
@@ -535,7 +514,7 @@ Notes:
       {% endif %}
 
     {% endif %}
-  </div> -->
+  </div>
 
   <!-- =========================================================
        FILTERED PANELS
@@ -546,20 +525,30 @@ Notes:
       - Intended behavior: show table filtered by the selected faculty
       - Current behavior: renders full faculty grouping (placeholder)
   -->
-  <div class="tab-panel" id="tab-faculty" style="display:none;">
-    {% for fac, rows in data.by_faculty.items() %}
-    <div class="group-container" data-name="{{ fac }}">
+  <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
+    <h3>Table: By Faculty</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      {% for fac, rows in data.by_faculty.items() %}
         <h4>{{ fac }}</h4>
         <table>
-            <thead><tr><th>Course</th><th>Room</th><th>Time</th></tr></thead>
-            <tbody>
-                {% for r in rows %}
-                <tr><td>{{ r.course_id }}</td><td>{{ r.room }}</td><td>{{ r.time }}</td></tr>
-                {% endfor %}
-            </tbody>
+          <thead>
+            <tr><th>Course</th><th>Room</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.room }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
         </table>
-    </div>
-    {% endfor %}
+      {% endfor %}
+    {% endif %}
   </div>
 
   <!--
@@ -567,20 +556,30 @@ Notes:
       - Intended behavior: show table filtered by the selected room
       - Current behavior: renders full room grouping (placeholder)
   -->
-  <div class="tab-panel" id="tab-room" style="display:none;">
+  <div class="tab-panel" id="tab-filter-by-room-table" style="display:none;">
+    <h3>Table: By Room</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
       {% for room, rows in data.by_room.items() %}
-      <div class="group-container" data-name="{{ room }}">
-          <h4>{{ room }}</h4>
-          <table>
-              <thead><tr><th>Course</th><th>Faculty</th><th>Time</th></tr></thead>
-              <tbody>
-                  {% for r in rows %}
-                  <tr><td>{{ r.course_id }}</td><td>{{ r.faculty }}</td><td>{{ r.time }}</td></tr>
-                  {% endfor %}
-              </tbody>
-          </table>
-      </div>
+        <h4>{{ room }}</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       {% endfor %}
+    {% endif %}
   </div>
 
   <!--
@@ -589,111 +588,56 @@ Notes:
       - Current behavior: renders full lab grouping (placeholder)
       - Uses the same "real labs first, empty labs last" strategy
   -->
-  <div class="tab-panel" id="tab-lab" style="display:none;">
+  <div class="tab-panel" id="tab-filter-by-lab-table" style="display:none;">
+    <h3>Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
       {% for lab, rows in data.by_lab.items() %}
-      {% set lab_label = lab if lab else "No Labs Assigned" %}
-      <div class="group-container" data-name="{{ lab_label }}">
-          <h4>{{ lab_label }}</h4>
+        {% if lab %}
+          <h4>{{ lab }}</h4>
           <table>
-              <thead><tr><th>Course</th><th>Faculty</th><th>Time</th></tr></thead>
-              <tbody>
-                  {% for r in rows %}
-                  <tr><td>{{ r.course_id }}</td><td>{{ r.faculty }}</td><td>{{ r.time }}</td></tr>
-                  {% endfor %}
-              </tbody>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
           </table>
-      </div>
+        {% endif %}
       {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      
+    {% endif %}
   </div>
 
-
 </section>
-
-<!-- JavaScript code used for incrementing the functionality of the filtering. -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const masterMenu = document.getElementById('master_menu');
-    const filterVal = document.getElementById('filter_value');
-    const clearBtn = document.getElementById('clear_filters');
-    const allPanels = document.querySelectorAll('.tab-panel');
-
-    const showDefaultView = () => {
-        // 1. Hide everything specialized
-        allPanels.forEach(p => p.style.display = 'none');
-        
-        // 2. Show the Master Full Table
-        const defaultTab = document.getElementById('tab-default');
-        if (defaultTab) defaultTab.style.display = 'block';
-        
-        // 3. Reset Dropdowns to default states
-        masterMenu.value = 'default';
-        filterVal.style.display = 'none';
-        filterVal.innerHTML = '<option value="all" selected>Filter By (Currently All)...</option>';
-        
-        // 4. Reset all hidden containers inside panels for next use
-        document.querySelectorAll('.group-container').forEach(g => g.style.display = 'block');
-    };
-
-    // Force default view on every page load (handles Import/Navigation)
-    showDefaultView();
-
-    clearBtn.addEventListener('click', showDefaultView);
-
-    masterMenu.addEventListener('change', () => {
-        const category = masterMenu.value;
-        
-        if (category === 'default') {
-            showDefaultView();
-            return;
-        }
-
-        // Hide Master and show the category panel (Faculty/Room/Lab)
-        allPanels.forEach(p => p.style.display = 'none');
-        const panel = document.getElementById(`tab-${category}`);
-        
-        if (panel) {
-            panel.style.display = 'block';
-            
-            // Reset secondary filter dropdown
-            filterVal.innerHTML = '<option value="all" selected>Filter By (Currently All)...</option>';
-            
-            const groups = panel.querySelectorAll('.group-container');
-            groups.forEach(group => {
-                group.style.display = 'block'; // Reset visibility when switching categories
-                const name = group.getAttribute('data-name');
-                if (name) {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = name;
-                    filterVal.appendChild(opt);
-                }
-            });
-
-            filterVal.style.display = groups.length > 0 ? 'inline-block' : 'none';
-        }
-    });
-
-    filterVal.addEventListener('change', () => {
-        const category = masterMenu.value;
-        const panel = document.getElementById(`tab-${category}`);
-        const selection = filterVal.value;
-
-        if (!panel) return;
-
-        // Logic fix: Ensure we are only hiding groups within the ACTIVE panel
-        panel.querySelectorAll('.group-container').forEach(group => {
-            const groupName = group.getAttribute('data-name');
-            
-            // Critical fix: Selection must match the data-name EXACTLY
-            if (selection === 'all' || groupName === selection) {
-                group.style.display = 'block';
-            } else {
-                group.style.display = 'none';
-            }
-        });
-    });
-});
-</script>
-
 
 {% endblock %}
