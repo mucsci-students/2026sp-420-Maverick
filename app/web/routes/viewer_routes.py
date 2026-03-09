@@ -45,16 +45,42 @@ def viewer():
     ref = (request.referrer or "")
 
     if get_schedules_updated() & ('/config' in ref):
-        
         cfg = _get_cgf()
         update_schedules(cfg)
-
         set_schedules_updated(False)
 
     data = get_view_data()
     export_enabled = is_export_enabled()
-    return render_template("viewer.html", data=data, is_export_enabled = export_enabled)
 
+    cfg = _get_cgf()
+    config_block = cfg.get("config", {})
+
+    room_options = [
+        room.strip()
+        for room in config_block.get("rooms", [])
+        if isinstance(room, str) and room.strip()
+    ]
+
+    lab_options = [
+        lab.strip()
+        for lab in config_block.get("labs", [])
+        if isinstance(lab, str) and lab.strip()
+    ]
+
+    faculty_options = [
+        fac.get("name", "").strip()
+        for fac in config_block.get("faculty", [])
+        if isinstance(fac, dict) and fac.get("name", "").strip()
+    ]
+
+    return render_template(
+        "viewer.html",
+        data=data,
+        is_export_enabled=export_enabled,
+        room_options=room_options,
+        lab_options=lab_options,
+        faculty_options=faculty_options
+    )
 
 @bp.post("/next")
 def go_next():

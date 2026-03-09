@@ -1,6 +1,6 @@
 /*
-Author: Antonio Corona
-Date: 2026-03-07
+Author: Antonio Corona, Ian Swartz
+Date: 2026-03-08
 
 JavaScript Utilities – Schedule Viewer UI Logic
 
@@ -40,16 +40,22 @@ Schedule Viewer Behavior
 */
 
 /**
- * Initializes the Schedule Viewer tab/table display behavior.
+ * Initializes the Schedule Viewer tab and entity-filter behavior.
  *
  * Responsibilities:
- *   - Switch between different schedule table panels
+ *   - Switch between schedule table panels
  *   - Keep only one panel visible at a time
- *   - Reset the opposite menu when one selector is used
- *   - Save the current viewer mode in localStorage
- *   - Restore the previously selected mode on page reload
+ *   - Reset the opposite selector when one menu is used
+ *   - Support entity-specific filtering for rooms, labs, and faculty
+ *   - Save the current table mode and filter selections in localStorage
+ *   - Restore the previous viewer state on page reload
+ *   - Clear all active viewer selections when requested
  *
- * This function safely exits on pages that do not contain viewer elements.
+ * Notes:
+ *   - This function safely exits on pages that do not include
+ *     the viewer table UI.
+ *   - Entity filters are only applied within their matching
+ *     filtered schedule views.
  */
 function initViewerTables() {
 
@@ -58,15 +64,42 @@ function initViewerTables() {
   // 1. Element References
   // ------------------------------------------------------------
 
-  // All table panels that may be shown/hidden
+  // All tab panels used by the viewer.
   const panels = document.querySelectorAll(".tab-panel");
 
   // Dropdown selectors used to choose display modes.
   const selects = document.querySelectorAll(".mode-select");
  
-  // Individual dropdown references 
+  /**
+   * Individual viewer control references.
+   *
+   * masterMenu:
+   *   Dropdown for selecting standard table views.
+   *
+   * filterMenu:
+   *   Dropdown for selecting filtered table views.
+   *
+   * clearBtn:
+   *   Button used to reset all current viewer selections.
+   */
   const masterMenu = document.getElementById("master_menu");
   const filterMenu = document.getElementById("filter_menu");
+  const clearBtn = document.getElementById("clear_filters");
+
+  // Room filter controls
+  const roomFilterSelect = document.getElementById("room_filter_select");
+  const roomGroups = document.querySelectorAll(".room-filter-group");
+  const roomEmpty = document.getElementById("room_filter_empty");
+
+  // Lab filter controls
+  const labFilterSelect = document.getElementById("lab_filter_select");
+  const labGroups = document.querySelectorAll(".lab-filter-group");
+  const labEmpty = document.getElementById("lab_filter_empty");
+
+  // Faculty filter controls
+  const facultyFilterSelect = document.getElementById("faculty_filter_select");
+  const facultyGroups = document.querySelectorAll(".faculty-filter-group");
+  const facultyEmpty = document.getElementById("faculty_filter_empty");
 
   // If this page doesn't include the viewer table UI, do nothing.
   if (!panels.length || !selects.length) return;
@@ -77,9 +110,11 @@ function initViewerTables() {
   // ------------------------------------------------------------
 
   /**
-   * Hides all table panels.
-   * Ensures only one view is visible at a time.
-   */  
+   * Hides all schedule viewer panels.
+   *
+   * Used before showing a newly selected panel so that only one
+   * schedule table view remains visible at a time.
+   */
   function hideAllPanels() {
     panels.forEach((panel) => {
       panel.style.display = "none";
@@ -112,6 +147,139 @@ function initViewerTables() {
     }
   }
 
+  // Hides all entity-specific result groups for a given filter section.
+  function hideGroups(groups, emptyMessage) {
+    groups.forEach((group) => {
+      group.style.display = "none";
+    });
+
+    if (emptyMessage) {
+      emptyMessage.style.display = "none";
+    }
+  }
+
+  // Applies an entity-specific filter to a group collection.
+  function applyEntityFilter(selectedValue, groups, emptyMessage) {
+    let foundMatch = false;
+
+    groups.forEach((group) => {
+      const entityName = group.dataset.entity || "";
+      const isMatch = entityName === selectedValue;
+
+      group.style.display = isMatch ? "" : "none";
+
+      if (isMatch) {
+        foundMatch = true;
+      }
+    });
+
+    if (emptyMessage) {
+      emptyMessage.style.display =
+        selectedValue && !foundMatch ? "" : "none";
+    }
+  }
+
+  /**
+   * Hides all room, lab, and faculty filtered result groups.
+   *
+   * This is used when switching between schedule table modes
+   * so that stale filtered results do not remain visible.
+   */
+  function hideAllEntityGroups() {
+    hideGroups(roomGroups, roomEmpty);
+    hideGroups(labGroups, labEmpty);
+    hideGroups(facultyGroups, facultyEmpty);
+  }
+
+  // Automatically selects the first real option in a dropdown.
+  function autoSelectFirstOption(selectEl) {
+    if (!selectEl) return;
+
+    if (!selectEl.value && selectEl.options.length > 1) {
+      selectEl.selectedIndex = 1;
+    }
+  }
+
+  /**
+   * Clears all current viewer selections and stored viewer state.
+   *
+   * Responsibilities:
+   *   - Hides all table panels
+   *   - Hides all filtered entity groups
+   *   - Resets all dropdown menus to their default placeholder options
+   *   - Removes saved viewer state from localStorage
+   *
+   * This supports the "Show Schedule / Clear" behavior in the UI.
+   */
+  function clearViewerSelections() {
+    hideAllPanels();
+    hideAllEntityGroups();
+
+    if (masterMenu) masterMenu.selectedIndex = 0;
+    if (filterMenu) filterMenu.selectedIndex = 0;
+
+    if (roomFilterSelect) roomFilterSelect.selectedIndex = 0;
+    if (labFilterSelect) labFilterSelect.selectedIndex = 0;
+    if (facultyFilterSelect) facultyFilterSelect.selectedIndex = 0;
+
+    try {
+      localStorage.removeItem("viewerTableMode");
+      localStorage.removeItem("viewerTableGroup");
+      localStorage.removeItem("viewerRoomFilter");
+      localStorage.removeItem("viewerLabFilter");
+      localStorage.removeItem("viewerFacultyFilter");
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  /**
+   * Applies behavior specific to the currently selected panel.
+   *
+   * Parameters:
+   *   panelKey (string):
+   *     The identifier for the active panel.
+   *
+   * Responsibilities:
+   *   - Hides all entity groups before applying a new filter
+   *   - Auto-selects the first available dropdown option
+   *   - Applies the corresponding room/lab/faculty filter
+   *   - Saves the active entity filter to localStorage
+   *
+   * This function is used when switching into one of the
+   * filtered schedule views.
+   */
+  function handlePanelSpecificBehavior(panelKey) {
+    hideAllEntityGroups();
+
+    if (panelKey === "filter-by-room-table") {
+      autoSelectFirstOption(roomFilterSelect);
+      applyEntityFilter(roomFilterSelect?.value, roomGroups, roomEmpty);
+
+      try {
+        localStorage.setItem("viewerRoomFilter", roomFilterSelect?.value || "");
+      } catch {}
+    }
+
+    if (panelKey === "filter-by-lab-table") {
+      autoSelectFirstOption(labFilterSelect);
+      applyEntityFilter(labFilterSelect?.value, labGroups, labEmpty);
+
+      try {
+        localStorage.setItem("viewerLabFilter", labFilterSelect?.value || "");
+      } catch {}
+    }
+
+    if (panelKey === "filter-by-faculty-table") {
+      autoSelectFirstOption(facultyFilterSelect);
+      applyEntityFilter(facultyFilterSelect?.value, facultyGroups, facultyEmpty);
+
+      try {
+        localStorage.setItem("viewerFacultyFilter", facultyFilterSelect?.value || "");
+      } catch {}
+    }
+  }
+
 
   // ------------------------------------------------------------
   // 3. Initial State
@@ -119,13 +287,23 @@ function initViewerTables() {
 
   // Start with all panels hidden until a selection is made/restored.
   hideAllPanels();
+  hideAllEntityGroups();
 
 
   // ------------------------------------------------------------
-  // 4. Dropdown Change Event Handling
+  // 4. Main Dropdown Handling
   // ------------------------------------------------------------
 
-  // Attach change listeners to each mode selector.
+  /**
+   * Attach change listeners to all top-level mode selectors.
+   *
+   * When the user changes a viewer mode:
+   *   - Hide all panels
+   *   - Show the selected panel
+   *   - Reset the opposite dropdown
+   *   - Apply any panel-specific filter behavior
+   *   - Save the new mode in localStorage
+   */
   selects.forEach((sel) => {
     sel.addEventListener("change", () => {
       const panelKey = sel.value;                 // e.g. "master-room-table"
@@ -140,6 +318,9 @@ function initViewerTables() {
       // Reset opposite dropdown
       resetOtherMenu(group);
 
+      // Handles the specific behavior for the panels
+      handlePanelSpecificBehavior(panelKey);
+
       // Store the current viewer state so it can be restored later.
       try {
         localStorage.setItem("viewerTableMode", panelKey);
@@ -150,11 +331,96 @@ function initViewerTables() {
     });
   });
 
-  // Attempt to restore the previously selected viewer state.
+
+  // ------------------------------------------------------------
+  // 5. Individual Entity Dropdown Handlers
+  // ------------------------------------------------------------
+
+  /**
+   * Attach room filter listener.
+   *
+   * Shows only the selected room group and saves the room selection.
+   */
+  if (roomFilterSelect) {
+    roomFilterSelect.addEventListener("change", () => {
+      applyEntityFilter(roomFilterSelect.value, roomGroups, roomEmpty);
+
+      try {
+        localStorage.setItem("viewerRoomFilter", roomFilterSelect.value);
+      } catch {}
+    });
+  }
+
+  /**
+   * Attach lab filter listener.
+   *
+   * Shows only the selected lab group and saves the lab selection.
+   */
+  if (labFilterSelect) {
+    labFilterSelect.addEventListener("change", () => {
+      applyEntityFilter(labFilterSelect.value, labGroups, labEmpty);
+
+      try {
+        localStorage.setItem("viewerLabFilter", labFilterSelect.value);
+      } catch {}
+    });
+  }
+
+  /**
+   * Attach faculty filter listener.
+   *
+   * Shows only the selected faculty group and saves the faculty selection.
+   */
+  if (facultyFilterSelect) {
+    facultyFilterSelect.addEventListener("change", () => {
+      applyEntityFilter(facultyFilterSelect.value, facultyGroups, facultyEmpty);
+
+      try {
+        localStorage.setItem("viewerFacultyFilter", facultyFilterSelect.value);
+      } catch {}
+    });
+  }
+
+
+  // ------------------------------------------------------------
+  // 6. Clear Button
+  // ------------------------------------------------------------
+
+  /**
+   * Attach clear button behavior.
+   *
+   * Resets all visible panels, active filters, and saved viewer state.
+   */
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      clearViewerSelections();
+    });
+  }
+
+
+  // ------------------------------------------------------------
+  // 7. Restore Prior State
+  // ------------------------------------------------------------
+
+  /**
+   * Restore the viewer mode and entity filter selections from localStorage.
+   *
+   * Responsibilities:
+   *   - Restore the last selected panel
+   *   - Restore the matching top-level dropdown value
+   *   - Reapply any saved room, lab, or faculty filter
+   *   - Fallback to the first valid option if the saved value no longer exists
+   *
+   * This improves usability by preserving the user's prior viewer state
+   * across page refreshes.
+   */
   try {
     const savedKey = localStorage.getItem("viewerTableMode");
     const savedGroup = localStorage.getItem("viewerTableGroup");
-    
+    const savedRoom = localStorage.getItem("viewerRoomFilter");
+    const savedLab = localStorage.getItem("viewerLabFilter");
+    const savedFaculty = localStorage.getItem("viewerFacultyFilter");
+
     if (savedKey) {
       hideAllPanels();
       showPanel(savedKey);
@@ -164,11 +430,51 @@ function initViewerTables() {
       if (savedGroup === "filter" && filterMenu) filterMenu.value = savedKey;
 
       resetOtherMenu(savedGroup);
+
+      if (savedKey === "filter-by-room-table" && roomFilterSelect) {
+        if (
+          savedRoom &&
+          Array.from(roomFilterSelect.options).some((opt) => opt.value === savedRoom)
+        ) {
+          roomFilterSelect.value = savedRoom;
+        } else {
+          autoSelectFirstOption(roomFilterSelect);
+        }
+
+        applyEntityFilter(roomFilterSelect.value, roomGroups, roomEmpty);
+      }
+
+      if (savedKey === "filter-by-lab-table" && labFilterSelect) {
+        if (
+          savedLab &&
+          Array.from(labFilterSelect.options).some((opt) => opt.value === savedLab)
+        ) {
+          labFilterSelect.value = savedLab;
+        } else {
+          autoSelectFirstOption(labFilterSelect);
+        }
+
+        applyEntityFilter(labFilterSelect.value, labGroups, labEmpty);
+      }
+
+      if (savedKey === "filter-by-faculty-table" && facultyFilterSelect) {
+        if (
+          savedFaculty &&
+          Array.from(facultyFilterSelect.options).some((opt) => opt.value === savedFaculty)
+        ) {
+          facultyFilterSelect.value = savedFaculty;
+        } else {
+          autoSelectFirstOption(facultyFilterSelect);
+        }
+
+        applyEntityFilter(facultyFilterSelect.value, facultyGroups, facultyEmpty);
+      }
     }
   } catch {
     // Ignore storage retrieval errors
   }
 }
+
 
 
 /*
