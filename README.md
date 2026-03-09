@@ -1,11 +1,3 @@
-## Testing
-Run all tests:
-uv run pytest
-
-or 
-
-uv run pytest tests/[filename] -q
-
 # Maverick Scheduler
 
 A Flask-based web application for managing configuration data and generating academic course schedules.
@@ -97,6 +89,52 @@ The project dependencies are already declared in `pyproject.toml`.
 
 ---
 
+## Getting Started
+
+The steps below allow a new user to install dependencies, run tests, and start the web application.
+
+---
+
+### 1. Clone the Repository
+```Bash
+git clone <repository-url>
+cd 2026sp-420-Maverick
+```
+
+---
+
+### 2. Install uv
+
+This project uses uv to manage Python environments and dependencies.
+
+### macOS / Linux
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Windows (PowerShell)
+```
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+### Or install with pip
+pip install uv
+
+---
+
+### 3. Install Project Dependencies
+
+From the project root directory run:
+```Bash
+uv sync
+```
+
+This will:
+-   create a virtual environment
+-   install dependencies defined in pyproject.toml
+-   install Flask, pytest, and the scheduler engine
+
+---
+
 ## Running the Web Application
 
 The Sprint 2 GUI is built using Flask.
@@ -116,39 +154,6 @@ Stop the server with:
 ```
 Ctrl + C
 ```
-
----
-
-## Getting Started
-
-The steps below allow a new user to install dependencies, run tests, and start the web application.
-
-1. Clone the Repository
-git clone <repository-url>
-cd 2026sp-420-Maverick
-2. Install uv
-
-This project uses uv to manage Python environments and dependencies.
-
-macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-Or install with pip
-pip install uv
-3. Install Project Dependencies
-
-From the project root directory run:
-
-uv sync
-
-This will:
-
-create a virtual environment
-
-install dependencies defined in pyproject.toml
-
-install Flask, pytest, and the scheduler engine
 
 ---
 
@@ -228,6 +233,44 @@ The Schedule Viewer allows users to:
 -   import previously saved schedules
 -   export schedules to JSON or CSV
 -   open grid or visual schedule views
+
+---
+
+## Running Tests
+
+The project uses **pytest**.
+
+Run all tests:
+```
+uv run pytest
+```
+ 
+Run tests with verbose output:
+```
+uv run pytest -v
+```
+
+Run a specific test file:
+```
+uv run pytest tests/test_faculty.py
+```
+
+Other test files include:
+```
+tests/test_course.py
+tests/test_room.py
+tests/test_lab.py
+tests/test_config_service.py
+```
+
+### Testing Commands
+
+Run all tests:
+uv run pytest
+
+or 
+
+uv run pytest tests/[filename] -q
 
 ---
 
