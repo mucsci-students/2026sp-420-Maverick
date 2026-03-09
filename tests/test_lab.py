@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz, Jacob Karasow
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz, Jacob Karasow
+# Date: 2026-03-03
 """
 test_lab.py
 
@@ -31,77 +31,86 @@ Related User Stories:
     A3.2 — Modify Lab
     A3.3 — Delete Lab
 """
-from ..app.lab_management import lab_management
-import json
-import copy
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
+import pytest
+from app.lab_management import lab_management
 
-# the lab should be removed from 'lab'
-def delete_lab():
 
-    example = copy.deepcopy(get_example())
+# ---------------------------
+# Delete Lab
+# ---------------------------
 
-    lab = 'Lab 2'
+def test_delete_lab(example):
+    """Removes an existing lab from the config."""
+    lab_to_delete = example["config"]["labs"][0] 
+
+    lab_management.remove_lab(example, lab_to_delete)
+
+    assert lab_to_delete not in example["config"]["labs"]
+
+def test_delete_lab_nested(example):
+    """
+    Ensures that when a lab is removed:
+    - It is removed from the top-level 'labs' list.
+    - It is also removed from any course taht references it.
+    """
+
+    # Pick an actual existing lab.
+    lab = example["config"]["labs"][0]
+
+    # Make sure at least one course references this lab (if none do,
+    # Manually assign it to the first course to test nested behavior).
+    if example["config"]["courses"][0]:
+        example["config"]["courses"][0]["lab"] = [lab]
+
+    # Perform deletion.
     lab_management.remove_lab(example, lab)
 
-    assert lab not in example['config']['labs'], f"Lab {lab} has not been removed from 'lab'."
+    # Assert lab removed from main lab list.
+    assert lab not in example["config"]["labs"]
 
-# the lab should be removed from 'lab' and 'courses'
-def delete_lab_nested():
+    # Assert lab removed from all courses.
+    for course in example["config"]["courses"]:
+        assert lab not in course.get("lab", [])
 
-    example = copy.deepcopy(get_example())
+def test_delete_lab_nonexistent(example):
+    """Ensures removing a lab that doesn't exist raises a ValueError."""
+    with pytest.raises(ValueError):
+        lab_management.remove_lab(example, "Lab 121")
 
-    lab = 'Lab 1'
+# ---------------------------
+# Add Lab
+# ---------------------------
 
-    lab_management.remove_lab(example, lab)
-
-    assert lab not in example['config']['labs'], f"Room {lab} has not been removed from 'room'."
-
-    assert lab not in any(l['lab'] == lab for l in example['config']['courses']), f"Room {lab} has not been removed from 'courses'."
-
-# should raise an error
-def delete_lab_nonexistent():
-
-    example = copy.deepcopy(get_example())
-
-    try:
-        lab_management.remove_lab(example, 'Lab 999')
-    except ValueError:
-        print(f"Removing a nonexistent lab raises the correct error: {ValueError}")
-
-
-# Add lab tests
-def test_add_lab():
+def test_add_lab(example):
     """A3.1 — Confirms new labs are correctly inserted."""
-    example = get_example()
     lab_name = "Digital Media Lab"
     
+    # Ensure we don't collide with an exisiting lab name.
+    # If it already exists, tweak it slightly.]
+    if lab_name in example["config"]["labs"]:
+        lab_name = lab_name + "(New)"
+
     lab_management.add_lab(example, lab_name)
     
-    assert lab_name in example['config']['labs'], f"Lab {lab_name} was not added."
-    print(f"PASSED: test_add_lab")
+    assert lab_name in example["config"]["labs"], f"Lab {lab_name} was not added."
 
-def test_add_lab_duplicate():
+def test_add_lab_duplicate(example):
     """Ensures adding an existing lab raises a ValueError."""
-    example = get_example()
-    # Assuming 'Lab 1' exists in your config_base.json
-    lab_name = 'Lab 1' 
-    
-    try:
-        lab_management.add_lab(example, lab_name)
-        assert False, "Should have raised ValueError for duplicate lab."
-    except ValueError:
-        print(f"PASSED: test_add_lab_duplicate")
+   
+    existing_lab = example["config"]["labs"][0]
 
-# The lab name should change
-def test_modify_lab():
+    with pytest.raises(ValueError):
+        lab_management.add_lab(example, existing_lab)
 
-    example = copy.deepcopy(get_example())
+# ---------------------------
+# Modify Lab
+# ---------------------------
 
-    old_lab = "Lab 1"
+def test_modify_lab(example):
+    """Renames an existing lab and updates the config list."""
+
+    old_lab = example["config"]["labs"][0]
     new_lab = "Lab X"
 
     lab_management.modify_lab(
@@ -109,31 +118,11 @@ def test_modify_lab():
         old_lab, 
         new_lab
         )
+    
+    assert new_lab in example["config"]["labs"]
+    assert old_lab not in example["config"]["labs"]
 
-# Should raise an error
-def test_modify_lab_nonexistent():
-
-    example = copy.deepcopy(get_example())
-
-    try:
-        lab_management.modify_lab(
-            example, 
-            "Lab 999", 
-            "Lab Z"
-            )
-    except ValueError:
-        print("Modifying a nonexistent lab raises the correct error.")
-
-
-# Used to execute tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Lab Management Tests ---")
-    test_add_lab()
-    test_add_lab_duplicate()
-    test_modify_lab()
-    delete_lab()
-    delete_lab_nested()
-    delete_lab_nonexistent()
-    print("\nAll lab tests passed")
-"""
+def test_modify_lab_nonexistent(example):
+    """Ensures renaming lab that does not exist raises a ValueError."""
+    with pytest.raises(ValueError):
+        lab_management.modify_lab(example, "Lab 121", "Lab XYZ")

@@ -1,0 +1,523 @@
+<!--
+Author: Antonio Corona, Jacob Karasow
+Date: 2026-03-08
+
+Config Editor Template
+
+Purpose:
+    Provides the user interface for viewing, loading, and modifying
+    the scheduler configuration.
+
+Primary Responsibilities:
+    - Load configuration from file
+    - Save configuration to file
+    - Clear loaded configuration from session
+    - Perform CRUD operations for:
+        * Faculty
+        * Rooms
+        * Labs
+        * Courses
+        * Conflicts
+
+Template Inputs (from Controller):
+    status.loaded (bool):
+        True if a configuration is currently loaded into session.
+
+    status.path (str):
+        Name/path of the currently loaded configuration source.
+
+    status.default_filename (str):
+        Suggested export filename for browser download.
+
+    status.counts (dict):
+        Summary counts for the loaded configuration contents
+        (faculty, rooms, labs, courses, etc.).
+
+    status.conflicts (list[str]):
+        A list of detected configuration conflicts to display
+        to the user when present.
+
+Architectural Role (MVC):
+    - View layer for configuration management
+    - All mutations occur via POST routes handled by Controller
+    - This template does not modify state directly
+
+Extends base.html.
+-->
+
+{% extends "base.html" %}
+{% set title = "Config Editor" %}
+
+{% block content %}
+<h1>Config Editor</h1>
+
+<!-- ========================================================= -->
+<!-- Load / Save / Clear Section                               -->
+<!-- ========================================================= -->
+<!--
+  This section contains the top-level file operations for the
+  configuration editor.
+
+  User actions available here:
+    - Load a config JSON from the local machine
+    - Export the current working config to the local machine
+    - Clear the currently loaded config from session
+-->
+<section class="card">
+  <h2>Load / Save</h2>
+ 
+  <!--
+    Load Config Form
+
+    Route:
+      POST /config/load_file
+
+    Purpose:
+      Lets the user choose a JSON configuration file from their
+      computer and upload it into the current session.
+
+    Behavior:
+      - Browser file picker restricts selection to .json files
+      - Multipart form encoding is required for file uploads
+      - On success, the controller updates session state and the
+        status panel below will reflect the loaded config
+  -->
+  <form method="post"
+        action="/config/load_file"
+        enctype="multipart/form-data"
+        class="row">
+    <label>Load config</label>
+    <input type="file" name="config_file" accept=".json" required>
+    <button type="submit">Load</button>
+  </form>
+
+  <!-- Helper text explaining what this action does -->
+  <p class="hint">
+    Load imports a configuration JSON from your computer into the working session.
+  </p>
+
+  <!--
+    Save / Export Configuration Form
+
+    Purpose:
+      Lets the user export the current working configuration to their local
+      machine using a browser save prompt.
+
+    Behavior:
+      - Uses a suggested filename when one is available
+      - Allows the user to change the filename before export
+      - Submission is handled by JavaScript in app.js
+      - Does not directly submit to a Flask POST route
+  -->
+  <form id="export-config-form" class="row">
+    <label>Save config</label>
+
+    <!--
+      Export filename input
+
+      Source:
+        status.default_filename if present
+
+      Fallback:
+        new_config_file.json
+
+      Purpose:
+        Gives the user control over the downloaded filename used
+        during the browser export flow.
+    -->
+    <input
+      id="export_filename"
+      name="filename"
+      value="{{ status.default_filename or 'new_config_file.json' }}"
+      placeholder="new_config_file.json"
+    >
+
+    <!-- Save button triggers the export flow in app.js -->
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Helper text explaining what this action does -->
+  <p class="hint">
+    Save exports the current working configuration to your computer.
+  </p>
+
+  <!--
+    Confirmation message container.
+    Hidden by default and shown by JavaScript after export success/failure.
+  -->
+  <div id="save-confirmation" class="hint" style="display:none;"></div>
+
+  <!--
+    Clear Config Form
+
+    Route:
+      POST /config/clear
+
+    Purpose:
+      Removes the currently loaded configuration from session state.
+
+    Behavior:
+      - Displays the currently loaded file/path in a disabled input
+      - Clear button is disabled when no config is currently loaded
+  -->
+  <form method="post" action="/config/clear" class="row">
+    <label>Clear loaded</label>
+    <input value="{{ status.path or '' }}" disabled>
+    <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
+  </form>
+</section>
+
+<!-- ========================================================= -->
+<!-- Configuration Status Panel                                -->
+<!-- ========================================================= -->
+<!--
+  This section displays the current load state of the configuration.
+
+  When a config is loaded:
+    - Shows loaded status
+    - Shows the source filename/path
+    - Shows summary counts of configuration entities
+    - Shows detected conflict messages when available
+
+  When no config is loaded:
+    - Shows unloaded state
+    - Instructs the user to load a config first
+-->
+<section class="card">
+  <h2>Status</h2>
+
+  {% if status.loaded %}
+
+    <!-- Indicates that a configuration is currently active in session -->
+    <p><strong>Loaded Status:</strong> Yes</p>
+
+    <!-- Displays the source path or filename of the loaded config -->
+    <p><strong>File Loaded:</strong> {{ status.path }}</p>
+
+    <!--
+      Summary counts list
+
+      Example contents:
+        faculty: 3
+        rooms: 5
+        courses: 8
+
+      This gives the user a quick overview of the currently loaded
+      configuration contents.
+    -->
+    <ul>
+      {% for k, v in status.counts.items() %}
+        <li>{{ k }}: {{ v }}</li>
+      {% endfor %}
+    </ul>
+
+    {% if status.conflicts %}
+<div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+  <strong>Configuration Conflicts Detected:</strong>
+  <ul>
+    {% for c in status.conflicts %}
+      <li>{{ c }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+  {% else %}
+
+    <!-- Indicates that no configuration is currently loaded -->
+    <p><strong>File Loaded:</strong> No</p>
+
+    <!-- Helper text guiding the user toward the next required step -->
+    <p class="hint">Load a config to enable schedule generation.</p>
+
+  {% endif %}
+
+</section>
+
+<!-- ========================================================= -->
+<!-- Faculty Management                                        -->
+<!-- ========================================================= -->
+<!--
+  This section provides faculty CRUD operations.
+
+  Supported actions:
+    - Add faculty
+    - Remove faculty
+    - Modify faculty
+
+  Current exposed inputs:
+    - Faculty name
+    - Appointment type
+
+  Notes:
+    - Appointment type likely maps to backend rules for credit limits
+      and unique course limits.
+    - More advanced faculty attributes (times/preferences) may be
+      handled later or in a different UI revision.
+-->
+<section class="card">
+  <h2>Faculty Management</h2>
+
+  <!-- Input Fields -->
+  <style>
+    input, select {
+      width: 25%;
+      padding: 8px 10px;
+      margin: 4px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    select {
+      appearance: none;
+      background-color: white;
+    }
+  </style>
+
+  <!-- Add Faculty -->
+  <!-- POST /config/faculty/add -->
+  <h3>Add Faculty</h3>
+  <form method="post" action="/config/faculty/add">
+    <input name = "name" placeholder = "Faculty Name (e.g., Dr. Johnson)" required>
+    
+    <!-- Appointment Type Drop-Down Selection -->
+    <select name = "appointment_type" required>
+      <option value="" disabled selected>Appointment Type</option>
+      <option value="Full-Time">Full-Time</option>
+      <option value="Adjunct">Adjunct</option>
+    </select>
+
+    <button type="submit">Add Faculty</button>
+  </form>
+
+  <!-- Remove Faculty -->
+  <!-- POST /config/faculty/remove -->
+  <h3>Remove Faculty</h3>
+  <form method="post" action="/config/faculty/remove">
+    <input name="name" placeholder="Faculty Name (e.g., Dr. Johnson)" required>
+    <button type="submit">Remove Faculty</button>
+  </form>
+
+  <!-- Modify Faculty -->
+  <!-- POST /config/faculty/modify -->
+  <h3>Modify Faculty</h3>
+  <form method="post" action="/config/faculty/modify">
+    <input name="name" placeholder="Current Name (e.g., Dr. Johnson)" required>
+    
+    <!-- Appointment Type Drop-Down Selection -->
+    <select name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
+      <option value="" disabled selected>Appointment Type</option>
+      <option value="Full-Time">Full-Time</option>
+      <option value="Adjunct">Adjunct</option>
+    </select>
+    
+    <button type="submit">Modify Faculty</button>
+  </form>
+</section>
+
+<!-- ========================================================= -->
+<!-- Room Management                                        -->
+<!-- ========================================================= -->
+<!--
+  This section provides room CRUD operations.
+
+  Supported actions:
+    - Add room
+    - Remove room
+    - Modify room
+
+  Current exposed inputs:
+    - Room name
+-->
+<section class="card">
+  <h2>Room Management</h2>
+
+  <!-- Add Room -->
+  <!-- POST /config/room/add -->
+  <h3>Add Room</h3>
+  <form method="post" action="/config/room/add">
+    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <!-- Remove Room -->
+  <!-- POST /config/room/remove -->
+  <h3>Remove Room</h3>
+  <form method="post" action="/config/room/remove">
+    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
+    <button type="submit">Remove Room</button>
+  </form>
+
+  <!-- Modify Room -->
+  <!-- POST /config/room/modify -->
+  <h3>Modify Room</h3>
+  <form method="post" action="/config/room/modify">
+    <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
+    <input name="new_name" placeholder="New Name (e.g., Roddy 141)">
+    <button type="submit">Modify Room</button>
+  </form>
+</section>
+
+<!-- ========================================================= -->
+<!-- Lab Management                                        -->
+<!-- ========================================================= -->
+<!--
+  This section provides lab CRUD operations.
+
+  Supported actions:
+    - Add lab
+    - Remove lab
+    - Modify lab
+
+  Current exposed inputs:
+    - Lab name
+-->
+<section class="card">
+  <h2>Lab Management</h2>
+
+  <!-- Add Lab -->
+  <!-- POST /config/lab/add -->
+  <h3>Add Lab</h3>
+  <form method="post" action="/config/lab/add">
+    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
+    <button type="submit">Add Lab</button>
+  </form>
+
+  <!-- Remove Lab -->
+  <!-- POST /config/lab/remove -->
+  <h3>Remove Lab</h3>
+  <form method="post" action="/config/lab/remove">
+    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
+    <button type="submit">Remove Lab</button>
+  </form>
+
+  <!-- Modify Lab -->
+  <!-- POST /config/lab/modify -->
+  <h3>Modify Lab</h3>
+  <form method="post" action="/config/lab/modify">
+    <input name="lab" placeholder="Existing Lab Name (e.g., Linux Lab)" required>
+    <input name="new_name" placeholder="New Lab Name (e.g., MacLab)">
+    <button type="submit">Modify Lab</button>
+  </form>
+</section>
+
+<!-- ========================================================= -->
+<!-- Course Management                                        -->
+<!-- ========================================================= -->
+<!--
+  This section provides course CRUD operations.
+
+  Supported actions:
+    - Add course
+    - Remove course
+    - Modify course
+
+  Current exposed inputs:
+    - Course ID (e.g., CMSC 101)
+    - Number of credits
+    - Assigned room (must exist in config)
+    - New Course ID for modifications
+-->
+<section class="card">
+  <h2>Course Management</h2>
+
+  <!-- Add Course -->
+  <!-- POST /config/course/add -->
+  <h3>Add Course</h3>
+  <form method="post" action="/config/course/add">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    
+    <!-- Number of Credits Drop-Down Selection -->
+    <select name="credits" required>
+      <option value="" disabled selected>Number of Credits</option>
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+
+    <input name = "room" placeholder="Room Name (Must Exist) (e.g., Roddy140)" required>
+    <button type="submit">Add Course</button>
+  </form>
+
+  <!-- Remove Course -->
+  <!-- POST /config/course/remove -->
+  <h3>Remove Course</h3>
+  <form method="post" action="/config/course/remove">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <button type="submit">Remove Course</button>
+  </form>
+
+  <!-- Modify Course -->
+  <!-- POST /config/course/modify -->
+  <h3>Modify Course</h3>
+  <form method="post" action="/config/course/modify">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+
+    <!-- Number of Credits Drop-Down Selection -->
+    <select name="credits" required>
+      <option value="" disabled selected>Number of Credits</option>
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+
+    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
+
+    <button type="submit">Modify Course</button>
+  </form>
+</section>
+
+<!-- ========================================================= -->
+<!-- Conflict Management                                        -->
+<!-- ========================================================= -->
+<!--
+  This section provides conflict CRUD operations.
+
+  Supported actions:
+    - Add conflict
+    - Remove conflict
+    - Modify conflict
+
+  Current exposed inputs:
+    - Course ID
+    - Conflicting Course ID
+    - New Conflicting Course ID for modifications
+-->
+  <section class="card">
+  <h2>Conflict Management</h2>
+
+  <!-- Add Conflict -->
+  <!-- POST /config/conflict/add -->
+  <h3>Add Conflict</h3>
+  <form method="post" action="/config/conflict/add">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
+    <button type="submit">Add Conflict</button>
+  </form>
+
+  <!-- Remove Conflict -->
+  <!-- POST /config/conflict/remove -->
+  <h3>Remove Conflict</h3>
+  <form method="post" action="/config/conflict/remove">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
+    <button type="submit">Remove Conflict</button>
+  </form>
+
+  <!-- Modify Conflict -->
+  <!-- POST /config/conflict/modify -->
+  <h3>Modify Conflict</h3>
+  <form method="post" action="/config/conflict/modify">
+    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
+    <input name="old_conflict_course_id" placeholder="Old Conflicting Course ID (e.g., CMSC 201)" required>
+    <input name="new_conflict_course_id" placeholder="New Conflicting Course ID (e.g., CMSC 301)">
+    <button type="submit">Modify Conflict</button>
+  </form>
+</section>
+
+{% endblock %}

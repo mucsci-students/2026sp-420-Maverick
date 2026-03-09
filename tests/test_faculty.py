@@ -1,5 +1,5 @@
-# Author(s): Tanner Ness, Ian Swartz
-# Date: 2026-02-14
+# Author(s): Antonio Corona, Tanner Ness, Ian Swartz
+# Date: 2026-03-03
 """
 test_faculty.py
 
@@ -34,81 +34,95 @@ Related User Stories:
     A1.3 — Modify Faculty Availability
     A1.4 — Delete Faculty
 """
-from ..app.faculty_management import faculty_management
-import json
-import copy
 
-def get_example():
-    with open('..configs/config_base.json', 'r') as file:
-        return json.load(file)
+import pytest
+from app.faculty_management import faculty_management
 
-# the faculty member should be removed from 'faculty' and 'courses'
-def delete_faculty_member():
+# ---------------------------
+# Delete Faculty
+# ---------------------------
 
-    example = copy.deepcopy(get_example())
+def test_delete_faculty_member(example):
+    """
+    Removes an existing faculty member from the config.
+    Ensure that a when a faculty member is removed:
+    - They are removed from the top-level faculty list.
+    - They are also removed from any course that referenced them.
+    """
 
-    name = 'Dr. Smith'
+    # Pick an existing faculty member.
+    name_to_delete = example["config"]["faculty"][0]["name"]
 
-    faculty_management.remove_faculty(example, name)
+    faculty_management.remove_faculty(example, name_to_delete)
 
-    assert name not in any(f['name'] == name for f in example['config']['faculty'] ), f"Faculty {name} has not been removed from 'faculty'."
+    assert not any(f["name"] == name_to_delete for f in example["config"]["faculty"] )
 
-    assert name not in any(f['faculty'] == name for f in example['config']['courses']), f"Faculty {name} has not been removed from 'courses'."
+    assert not any(f["faculty"] == name_to_delete for f in example["config"]["courses"])
 
-# should raise an error
-def delete_faculty_member_nonexistent():
+def test_delete_faculty_member_nonexistent(example):
+    """Ensures removing a faculty member that doesn't exist raises a ValueError."""
+    with pytest.raises(ValueError):
+        faculty_management.remove_faculty(example, "MR CBO")
 
-    example = copy.deepcopy(get_example())
-    
-    try:
-        faculty_management.remove_faculty(example, 'MR CBO')
-    except ValueError:
-        print(f"Removing a nonexistent faculty members raises the correct error: {ValueError}")
-
+# ---------------------------
+# Add Faculty
+# ---------------------------
 
 # Add faculty tests
-def test_add_faculty_full_time():
+def test_add_faculty_full_time(example):
     """A1.1 — Add Full-Time Faculty (Default Availability)"""
-    example = get_example()
     name = "Dr. Alice"
+
+    # Ensure we don't collide with an existing faculty member.
+    # If they already exist, tweak it slightly.
+    if any(f["name"] == name for f in example["config"]["faculty"]):
+        name = name + "(New)"  
     
     faculty_management.add_faculty(example, name, "full-time")
     
-    faculty_list = example['config']['faculty']
-    # Check if name exists in any faculty dict
-    found = any(f['name'] == name for f in faculty_list)
+    faculty_list = example["config"]["faculty"]
+    # Check if name exists in any faculty dict.
+    found = any(f["name"] == name for f in faculty_list)
     
     assert found, f"Faculty {name} was not added to the configuration."
     
-    # Check defaults for Full-Time (12 max credits)
-    new_fac = next(f for f in faculty_list if f['name'] == name)
-    assert new_fac['maximum_credits'] == 12, "Full-time faculty should have 12 max credits."
-    print(f"PASSED: test_add_faculty_full_time")
+    # Check defaults for Full-Time (12 max credits).
+    new_fac = next(f for f in faculty_list if f["name"] == name)
+    assert new_fac["maximum_credits"] == 12, "Full-time faculty should have 12 max credits."
 
-def test_add_faculty_adjunct_with_prefs():
+def test_add_faculty_adjunct_with_prefs(example):
     """A1.2 — Add Adjunct Faculty with Preferences"""
-    example = get_example()
+
     name = "Prof. Bob"
-    # Preferences format expected by add_faculty based on your management file
+
+    # Ensure we don't collide with an existing faculty member.
+    # If they already exist, tweak it slightly.
+    if any(f["name"] == name for f in example["config"]["faculty"]):
+        name = name + "(New)"  
+
+    # Preferences format expected by add_faculty based on your management file.
     test_prefs = [{"course_id": "CS101", "weight": 5}]
     
     faculty_management.add_faculty(example, name, "adjunct", prefs=test_prefs)
     
-    faculty_list = example['config']['faculty']
-    new_fac = next(f for f in faculty_list if f['name'] == name)
+    faculty_list = example["config"]["faculty"]
+    new_fac = next(f for f in faculty_list if f["name"] == name)
     
-    assert new_fac['maximum_credits'] == 4, "Adjunct should have 4 max credits."
-    assert new_fac['preferences'] == test_prefs, "Preferences were not stored correctly."
-    print(f"PASSED: test_add_faculty_adjunct_with_prefs")
+    assert new_fac["maximum_credits"] == 4, "Adjunct should have 4 max credits."
+    assert new_fac["preferences"] == test_prefs, "Preferences were not stored correctly."
 
+# ---------------------------
+# Modify Faculty
+# ---------------------------
 
-# The faculty availability/credits should change
-def modify_faculty_member():
-
-    example = copy.deepcopy(get_example())
-
-    name = "Dr. Smith"
+def test_modify_faculty_member(example):
+    """Set a new maximum credit limit for an existing faculty member."""
+    name = example["config"]["faculty"][0]['name']
     new_max_credits = 15
+
+    # Avoid accidental collision with existing max credits.
+    if example["config"]["faculty"][0]["maximum_credits"] == new_max_credits:
+        new_max_credits += 1
 
     faculty_management.modify_faculty(
         example,
@@ -116,27 +130,11 @@ def modify_faculty_member():
         maximum_credits=new_max_credits
     )
 
-# Should raise an error
-def modify_faculty_member_nonexistent():
-
-    example = copy.deepcopy(get_example())
-
-    try:
+def test_modify_faculty_member_nonexistent(example):
+    """Ensures modifying a faculty member that doesn't exist raises a ValueError."""
+    with pytest.raises(ValueError):
         faculty_management.modify_faculty(
             example,
-            "MR CBO",
+            "MR BOBBY",
             maximum_credits=10
         )
-    except ValueError:
-        print("Modifying a nonexistent faculty member raises the correct error.")
-
-#Used to execute tests:
-"""
-if __name__ == "__main__":
-    print("--- Starting Faculty Management Tests ---")
-    test_add_faculty_full_time()
-    test_add_faculty_adjunct_with_prefs()
-    delete_faculty_member()
-    delete_faculty_member_nonexistent()
-    print("\nAll faculty tests passed")
-"""

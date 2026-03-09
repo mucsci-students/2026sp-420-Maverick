@@ -210,7 +210,7 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
         case -1:
             raise ValueError(f"Course {course} does not exist.")
         case _:
-            course_list.pop(index)
+            course_list[:] = [c for c in course_list if c["course_id"] != course]
             remove_course_helper(cfg, course)
 
 """
@@ -229,18 +229,18 @@ def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
     course_lower = course.lower()
 
     # Remove this course from every other course's conflicts list
-    for c in course_list:
-        conflicts = c.get("conflicts", [])
-        if isinstance(conflicts, list):
-            c["conflicts"] = [x for x in conflicts if str(x).lower() != course_lower]
+    for cse in course_list:
+        conflicts = cse.get("conflicts", [])
+        for c in range(len(conflicts)):
+            if conflicts[c].lower() == course_lower:
+                conflicts.pop(c)
 
     # Remove this course from every faculty member's preferences list
     for fac in faculty_list:
-        prefs = fac.get("preferences") or []
-        fac["preferences"] = [
-            p for p in prefs
-            if str(p.get("course_id", "")).lower() != course_lower
-        ]
+        prefs = fac.get("course_preferences", {})
+        for v in list(prefs.keys()):
+            if v.lower() == course_lower:
+                del prefs[v]
 
 """
 Description: find_conflict_index checks if a course exists in a conflict list or not.

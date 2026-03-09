@@ -1,0 +1,253 @@
+/*
+Author: Antonio Corona
+Date: 2026-03-05
+
+Stylesheet
+
+Defines styling for the Sprint 2 Flask web interface.
+Includes layout, tables, navigation, and form styling.
+*/
+
+/* ==========================================================================
+   1) Design Tokens (Theme Variables)
+   ========================================================================== */
+
+/* Slate & Teal palette */
+:root{
+    --bg: #F8FAFC;           /* page background */
+    --surface: #FFFFFF;      /* cards/topbar surface */
+    --text: #0F172A;         /* primary text */
+    --muted: #64748B;        /* secondary text */
+    --border: #E2E8F0;       /* borders/dividers */
+    --accent: #0D9488;       /* teal primary */
+    --accent-hover: #0F766E; /* teal hover */
+    --highlight: #38BDF8;    /* soft blue highlight */
+    --danger: #EF4444;       /* error */
+}
+
+/* ==========================================================================
+   2) Base / Reset-ish
+   ========================================================================== */
+
+body {
+    margin: 0;
+
+    font-family: "Times New Roman", Times, serif;
+    color: var(--text);
+    background: var(--bg);
+}
+
+label {
+    min-width: 120px;
+    color: var(--muted);
+}
+
+/* ==========================================================================
+   3) Layout
+   ========================================================================== */
+
+.container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 0 16px;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+
+    margin: 8px 0;
+}
+
+/* ==========================================================================
+   4) Navigation / Header
+   ========================================================================== */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 12px 16px;
+
+    background: var(--surface);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.nav a {
+    margin-left: 12px;
+
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.nav a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   5) Components
+   ========================================================================== */
+
+/* Cards */
+.card {
+    margin-bottom: 16px;
+    padding: 14px;
+
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+/* Forms */
+input {
+    min-width: 260px;
+    padding: 8px;
+
+    color: var(--text);
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+/* Buttons */
+button {
+    padding: 8px 12px;
+
+    color: #fff;
+    background: var(--accent);
+
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    cursor: pointer;
+
+    transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+}
+
+button:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Messages / Alerts */
+.messages {
+    margin-bottom: 10px;
+}
+
+.msg {
+    margin: 8px 0;
+    padding: 10px;
+
+    border-radius: 10px;
+}
+
+.msg.success {
+    color: var(--accent);
+    background: rgba(13, 148, 136, 0.10);
+    border: 1px solid var(--accent);
+}
+
+.msg.error {
+    color: #7f1d1d;
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid var(--danger);
+}
+
+/* Tables */
+table {
+    width: 100%;
+    margin: 8px 0 14px;
+
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 8px;
+    text-align: left;
+
+    border: 1px solid var(--border);
+}
+
+th {
+    color: var(--muted);
+    background: rgba(248, 250, 252, 0.9);
+}
+
+/* Row hover effect for readability */
+tr:hover td {
+    background: rgba(56, 189, 248, 0.08);
+}
+
+/* Code blocks */
+pre {
+    padding: 10px;
+    overflow: auto;
+
+    color: #e2e8f0;
+    background: #0f172a;
+
+    border: 1px solid rgba(226, 232, 240, 0.15);
+    border-radius: 10px;
+}
+
+/* Tab Buttons */
+.tab-btn {
+  border: 1px solid #444;
+  background: var(--accent);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Active tab styling */
+.tab-btn.active,
+.tab-btn[aria-selected="true"] {
+  border-color: #888;
+  font-weight: 500;
+}
+
+/* Tab content spacing */
+.tab-panel {
+  margin-top: 12px;
+}
+
+/* Dropdown mode selectors (Master / Filter) */
+.mode-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+/* ==========================================================================
+   6) Utilities
+   ========================================================================== */
+
+.hint {
+    color: var(--muted);
+}
