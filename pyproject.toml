@@ -12,5 +12,22 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
     "python-dotenv>=1.2.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+omit = [
+    "tests/*",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
