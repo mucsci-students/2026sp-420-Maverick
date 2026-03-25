@@ -5,7 +5,17 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+
+# Virtual environment (VERY important)
+.venv/
+
+# Environment files
 .env
+
+# Code Coverage 
+.coverage
+coverage.xml
+htmlcov/
 
 # VS Code
 .vscode/
@@ -17,12 +27,10 @@ Thumbs.db
 # Logs
 *.log
 
-# Git
-.git/
-
 # Node (if ever used)
 node_modules/
 
+# Build / packaging
 *.egg-info/
 dist/
 build/
