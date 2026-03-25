@@ -274,6 +274,16 @@ uv run pytest tests/[filename] -q
 
 ---
 
+## Running Tests with Coverage
+
+To run all tests with coverage locally:
+
+```bash
+uv run pytest --cov=app --cov-branch --cov-report=term-missing --cov-report=xml
+```
+
+---
+
 ## MVC Architecture
 
 The project follows a **Model–View–Controller** architecture.
