@@ -44,6 +44,8 @@ import copy
 # editor state, and related UI flags.
 from flask import session
 
+from os import PathLike
+
 # Faculty management operations from the domain/application layer.
 from app.faculty_management.faculty_management import (
     add_faculty,
@@ -334,38 +336,57 @@ def load_config_into_session(source):
     Load a scheduler configuration into session.
 
     Supported Sources:
-        - A repo/disk path string pointing to a JSON config file
+        - A filesystem path (str or Path-like object) pointing to a JSON config file
         - An uploaded browser file object from request.files
 
     Workflow:
-        - Read and parse the JSON source
+        - Detect whether the source is a path or uploaded file
+        - Read and parse JSON content
         - Apply missing time slot defaults
-        - Store the loaded config and source path/filename in session
-        - Refresh working_config.json on disk
-        - Reset unsaved + schedules_updated flags
-        - Detect and store conflicts for immediate UI feedback
+        - Store config + metadata in session
+        - Refresh working_config.json
+        - Reset unsaved and schedules_updated flags
+        - Detect and store conflicts
 
     Args:
         source:
-            Either a filesystem path (str) or an uploaded file object.
+            Either:
+                - A filesystem path (str or pathlib.Path)
+                - An uploaded file object (from Flask request.files)
 
     Raises:
         json.JSONDecodeError:
             If the source content is not valid JSON.
         OSError:
             If a provided path cannot be opened.
+        AttributeError:
+            If the source is neither a valid path nor file-like object.
     """
-    if isinstance(source, str):
-        # Load config from a filesystem path, typically from inside the repo.
+    
+    # -------------------------------------------------------------
+    # Case 1: Source is a filesystem path (string or Path-like object)
+    # -------------------------------------------------------------
+    if isinstance(source, (str, PathLike)):
         with open(source, "r", encoding="utf-8") as f:
             loaded_config = json.load(f)
-        loaded_path = source
-    else:
-        # Load config from an uploaded browser file.
-        raw_data = source.read().decode("utf-8-sig")
-        loaded_config = json.loads(raw_data)
-        loaded_path = source.filename or "uploaded_config.json"
+        loaded_path = str(source)
 
+    # -------------------------------------------------------------
+    # Case 2: Source is an uploaded file (Flask request.files)
+    # -------------------------------------------------------------
+    else:
+        # Read raw bytes from uploaded file and decode (handle BOM if present)
+        raw_data = source.read().decode("utf-8-sig")
+
+        # Parse JSON content from uploaded file
+        loaded_config = json.loads(raw_data)
+
+        # Use filename for tracking instead of a filesystem path
+        loaded_path = getattr(source, "filename", None)
+
+    # ------------------------------------------------------------------------------------------------------
+    # Continue with existing logic (Apply defaults, store in session, write working_config.json, etc.)
+    # ------------------------------------------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
     working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
