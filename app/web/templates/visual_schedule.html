@@ -12,161 +12,169 @@ Purpose:
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Schedule - #{{ data.index + 1 }}</title>
+    <title>Departmental Visual Schedule</title>
     <style>
         :root {
-            --hour-height: 60px; 
+            --hour-height: 60px;
             --bg-color: #f8f9fa;
             --border-color: #dee2e6;
             --lecture-color: rgba(33, 150, 243, 0.1);
             --lecture-border: #2196f3;
             --lab-color: rgba(156, 39, 176, 0.1);
             --lab-border: #9c27b0;
-            --conflict-color: #ff4444;
         }
 
-        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); }
         
         .no-print { 
             display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 20px; background: white; padding: 15px; 
+            margin-bottom: 30px; background: white; padding: 15px 25px; 
             border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
         }
 
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; transition: opacity 0.2s; }
-        .btn-print { background: #333; color: white; }
-        .btn-close { background: #dc3545; color: white; margin-left: 8px; }
-        .btn:hover { opacity: 0.8; }
+        .section-title { border-bottom: 3px solid #333; margin: 40px 0 20px; padding-bottom: 10px; font-size: 1.5rem; text-transform: uppercase; }
 
-        .calendar-wrapper {
-            position: relative; background: white; border: 1px solid var(--border-color);
-            border-radius: 8px; display: grid;
-            grid-template-columns: 80px repeat(5, 1fr);
-            grid-template-rows: 50px repeat(12, var(--hour-height));
-            overflow: hidden;
+        .schedules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 30px;
         }
 
-        .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); }
-        .time-label { grid-column: 1; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; font-size: 0.75rem; color: #6c757d; border-right: 1px solid var(--border-color); border-bottom: 1px solid #f1f1f1; }
-        .day-column { position: relative; grid-row: 2 / span 12; border-right: 1px solid var(--border-color); background-image: linear-gradient(var(--border-color) 1px, transparent 1px); background-size: 100% var(--hour-height); z-index: 1; }
+        .calendar-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .calendar-name { text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
+
+        .calendar-wrapper {
+            position: relative; 
+            display: grid;
+            grid-template-columns: 80px repeat(5, 1fr);
+            grid-template-rows: 50px repeat(12, var(--hour-height));
+            border: 1px solid var(--border-color);
+            background: #fff;
+        }
+
+        .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 0.9rem; }
+        
+        .time-label { 
+            grid-column: 1; 
+            border-right: 1px solid var(--border-color); 
+            font-size: 0.75rem; color: #6c757d; 
+            display: flex; justify-content: center; padding-top: 5px;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        .day-column { 
+            position: relative; 
+            grid-row: 2 / span 12; 
+            border-right: 1px solid var(--border-color); 
+            background-image: linear-gradient(var(--border-color) 1px, transparent 1px); 
+            background-size: 100% var(--hour-height); 
+        }
 
         .course-card {
             position: absolute; 
-            left: 4px; 
-            right: 4px; 
-            padding: 6px;
-            border-radius: 4px; 
-            border-left: 4px solid; 
-            font-size: 0.75rem;
-            overflow: hidden; 
+            left: 2px; right: 2px; 
+            padding: 5px;
+            border-radius: 4px; border-left: 4px solid; 
+            font-size: 0.7rem; line-height: 1.2;
             z-index: 10; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
-        .conflict {
-            border: 2px solid var(--conflict-color) !important;
-            border-left: 6px solid var(--conflict-color) !important;
-            background-color: rgba(255, 68, 68, 0.15) !important;
-            z-index: 20 !important;
-        }
-
-        .course-id { font-weight: bold; display: block; margin-bottom: 2px; }
-        .course-meta { font-size: 0.7rem; line-height: 1.1; }
+        .conflict { border: 2px solid var(--conflict-color) !important; border-left-width: 6px !important; background-color: rgba(255, 68, 68, 0.15) !important; z-index: 20 !important; }
+        .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
+        .course-meta { font-size: 0.65rem; color: #444; }
 
         .footer-summary {
-            margin-top: 25px; display: flex; justify-content: space-between; align-items: center;
-            background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);
+            margin-top: 25px; display: flex; justify-content: center; align-items: center;
+            background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);
         }
-        .legend-grid { display: flex; gap: 20px; }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
-        .swatch { width: 14px; height: 14px; border-radius: 3px; border-left: 3px solid; }
+        .legend-grid { display: flex; gap: 30px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; }
+        .swatch { width: 16px; height: 16px; border-radius: 3px; border-left: 4px solid; }
 
-        @media print { .no-print { display: none; } body { padding: 0; background: white; } }
+        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 
     <div class="no-print">
-        <h1>Schedule #{{ data.index + 1 }}</h1>
-        <div>
-            <button class="btn btn-print" onclick="window.print()">Print PDF</button>
-            <button class="btn btn-close" onclick="window.close()">Close</button>
-        </div>
+        <h1>Master Visual View #{{ data.index + 1 }}</h1>
+        <button onclick="window.print()" style="padding: 10px 20px; cursor:pointer;">Print PDF</button>
     </div>
 
-    <div class="calendar-wrapper">
-        <div class="header">Time</div>
-        <div class="header">Mon</div>
-        <div class="header">Tue</div>
-        <div class="header">Wed</div>
-        <div class="header">Thu</div>
-        <div class="header">Fri</div>
+    {% macro render_calendar(title, assignments) %}
+    <div class="calendar-container">
+        <div class="calendar-name">{{ title }}</div>
+        <div class="calendar-wrapper">
+            <div class="header">Time</div>
+            <div class="header">Mon</div><div class="header">Tue</div><div class="header">Wed</div><div class="header">Thu</div><div class="header">Fri</div>
 
-        {% for hour in range(8, 20) %}
-            <div class="time-label" style="grid-row: {{ loop.index + 1 }};">
-                {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
-            </div>
-        {% endfor %}
+            {% for hour in range(8, 20) %}
+                <div class="time-label" style="grid-row: {{ loop.index + 1 }};">
+                    {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
+                </div>
+            {% endfor %}
 
-        <div class="day-column" style="grid-column: 2;"></div>
-        <div class="day-column" style="grid-column: 3;"></div>
-        <div class="day-column" style="grid-column: 4;"></div>
-        <div class="day-column" style="grid-column: 5;"></div>
-        <div class="day-column" style="grid-column: 6;"></div>
+            {# Create 5 columns. We loop through the data for each specific day column #}
+            {% set days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] %}
+            {% for day_name in days %}
+                <div class="day-column" style="grid-column: {{ loop.index + 1 }};">
+                    {% for a in assignments %}
+                        {% if a.day|trim|upper == day_name %}
+                            {% set start_parts = a.start.split(':') %}
+                            {% set s_h = start_parts[0]|int %}
+                            {% set s_m = start_parts[1]|int %}
+                            
+                            {# Start time: (Current Hour - Start Hour 8) * 60px + minutes #}
+                            {% set top_px = (s_h - 8) * 60 + s_m %}
+                            {% set height_px = a.duration|int %}
 
-        {% set total_credits = [] %}
-        {% set day_map = {'MON': 2, 'TUE': 3, 'WED': 4, 'THU': 5, 'FRI': 6} %}
+                            {# Conflict check #}
+                            {% set is_conflict = false %}
+                            {% for other in assignments %}
+                                {% if a != other and a.day == other.day and a.start == other.start and a.room == other.room %}
+                                    {% set is_conflict = true %}
+                                {% endif %}
+                            {% endfor %}
 
-        {% for a in data.assignments %}
-            {% set clean_day = a.day|trim|upper %}
-            {% set col_idx = day_map.get(clean_day) %}
-            
-            {% if col_idx %}
-                {% set start_parts = a.start.split(':') %}
-                {% if start_parts|length == 2 %}
-                    {% set s_h = start_parts[0]|int %}
-                    {% set s_m = start_parts[1]|int %}
-                    {% set top_px = (s_h - 8) * 60 + s_m %}
-                    {% set height_px = a.duration|int %}
-
-                    {% if a.meeting_index == 1 %}
-                        {% set _ = total_credits.append(a.credits|int) %}
-                    {% endif %}
-
-                    {% set conflicts = [] %}
-                    {# Logic kept intact as requested #}
-                    {% for other in data.assignments %}
-                        {% if a != other and clean_day == other.day|trim|upper %}
-                             {# Conflict logic remains here #}
+                            <div class="course-card {{ 'conflict' if is_conflict }}" 
+                                 style="top: {{ top_px }}px; height: {{ height_px - 2 }}px; 
+                                        background-color: {{ 'var(--lab-color)' if a.lab else 'var(--lecture-color)' }};
+                                        border-color: {{ 'var(--lab-border)' if a.lab else 'var(--lecture-border)' }};">
+                                <span class="course-id">{{ a.course_id }}</span>
+                                <div class="course-meta">
+                                    <strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>
+                                    {{ a.faculty if title != a.faculty else a.room }}
+                                </div>
+                            </div>
                         {% endif %}
                     {% endfor %}
-
-                    <div class="course-card {{ 'conflict' if conflicts|length > 0 }}" 
-                         style="grid-column: {{ col_idx }} / span 1; 
-                                grid-row: 2; 
-                                top: {{ top_px }}px; 
-                                height: {{ height_px - 2 }}px; 
-                                background-color: {{ 'var(--lab-color)' if a.lab else 'var(--lecture-color)' }};
-                                border-color: {{ 'var(--lab-border)' if a.lab else 'var(--lecture-border)' }};">
-                        
-                        <span class="course-id">{{ a.course_id }}</span>
-                        <div class="course-meta">
-                            <strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>
-                            Room: {{ a.room }}<br>
-                            Fac: {{ a.faculty }}
-                        </div>
-                    </div>
-                {% endif %}
-            {% endif %}
-        {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
     </div>
+    {% endmacro %}
 
-    <div class="footer-summary">
+    <div class="footer-summary no-print">
         <div class="legend-grid">
             <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
             <div class="legend-item"><div class="swatch" style="background: var(--lab-color); border-color: var(--lab-border);"></div>Lab</div>
         </div>
+    </div>
+
+    <h2 class="section-title">Room Master Schedules</h2>
+    <div class="schedules-grid">
+        {% for room, items in data.by_room.items() %}
+            {{ render_calendar(room, items) }}
+        {% endfor %}
+    </div>
+
+    <h2 class="section-title">Faculty Master Schedules</h2>
+    <div class="schedules-grid">
+        {% for faculty, items in data.by_faculty.items() %}
+            {{ render_calendar(faculty, items) }}
+        {% endfor %}
     </div>
 
 </body>

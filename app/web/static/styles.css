@@ -1,6 +1,6 @@
 /*
-Author: Antonio Corona
-Date: 2026-03-05
+Author: Antonio Corona, Ian Swartz
+Date: 2026-03-26
 
 Stylesheet
 
@@ -249,5 +249,82 @@ pre {
    ========================================================================== */
 
 .hint {
+    color: var(--muted);
+}
+
+/* ==========================================================================
+   7) Weekly Calendar Grid (Integrated)
+   ========================================================================== */
+:root {
+    --hour-height: 60px;
+}
+
+.calendar-wrapper {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: 80px repeat(5, 1fr);
+    grid-template-rows: 40px repeat(12, var(--hour-height));
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.calendar-wrapper .header {
+    background: #F1F5F9;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid var(--border);
+    border-right: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.time-label {
+    grid-column: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 5px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.day-column {
+    position: relative;
+    grid-row: 2 / span 13;
+    border-right: 1px solid var(--border);
+    background-image: linear-gradient(var(--border) 1px, transparent 1px);
+    background-size: 100% var(--hour-height);
+    z-index: 1;
+}
+
+.course-card {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border-left: 4px solid var(--accent);
+    font-size: 0.7rem;
+    overflow: hidden;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    background: var(--surface);
+    line-height: 1.2;
+}
+
+.course-id {
+    font-weight: 700;
+    display: block;
+    color: var(--text);
+}
+
+.course-meta {
+    font-size: 0.65rem;
     color: var(--muted);
 }
