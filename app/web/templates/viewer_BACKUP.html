@@ -292,18 +292,23 @@ Extends:
                       - only available when the selected schedule has no conflicts
                       - blocked schedules show an explanatory disabled button instead
                   -->
-                  <a href="{{ url_for('viewer.visual_BACKUP') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; white-space: nowrap;">
-                      Visual View (OLD)
-                  </a>
-                  <a href="{{ url_for('viewer.visual_view') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; white-space: nowrap;">
-                      Visual View (NEW)
-                  </a>
+                  {% if not data.has_conflicts %}
+                      <a href="{{ url_for('viewer.visual_view') }}" 
+                        target="_blank" 
+                        class="button" 
+                        style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; line-height: normal; white-space: nowrap; transition: background 0.15s ease;"
+                        onmouseover="this.style.backgroundColor='var(--accent-hover)';"
+                        onmouseout="this.style.backgroundColor='var(--accent)';"
+                      >
+                          Visual View (Current)
+                      </a>
+                  {% else %}
+                      <button type="button" 
+                              onclick="alert('Cannot create visual schedule: Time conflicts (overlapping classes) were detected in this schedule. Please resolve the conflicts to enable this view.')"
+                              style="background-color: #6c757d; color: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid #6c757d; font-size: 13.33px; cursor: help; white-space: nowrap;">
+                          Visual View (Blocked)
+                      </button>
+                  {% endif %}
 
               </div>
           </div>
@@ -377,126 +382,350 @@ Extends:
 
 
 <section class="card">
-  <div class="row" style="align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
-    <h2 style="margin: 0;">Schedule Display</h2>
-    
-    <div style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
-      <label for="view_type_select"><strong>View Mode:</strong></label>
-      <select id="view_type_select" onchange="toggleViewMode(this.value)">
-        <option value="tabular-view" selected>Tabular View</option>
-        <option value="calendar-view">Weekly Calendar View</option>
+
+  <!--
+    ============================================================
+    SCHEDULE TABLES SECTION
+    ============================================================
+
+    This section lets the user view the current schedule in multiple table formats.
+
+    UI Design:
+      - Two dropdown menus are used to reduce clutter:
+          1) Master Schedule
+          2) Filtered Schedule
+      - Only one panel should be visible at a time.
+      - JavaScript in app.js is responsible for:
+          * hiding all .tab-panel sections by default
+          * showing the selected panel
+          * resetting the opposite dropdown when switching modes
+          * applying entity-specific filter dropdown behavior
+  -->
+  <div class="row" style="align-items: center; gap: 10px;">
+    <h2 style="margin: 0;">Schedule Tables</h2>
+
+    <!-- Menus aligned right inside the header row -->
+    <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
+
+      <!--
+        Clear / Reset table view state:
+          - handled by JavaScript
+          - used to clear active table mode and filtered entity selection
+      -->
+      <button type="button" id="clear_filters" class="button-outline" style="padding: 5px 10px; font-size: 12px;">
+        Show Schedule/Clear
+      </button>
+
+      <!--
+        Master Schedule Dropdown:
+          Values map directly to panel IDs using this convention:
+            value="master-faculty-table" -> id="tab-master-faculty-table"
+            value="master-room-table"    -> id="tab-master-room-table"
+            value="master-lab-table"     -> id="tab-master-lab-table"
+      -->
+      <select id="master_menu" class="mode-select" data-group="master">
+        <option value="" selected disabled>Select Master Schedule</option>
+        <option value="master-faculty-table">Faculty Master Schedule</option>
+        <option value="master-room-table">Room Master Schedule</option>
+        <option value="master-lab-table">Lab Master Schedule</option>
       </select>
+
+      <!--
+        Filter By Dropdown:
+          Values map directly to entity-filter panel IDs:
+            value="filter-by-faculty-table" -> id="tab-filter-by-faculty-table"
+            value="filter-by-room-table"    -> id="tab-filter-by-room-table"
+            value="filter-by-lab-table"     -> id="tab-filter-by-lab-table"
+      -->
+      <select id="filter_menu" class="mode-select" data-group="filter">
+        <option value="" selected disabled>Select Filtered Schedule</option>
+        <option value="filter-by-faculty-table">Filter By Faculty</option>
+        <option value="filter-by-room-table">Filter By Room</option>
+        <option value="filter-by-lab-table">Filter By Lab</option>
+      </select>
+
     </div>
   </div>
+  
+  <!-- =========================================================
+       MASTER SCHEDULE PANELS
+       ========================================================= -->
 
-  <div id="calendar-view-panel" class="view-panel" style="display: none;">
-    <iframe src="{{ url_for('viewer.visual_view') }}" 
-            style="width: 100%; height: 800px; border: none; border-radius: 8px;" 
-            id="calendar-frame">
-    </iframe>
-  </div>
+  <!--
+    Faculty Master Panel:
+      - groups current schedule assignments by faculty
+      - useful for validating faculty load, placement, and conflicts
+      - renders all faculty groups in the current schedule
+  -->
+  <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
+    <h3>Master Table: By Faculty</h3>
 
-  <div id="tabular-view-panel" class="view-panel">
-    <div class="row" style="align-items: center; gap: 10px; margin-bottom: 20px;">
-      <h3 style="margin: 0;">Tabular Filters</h3>
-
-      <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
-        <button type="button" id="clear_filters" class="button-outline" style="padding: 5px 10px; font-size: 12px;">
-          Show Schedule/Clear
-        </button>
-
-        <select id="master_menu" class="mode-select" data-group="master">
-          <option value="" selected disabled>Select Master Schedule</option>
-          <option value="master-faculty-table">Faculty Master Schedule</option>
-          <option value="master-room-table">Room Master Schedule</option>
-          <option value="master-lab-table">Lab Master Schedule</option>
-        </select>
-
-        <select id="filter_menu" class="mode-select" data-group="filter">
-          <option value="" selected disabled>Select Filtered Schedule</option>
-          <option value="filter-by-faculty-table">Filter By Faculty</option>
-          <option value="filter-by-room-table">Filter By Room</option>
-          <option value="filter-by-lab-table">Filter By Lab</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
-      <h3>Master Table: By Faculty</h3>
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
       {% for fac, rows in data.by_faculty.items() %}
         <h4>{{ fac }}</h4>
         <table>
-          <thead><tr><th>Course</th><th>Room</th><th>Start Time</th></tr></thead>
+          <thead>
+            <tr><th>Course</th><th>Room</th><th>Start Time</th></tr>
+          </thead>
           <tbody>
             {% for r in rows %}
-            <tr><td>{{ r.course_id }}</td><td>{{ r.room }}</td><td>{{ r.time }}</td></tr>
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.room }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
       {% endfor %}
-    </div>
+    {% endif %}
+  </div>
 
-    <div class="tab-panel" id="tab-master-room-table" style="display:none;">
-      <h3>Master Table: By Room</h3>
+  <!--
+    Panel: Room Master Schedule
+      - Groups assignments by room (data.by_room)
+      - Use case: validate room usage + conflicts
+  -->
+  <div class="tab-panel" id="tab-master-room-table" style="display:none;">
+    <h3>Master Table: By Room</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
       {% for room, rows in data.by_room.items() %}
         <h4>{{ room }}</h4>
         <table>
-          <thead><tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr></thead>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
+          </thead>
           <tbody>
             {% for r in rows %}
-            <tr><td>{{ r.course_id }}</td><td>{{ r.faculty }}</td><td>{{ r.time }}</td></tr>
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
       {% endfor %}
-    </div>
+    {% endif %}
+  </div>
 
-    <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
-      <h3>Filtered Table: By Faculty</h3>
-      <select id="faculty_filter_select" style="margin-bottom: 10px;">
-        <option value="" selected disabled>Select Faculty</option>
-        {% for fac in faculty_options %}
-          <option value="{{ fac }}">{{ fac }}</option>
-        {% endfor %}
-      </select>
-      {% for fac, rows in data.by_faculty.items() %}
-        <div class="entity-filter-group faculty-filter-group" data-entity="{{ fac }}" style="display:none;">
+  <!--
+    Panel: Lab Master Schedule
+      - Groups assignments by lab (data.by_lab)
+      - Labs are optional:
+          * Some assignments may have lab == "" (empty)
+          * Those rows are displayed under "No Labs Assigned"
+      - Rendering strategy:
+          1) Display real lab names first
+          2) Display empty-lab group last as "No Labs Assigned"
+  -->
+  <div class="tab-panel" id="tab-master-lab-table" style="display:none;">
+    <h3>Master Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+
+      {# 1) Real labs first #}
+      {% for lab, rows in data.by_lab.items() %}
+        {% if lab %}
+          <h4>{{ lab }}</h4>
           <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
+            </thead>
             <tbody>
               {% for r in rows %}
-              <tr><td>{{ r.course_id }}</td><td>{{ r.room }}</td><td>{{ r.time }}</td></tr>
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+
+      {# 2) Empty lab group last #}
+      {% if "" in data.by_lab %}
+        <h4>No Labs Assigned</h4>
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
+          </thead>
+          <tbody>
+            {% for r in data.by_lab[""] %}
+              <tr>
+                <td>{{ r.course_id }}</td>
+                <td>{{ r.faculty }}</td>
+                <td>{{ r.time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+    {% endif %}
+  </div>
+
+  <!-- =========================================================
+       FILTERED PANELS
+       ========================================================= -->
+
+  <!--
+    Faculty Filter Panel:
+      - shows a faculty dropdown directly under the panel heading
+      - JavaScript reveals only the group matching the selected faculty
+      - if the chosen faculty has no rows in the current schedule,
+        the empty-state message is shown
+  -->
+  <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
+    <h3>Filtered Table: By Faculty</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
+        <label for="faculty_filter_select"><strong>Filter Table by</strong></label>
+        <select id="faculty_filter_select" style="min-width: 220px;">
+          <option value="" selected disabled>Select Faculty</option>
+          {% for fac in faculty_options %}
+            <option value="{{ fac }}">{{ fac }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <p id="faculty_filter_empty" class="hint" style="display:none;">
+        No assignments found for the selected faculty in this schedule.
+      </p>
+
+      {% for fac, rows in data.by_faculty.items() %}
+        <div class="entity-filter-group faculty-filter-group" data-entity="{{ fac }}" style="display:none;">
+          <h4>{{ fac }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Room</th><th>Start Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.room }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
       {% endfor %}
-    </div>
-    
-    </div>
+    {% endif %}
+  </div>
+
+  <!--
+    Room Filter Panel:
+      - shows a room dropdown directly under the panel heading
+      - JavaScript reveals only the group matching the selected room
+      - empty-state message appears when the selected room has no rows
+        in the current schedule
+  -->
+  <div class="tab-panel" id="tab-filter-by-room-table" style="display:none;">
+    <h3>Filtered Table: By Room</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
+        <label for="room_filter_select"><strong>Filter Table by</strong></label>
+        <select id="room_filter_select" style="min-width: 220px;">
+          <option value="" selected disabled>Select Room</option>
+          {% for room in room_options %}
+            <option value="{{ room }}">{{ room }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <p id="room_filter_empty" class="hint" style="display:none;">
+        No assignments found for the selected room in this schedule.
+      </p>
+
+      {% for room, rows in data.by_room.items() %}
+        <div class="entity-filter-group room-filter-group" data-entity="{{ room }}" style="display:none;">
+          <h4>{{ room }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!--
+    Lab Filter Panel:
+      - shows a lab dropdown directly under the panel heading
+      - JavaScript reveals only the group matching the selected lab
+      - uses the same grouped rendering pattern as the other filters
+      - empty-state message appears when the selected lab has no rows
+        in the current schedule
+  -->
+  <div class="tab-panel" id="tab-filter-by-lab-table" style="display:none;">
+    <h3>Filtered Table: By Lab</h3>
+
+    {% if data.count == 0 %}
+      <p class="hint">No schedules loaded. Generate or import schedules.</p>
+    {% else %}
+      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
+        <label for="lab_filter_select"><strong>Filter Table by</strong></label>
+        <select id="lab_filter_select" style="min-width: 220px;">
+          <option value="" selected disabled>Select Lab</option>
+          {% for lab in lab_options %}
+            <option value="{{ lab }}">{{ lab }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <p id="lab_filter_empty" class="hint" style="display:none;">
+        No assignments found for the selected lab in this schedule.
+      </p>
+
+      {% for lab, rows in data.by_lab.items() %}
+        <div class="entity-filter-group lab-filter-group" data-entity="{{ lab }}" style="display:none;">
+          <h4>{{ lab }}</h4>
+          <table>
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.course_id }}</td>
+                  <td>{{ r.faculty }}</td>
+                  <td>{{ r.time }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
 </section>
-
-<script>
-  /**
-   * Toggles between Tabular and Calendar views
-   */
-  function toggleViewMode(viewId) {
-    // Hide all panels
-    document.querySelectorAll('.view-panel').forEach(panel => {
-      panel.style.display = 'none';
-    });
-    
-    // Show selected panel
-    const activePanel = document.getElementById(viewId + '-panel');
-    if (activePanel) {
-      activePanel.style.display = 'block';
-    }
-
-    // Refresh iframe if switching to calendar to ensure layout is correct
-    if (viewId === 'calendar-view') {
-      const frame = document.getElementById('calendar-frame');
-      frame.src = frame.src; 
-    }
-  }
-</script>
 
 {% endblock %}
