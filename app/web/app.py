@@ -33,6 +33,10 @@ def create_app():
     app.register_blueprint(run_bp)
     app.register_blueprint(viewer_bp)
 
+    # AI blueprint (route)
+    from app.web.routes.ai_routes import bp as ai_bp
+    app.register_blueprint(ai_bp)
+
     # Simple home redirect
     @app.get("/")
     def home():

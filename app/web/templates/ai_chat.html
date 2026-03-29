@@ -1,0 +1,71 @@
+<!--
+Author: Antonio Corona
+Date: 2026-03-26
+
+AI Chat Page
+
+Purpose:
+    Provides the UI for the Sprint 3 Chunk A AI Chat Tool.
+
+Responsibilities:
+    - Display a one-off command form
+    - Let the user submit a natural language configuration request
+    - Show AI processing results
+    - Reinforce the stateless design of the feature
+
+Architectural Role:
+    - Acts as the View layer for AI-assisted configuration editing.
+    - Works with ai_routes.py and ai_service.py.
+
+Notes:
+    - This page is intentionally simple for Phase 1.
+    - Each command is processed independently.
+-->
+
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="card">
+    <h1>AI Configuration Chat</h1>
+    <p>
+      Enter one configuration command at a time. This tool is stateless, so
+      each request is processed independently.
+    </p>
+
+    {% if not config_loaded %}
+      <div class="msg error">
+        No configuration is currently loaded. Please load a config in the
+        Config Editor before using AI Chat.
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('ai.ai_command') }}">
+      <label for="command"><strong>Command</strong></label><br>
+      <textarea
+        id="command"
+        name="command"
+        rows="6"
+        style="width: 100%; margin-top: 8px;"
+        placeholder="Example: Add course CS102 with 3 credits"
+      >{{ user_command or "" }}</textarea>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Submit AI Command</button>
+      </div>
+    </form>
+  </section>
+
+  {% if ai_result %}
+    <section class="card" style="margin-top: 20px;">
+      <h2>AI Result</h2>
+
+      <p><strong>Success:</strong> {{ ai_result.success }}</p>
+      <p><strong>Changes Applied:</strong> {{ ai_result.changes_applied }}</p>
+      <p><strong>Message:</strong> {{ ai_result.message }}</p>
+
+      {% if ai_result.tool_calls %}
+        <p><strong>Tool Calls:</strong> {{ ai_result.tool_calls }}</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
