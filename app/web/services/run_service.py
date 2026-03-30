@@ -30,7 +30,7 @@ from datetime import datetime                 # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
-from app.web.services.progress_store import generation_progress, progress_lock
+from app.web.services.progress_store import generation_progress, progress_lock, is_running
 
 # ----------------------------------
 # Session Keys (Key Sources of Date)
@@ -116,6 +116,16 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
         - It transforms solver output (flat rows) into grouped schedules.
         - It prepares data in a format optimized for the Viewer layer.
     """
+
+    session_id = session.sid
+
+    # prevents concurrent generations
+    with progress_lock:
+        if is_running.get(session_id, False):
+            raise RuntimeError("Generation already in progress.")
+        
+        is_running[session_id] = True
+        generation_progress[session_id] = 0
 
     # ----------------------------------------
     # 1. Retrieve Configuration
@@ -258,6 +268,7 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # Loading has finished
     with progress_lock:
         generation_progress[session_id] = 100
+        is_running[session_id] = False
 
 
     return len(schedules)
