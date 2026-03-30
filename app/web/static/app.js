@@ -635,3 +635,106 @@ function initConfigExport() {
     }
   });
 }
+
+// Progress bar
+async function startGenerationProgress() {
+
+    const form = document.getElementById("generate")
+    const bar_object = document.getElementById("is-progress-bar-hidden");
+
+    const progress_bar = document.getElementById("progress-bar");
+
+    // Displays the progress bar
+    bar_object.style.display = "block";
+    // Resets the progress bar value
+    progress_bar.value = 0;
+
+    // ensures that the generation progress is reset to 0
+    await fetch("/run/reset",{ method: "POST"})
+
+    // Begins checking for updates to send to the progress bar object
+    checkGenerationProgress();
+
+    const formData = new FormData(form);
+
+    const res = await fetch("/run/generate", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      console.error("Generation failed");
+    }
+
+
+}
+
+// Continuously checks for updates to the progress bar
+async function checkGenerationProgress() {
+
+    const progress_bar = document.getElementById("progress-bar");
+    const percentage_loaded = document.getElementById("percentage-loaded");
+
+
+    try {
+        // Gets the current progress from the session
+        const res = await fetch("/run/progress");
+        const data = await res.json();
+
+        console.log("data received:", data)
+
+        if (data.progress < 100) {
+            // Periodically checks for schedule progress updates
+            console.log("progress bar: ", data.progress)
+
+            // Updates the progress bar with the current progress
+            progress_bar.value = data.progress;
+            console.log("Here")
+            // Updates the label text with the total percentage finished 
+            let updatedText = progress_bar.value + "%"
+            percentage_loaded.innerHTML = updatedText;
+            progress_bar_flavor_text(data.progress);
+
+            setTimeout(checkGenerationProgress, 500);
+        } 
+        if (data.progress == 100) {
+            console.log("SWITCHING PAGES")
+
+            progress_bar.value = 100;
+            progress_bar_flavor_text(data.progress);
+            percentage_loaded.innerHTML = "100%"
+
+            // Redirects the user to the viewer page after a very short period
+            setTimeout(() => (window.location.href = "/viewer"), 500);
+        }
+    // Catches any error thay may be thrown
+    } catch (err) {
+        console.error("Generation failed:", err);
+    }
+}
+
+function progress_bar_flavor_text(progress) {
+    const flavor_text = document.getElementById("flavor-text");
+
+    console.log("Progress of the generation", progress)
+    switch(progress){
+      case progress == 0:
+        flavor_text.innerHTML = "Please wait";
+        break;
+      case progress == 25:
+        flavor_text.innerHTML = "A quarter of the way there"
+        break;
+      case progress == 50:
+        flavor_text.innerHTML = "Halfway there"
+        break;
+      case progress == 75:
+        flavor_text.innerHTML = "Nearly there"
+        break;
+      case progress == 100:
+        flavor_text.innerHTML = "Generation complete. Now being redirected"
+        break;
+      default:
+        flavor_text.innerHTML = "Generation in progress"
+        break;
+    }
+}
