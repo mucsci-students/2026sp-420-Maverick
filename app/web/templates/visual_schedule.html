@@ -14,6 +14,8 @@ Purpose:
     <meta charset="UTF-8">
     <title>Departmental Visual Schedule</title>
     <style>
+
+        /* CSS Variables - used for colors and sizing. */
         :root {
             --hour-height: 60px;
             --bg-color: #f8f9fa;
@@ -26,6 +28,7 @@ Purpose:
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); }
         
+        /* UI elements huhidden during printing. */
         .no-print { 
             display: flex; justify-content: space-between; align-items: center; 
             margin-bottom: 30px; background: white; padding: 15px 25px; 
@@ -34,6 +37,7 @@ Purpose:
 
         .section-title { border-bottom: 3px solid #333; margin: 40px 0 20px; padding-bottom: 10px; font-size: 1.5rem; text-transform: uppercase; }
 
+        /* Flexible grib used to show multiple calendars side-by-side. (Will most likely change when drop down menu is added.) */
         .schedules-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
@@ -43,6 +47,9 @@ Purpose:
         .calendar-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .calendar-name { text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
 
+        /* Core Calendar Logic -
+            1 column for time labels + 5 columns for MON-FRI
+            1 row for headers + 12 rows (one for each hour from 8am to 8pm). */
         .calendar-wrapper {
             position: relative; 
             display: grid;
@@ -62,6 +69,7 @@ Purpose:
             border-bottom: 1px solid #f8f9fa;
         }
 
+        /* Day columns use a linear-gradient to create visual "hour" stripes automatically. */
         .day-column { 
             position: relative; 
             grid-row: 2 / span 12; 
@@ -70,6 +78,7 @@ Purpose:
             background-size: 100% var(--hour-height); 
         }
 
+        /* Course cards are positioned absolutely based on time within the day-column. */
         .course-card {
             position: absolute; 
             left: 2px; right: 2px; 
@@ -81,7 +90,9 @@ Purpose:
             overflow: hidden;
         }
 
-        .conflict { border: 2px solid var(--conflict-color) !important; border-left-width: 6px !important; background-color: rgba(255, 68, 68, 0.15) !important; z-index: 20 !important; }
+        /* Old style used to discover time conflicts - not needed anymore, but kept just in case. */
+        /* .conflict { border: 2px solid var(--conflict-color) !important; border-left-width: 6px !important; background-color: rgba(255, 68, 68, 0.15) !important; z-index: 20 !important; } */
+        
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
         .course-meta { font-size: 0.65rem; color: #444; }
 
@@ -93,16 +104,21 @@ Purpose:
         .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; }
         .swatch { width: 16px; height: 16px; border-radius: 3px; border-left: 4px solid; }
 
+        /* Print settings - optimizes layout for pdf/paper. */
         @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 
+    <!--    Jinja2 syntax used for the html body code.
+            Errors regarding the '{% ... %}' and '{{ ... }}' are false positives.
+            The errors show up due to VS Code trying to read them as "Standard CSS". -->
+
     <div class="no-print">
         <h1>Master Visual View #{{ data.index + 1 }}</h1>
         <button onclick="window.print()" style="padding: 10px 20px; cursor:pointer;">Print PDF</button>
     </div>
-
+    
     {% macro render_calendar(title, assignments) %}
     <div class="calendar-container">
         <div class="calendar-name">{{ title }}</div>
