@@ -108,7 +108,7 @@ app/web/
 From the project root:
 ```arduino
 uv add flask
-uv run flask --app app.web:create_app --debug run
+uv run flask --app app.web:create_app --debug run --with-threads
 ```
 Then open the development server URL shown in the terminal.
 
