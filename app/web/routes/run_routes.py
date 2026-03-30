@@ -45,7 +45,6 @@ High-Level Flow:
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask import session  # Session access for checking loaded config defaults
-
 from app.web.services.run_service import (
     generate_schedules_into_session,
     KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
@@ -53,7 +52,7 @@ from app.web.services.run_service import (
     SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
 )
 from app.web.services.config_service import SESSION_CONFIG_KEY  # Where the loaded config is stored
-
+from app.web.services.progress_store import generation_progress, progress_lock
 
 # ==================================================
 # Blueprint Setup
@@ -170,7 +169,7 @@ def generate():
         # Optimization override: multi-select checkbox list
         # NOTE: This can be empty if user unchecks all flags.
         optimizer_flags = request.form.getlist("optimizer_flags")
-
+    
     except ValueError:
         flash("Limit must be an integer.", "error")
         return redirect(url_for("run.generator"))
@@ -184,15 +183,11 @@ def generate():
         session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
         session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
 
-        count = generate_schedules_into_session(
-            limit=limit,
-            optimizer_flags=optimizer_flags
-        )
+        count = generate_schedules_into_session(limit = limit, optimizer_flags = optimizer_flags)
 
         flash(f"Generated {count} schedule(s).", "success")
 
-        # Redirect to Viewer upon success
-        return redirect(url_for("viewer.viewer"))
+        return ("", 204)
 
     except Exception as e:
         # Catch-all so UI doesn’t crash on user-facing errors
@@ -223,3 +218,18 @@ def reset():
 
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
+
+# ==================================================
+# Route: Generation Progress (GET)
+# ==================================================
+@bp.get("/progress")
+def get_progress():
+    """
+    Returns the current generation progress (from 0 -> 100).
+    """
+    session_id = session.sid
+
+    with progress_lock:
+        progress = generation_progress.get(session_id, 0)
+
+    return {"progress": progress}
