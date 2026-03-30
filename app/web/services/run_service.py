@@ -28,10 +28,9 @@ from flask import session                     # Session storage for per-user sta
 from copy import deepcopy                     # Prevent mutation of loaded config
 from datetime import datetime                 # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
-
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
-
+from app.web.services.progress_store import generation_progress, progress_lock
 
 # ----------------------------------
 # Session Keys (Key Sources of Date)
@@ -174,6 +173,18 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # Core currently doesn't use optimize bool, but kept it for future compatibility
     optimize = len(optimizer_flags) > 0
 
+    # Sets the generation progress
+    session_id = session.sid
+
+    with progress_lock:
+        generation_progress[session_id] = 0
+
+
+    # Sets the initial counter
+    schedules_generated = 0
+
+    # Group rows by schedule_id for Viewer to navigate
+    grouped: Dict[int, List[Dict[str, Any]]] = {}
 
     # --------------------------------
     # 4. Invoke Core Scheduler Engine
@@ -182,39 +193,39 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # --- REAL SCHEDULER CALL ---
     # The scheduler returns a flat list of assignment rows.
     # Each row corresponds to one meeting instance.
-    flat_rows: List[Dict[str, Any]] = generate_schedules(
-        run_cfg,
-        limit=limit,
-        optimize=optimize
-    )
+    for schedule_rows in generate_schedules (run_cfg, limit=limit, optimize=optimize):
+        
+        schedules_generated += 1
 
+        percent = int((schedules_generated / limit) * 100)
+        with progress_lock:
+            generation_progress[session_id] = percent
 
+        # print ("PERCENTAGE: ", int((schedules_generated /  limit) * 100))
+        # print("SCHEUDLE GENERATED:", schedules_generated)
     # --------------------------------------------
     # 5. Transform Flat Rows -> Grouped Schedules
     # --------------------------------------------
+        for row in schedule_rows:
 
-    # Group rows by schedule_id for Viewer to navigate
-    grouped: Dict[int, List[Dict[str, Any]]] = {}
+            sid = _to_int(row.get("schedule_id"), default=1)
 
-    for row in flat_rows:
-        sid = _to_int(row.get("schedule_id"), default=1)
+            grouped.setdefault(sid, []).append({
+                # fields returned by scheduler_core
+                "schedule_id": sid,
+                "course_id": row.get("course_id", ""),
+                "day": row.get("day", ""),
+                "start": row.get("start", ""),
+                "room": row.get("room", ""),
+                "faculty": row.get("faculty", ""),
+                "lab": row.get("lab", ""),
+                "duration": row.get("duration", ""),
+                "credits": row.get("credits", ""),
+                "meeting_index": row.get("meeting_index", ""),
 
-        grouped.setdefault(sid, []).append({
-            # fields returned by scheduler_core
-            "schedule_id": sid,
-            "course_id": row.get("course_id", ""),
-            "day": row.get("day", ""),
-            "start": row.get("start", ""),
-            "room": row.get("room", ""),
-            "faculty": row.get("faculty", ""),
-            "lab": row.get("lab", ""),
-            "duration": row.get("duration", ""),
-            "credits": row.get("credits", ""),
-            "meeting_index": row.get("meeting_index", ""),
-
-            # Convenience field for UI display
-            "time": f"{row.get('day','')} {row.get('start','')}".strip()
-        })
+                # Convenience field for UI display
+                "time": f"{row.get('day','')} {row.get('start','')}".strip()
+            })
 
 
     # --------------------------------
@@ -243,5 +254,10 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     session[SESSION_SCHEDULES_KEY] = schedules
     session[SESSION_SELECTED_INDEX_KEY] = 0     # Reset navigation to first schedule
     session[SESSION_USER_SELECTED_KEY] = False     # show "Select Schedule" placeholder initially
+
+    # Loading has finished
+    with progress_lock:
+        generation_progress[session_id] = 100
+
 
     return len(schedules)
