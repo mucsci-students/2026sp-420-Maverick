@@ -24,6 +24,18 @@ Extends base.html.
 {% block content %}
 <h1>Schedule Generator</h1>
 
+<section class="card" id="is-progress-bar-hidden" style="display: none">
+  <!-- 
+    progress bar loading:
+  -->
+  <div id="progress-bar-object">
+    <label id="progress-label">Loading <span id="percentage-loaded">0%</span>
+    </label>
+    <progress id="progress-bar" value="0" max="100"></progress>
+    <label id="flavor-text">Please Wait</label>
+  </div>
+</section>
+
 <section class="card">
 
   <!--
@@ -41,7 +53,7 @@ Extends base.html.
       POST /run/generate
     Overrides are applied in the Service layer without mutating the saved config.
   -->
-  <form method="post" action="/run/generate">
+  <form id="generate" method="post" action="/run/generate">
 
     <!--
       Limit Override:
@@ -108,21 +120,18 @@ Extends base.html.
       - Resets both the limit and optimizer overrides
     -->
     <div class="button-row">
-
       <!-- Generate Form -->
-      <form method="post" action="/run/generate" style="margin:0;">
-        <button type="submit" {% if not config_loaded %}disabled{% endif %}>
+        <button type="button" onclick="startGenerationProgress()" {% if not config_loaded %}disabled{% endif %}>
           Generate
         </button>
-      </form>
+  </form>
 
-      <!-- Reset Form -->
-      <form method="post" action="/run/reset" style="margin:0;">
-        <button type="submit" {% if not config_loaded %}disabled{% endif %}>
-          Reset 
-        </button>
-      </form>
-
-    </div>
+  <!-- Reset Form -->
+  <form method="post" action="/run/reset" style="margin:0;">
+    <button type="submit" {% if not config_loaded %}disabled{% endif %}>
+      Reset
+    </button>
+  </div>
+  </form>
 </section>
 {% endblock %}
