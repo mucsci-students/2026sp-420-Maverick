@@ -641,7 +641,6 @@ async function startGenerationProgress() {
 
     const form = document.getElementById("generate")
     const bar_object = document.getElementById("is-progress-bar-hidden");
-
     const progress_bar = document.getElementById("progress-bar");
 
     // Displays the progress bar
@@ -649,63 +648,48 @@ async function startGenerationProgress() {
     // Resets the progress bar value
     progress_bar.value = 0;
 
-    // ensures that the generation progress is reset to 0
-    await fetch("/run/reset",{ method: "POST"})
+    // resets the progress 
+    await fetch("/run/reset")
+
+    const res = fetch("/run/generate", {
+      method: "POST",
+      body: new FormData(form)
+    });
 
     // Begins checking for updates to send to the progress bar object
     checkGenerationProgress();
 
-    const formData = new FormData(form);
-
-    const res = await fetch("/run/generate", {
-      method: "POST",
-      body: formData
-    });
-
     if (!res.ok) {
       console.error("Generation failed");
     }
-
-
 }
+
+let progress_bar_current_progress = 0;
 
 // Continuously checks for updates to the progress bar
 async function checkGenerationProgress() {
-
-    const progress_bar = document.getElementById("progress-bar");
-    const percentage_loaded = document.getElementById("percentage-loaded");
-
 
     try {
         // Gets the current progress from the session
         const res = await fetch("/run/progress");
         const data = await res.json();
 
-        console.log("data received:", data)
+        // console.log("data received:", data)
 
-        if (data.progress < 100) {
+        if (data.progress < 100 || progress_bar_current_progress < 100) {
             // Periodically checks for schedule progress updates
-            console.log("progress bar: ", data.progress)
+            // console.log("progress bar: ", data.progress)
 
-            // Updates the progress bar with the current progress
-            progress_bar.value = data.progress;
-            console.log("Here")
-            // Updates the label text with the total percentage finished 
-            let updatedText = progress_bar.value + "%"
-            percentage_loaded.innerHTML = updatedText;
-            progress_bar_flavor_text(data.progress);
+            incrementProgressBar(data.progress)
 
-            setTimeout(checkGenerationProgress, 500);
-        } 
-        if (data.progress == 100) {
-            console.log("SWITCHING PAGES")
+            setTimeout(() => checkGenerationProgress(data.progress), 250);
+        } else {
+              incrementProgressBar(100)
 
-            progress_bar.value = 100;
-            progress_bar_flavor_text(data.progress);
-            percentage_loaded.innerHTML = "100%"
+              progress_bar_current_progress = 0;
 
-            // Redirects the user to the viewer page after a very short period
-            setTimeout(() => (window.location.href = "/viewer"), 500);
+              // Redirects the user to the viewer page after a very short period
+              setTimeout(() => (window.location.href = "/viewer"), 1200);
         }
     // Catches any error thay may be thrown
     } catch (err) {
@@ -713,28 +697,65 @@ async function checkGenerationProgress() {
     }
 }
 
-function progress_bar_flavor_text(progress) {
-    const flavor_text = document.getElementById("flavor-text");
+// increments the progress bar by a given % until it reaches the current progress
+function incrementProgressBar(progress) {
+    let distance = progress - progress_bar_current_progress
+    let progress_speed_default = 1;
+  
 
-    console.log("Progress of the generation", progress)
-    switch(progress){
-      case progress == 0:
-        flavor_text.innerHTML = "Please wait";
-        break;
-      case progress == 25:
-        flavor_text.innerHTML = "A quarter of the way there"
-        break;
-      case progress == 50:
-        flavor_text.innerHTML = "Halfway there"
-        break;
-      case progress == 75:
-        flavor_text.innerHTML = "Nearly there"
-        break;
-      case progress == 100:
-        flavor_text.innerHTML = "Generation complete. Now being redirected"
-        break;
-      default:
-        flavor_text.innerHTML = "Generation in progress"
-        break;
+    // changes the speed of the progress bar based on how far away it is from the current progress
+    if (distance <= 10) {
+      progress_speed_default = 1;
+
+    } else if (distance <= 20) {
+      progress_speed_default = 2;
+
+    } else if (distance <= 30) {
+      progress_speed_default = 3
     }
+
+
+    if (progress_bar_current_progress < progress) {
+      progress_bar_current_progress += progress_speed_default;
+      updateProgressUI(progress_bar_current_progress)
+    }
+
+}
+
+// updates the progress bar and percent loaded with the given value
+function updateProgressUI(current_progress) {
+  const progress_bar = document.getElementById("progress-bar");
+  const percentage_loaded = document.getElementById("percentage-loaded");
+
+  progress_bar.value = progress_bar_current_progress;
+  percentage_loaded.innerHTML = current_progress + "%";
+
+  progress_bar_flavor_text(current_progress);
+}
+
+// chnages the flavor-text to show the appropriate message based on percentage loaded
+function progress_bar_flavor_text(progress) {
+    const flavor_text = document.getElementById("flavor-text"); 
+
+      if (progress == 0){
+          flavor_text.innerHTML = "Please wait";
+          console.log("start")
+
+      }else if (progress == 25) {
+          flavor_text.innerHTML = "About a quarter of the way there"
+          console.log("quarter")
+
+      } else if (progress == 50) {
+          flavor_text.innerHTML = "Halfway there"
+          console.log("halfway")
+
+      } else if (progress == 75) {
+          flavor_text.innerHTML = "Nearly there"
+          console.log("three quarters")
+
+      } else if (progress == 100) {
+          flavor_text.innerHTML = "Generation completed. Redirecting to viewer..."
+          console.log("finished")
+      }
+
 }

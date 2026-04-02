@@ -117,6 +117,7 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
         - It prepares data in a format optimized for the Viewer layer.
     """
 
+    # sets the session id
     session_id = session.sid
 
     # prevents concurrent generations
@@ -183,12 +184,9 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # Core currently doesn't use optimize bool, but kept it for future compatibility
     optimize = len(optimizer_flags) > 0
 
-    # Sets the generation progress
-    session_id = session.sid
-
+    # sets the intial progress when generation starts
     with progress_lock:
         generation_progress[session_id] = 0
-
 
     # Sets the initial counter
     schedules_generated = 0
@@ -205,9 +203,12 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # Each row corresponds to one meeting instance.
     for schedule_rows in generate_schedules (run_cfg, limit=limit, optimize=optimize):
         
+        # the number of schedule that have been generated so fat
         schedules_generated += 1
 
+        # updates the progress of the generation
         percent = int((schedules_generated / limit) * 100)
+        
         with progress_lock:
             generation_progress[session_id] = percent
 
@@ -265,7 +266,8 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     session[SESSION_SELECTED_INDEX_KEY] = 0     # Reset navigation to first schedule
     session[SESSION_USER_SELECTED_KEY] = False     # show "Select Schedule" placeholder initially
 
-    # Loading has finished
+    # sets the progress to 100 when generation is complete
+    # and allow for a new generation to be run
     with progress_lock:
         generation_progress[session_id] = 100
         is_running[session_id] = False

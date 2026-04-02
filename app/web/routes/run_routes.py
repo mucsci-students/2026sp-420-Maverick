@@ -52,7 +52,7 @@ from app.web.services.run_service import (
     SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
 )
 from app.web.services.config_service import SESSION_CONFIG_KEY  # Where the loaded config is stored
-from app.web.services.progress_store import generation_progress, progress_lock
+from app.web.services.progress_store import generation_progress, progress_lock, is_running
 
 # ==================================================
 # Blueprint Setup
@@ -187,6 +187,7 @@ def generate():
 
         flash(f"Generated {count} schedule(s).", "success")
 
+        # lets the js handle the redirect
         return ("", 204)
 
     except Exception as e:
@@ -216,6 +217,12 @@ def reset():
     session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
     session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
 
+    # clears the session progress
+    with progress_lock:
+        generation_progress[session.sid] = 0
+        is_running[session.sid] = False
+
+
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
 
@@ -225,7 +232,7 @@ def reset():
 @bp.get("/progress")
 def get_progress():
     """
-    Returns the current generation progress (from 0 -> 100).
+    Returns the current generation progress (from 0 -> 100)
     """
     session_id = session.sid
 
