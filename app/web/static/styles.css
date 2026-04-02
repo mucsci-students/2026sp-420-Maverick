@@ -98,6 +98,22 @@ label {
    5) Components
    ========================================================================== */
 
+
+/* Progress bar */
+#progress-bar-object {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#progress-label, #flavor-text {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#progress-bar {
+    flex-basis: 100%;
+}
+
 /* Cards */
 .card {
     margin-bottom: 16px;

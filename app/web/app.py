@@ -17,12 +17,23 @@ This serves as the main entry point for the web-based GUI.
 # app/web/app.py
 import os
 from flask import Flask
+from flask_session import Session
 
 def create_app():
     app = Flask(__name__)
 
     # Needed for session + flash messages
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
+
+
+    # Flask Session configuration
+    app.config["SESSION_TYPE"] = "filesystem"
+    app.config["SESSION_PERMANENT"] = False
+    app.config["SESSION_USE_SIGNER"] = True
+    app.config["SESSION_FILE_DIR"] = "/tmp/flask_sessions"
+
+    # Initializes server-side sessions
+    Session(app)
 
     # Blueprints (routes)
     from app.web.routes.config_routes import bp as config_bp

@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-02-15
+# Date: 2026-03-30
 """
 scheduler_core/main.py
 
@@ -299,18 +299,20 @@ def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> List[
     combined = CombinedConfig(**cfg)
     s = Scheduler(combined)
 
-    rows: List[Dict[str, Any]] = []
 
     for schedule_id, schedule in enumerate(s.get_models(), start=1):
+        schedule_rows: List[Dict[str, Any]]= []
         for course in schedule:
-            rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+           schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+
+        yield schedule_rows
 
         if schedule_id >= limit:
             break
 
     # Normalize keys so CSV/JSON always has consistent columns
     normalized: List[Dict[str, Any]] = []
-    for r in rows:
+    for r in schedule_rows:
         normalized.append({k: r.get(k, "") for k in FIELDNAMES})
 
     return normalized
