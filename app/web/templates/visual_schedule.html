@@ -1,6 +1,6 @@
 <!--
 Author: Ian Swartz
-Date: 2026-04-02
+Date: 2026-04-03
 
 Visual Schedule (used when exporting schedule(s) to a visual file)
 
@@ -58,6 +58,22 @@ Purpose:
             border: 1px solid var(--border-color); background: #fff;
         }
 
+        .calendar-wrapper[class*="filter-"] {
+            grid-template-columns: 80px 1fr !important;
+        }
+
+        .calendar-wrapper[class*="filter-"] .day-column,
+        .calendar-wrapper[class*="filter-"] .header.day-head { display: none; }
+
+        .calendar-wrapper.filter-Monday .col-MON, .calendar-wrapper.filter-Monday .head-MON,
+        .calendar-wrapper.filter-Tuesday .col-TUE, .calendar-wrapper.filter-Tuesday .head-TUE,
+        .calendar-wrapper.filter-Wednesday .col-WED, .calendar-wrapper.filter-Wednesday .head-WED,
+        .calendar-wrapper.filter-Thursday .col-THU, .calendar-wrapper.filter-Thursday .head-THU,
+        .calendar-wrapper.filter-Friday .col-FRI, .calendar-wrapper.filter-Friday .head-FRI { 
+            display: block !important;
+            grid-column: 2 !important; 
+        }
+
         .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 0.9rem; }
         .time-label { grid-column: 1; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: #6c757d; display: flex; justify-content: center; padding-top: 5px; border-bottom: 1px solid #f8f9fa; }
 
@@ -77,12 +93,7 @@ Purpose:
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
         .course-meta { font-size: 0.65rem; color: #444; }
 
-        .footer-summary { margin-top: 25px; display: flex; justify-content: center; align-items: center; background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
-        .legend-grid { display: flex; gap: 30px; }
-        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; }
-        .swatch { width: 16px; height: 16px; border-radius: 3px; border-left: 4px solid; }
-
-        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } .filter-section { display: block !important; } }
+        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -93,11 +104,22 @@ Purpose:
             <button onclick="window.print()">Print PDF</button>
         </div>
         
-        <div class="nav-links">
-            <button class="nav-btn active" onclick="filterView('all', this)">All</button>
-            <button class="nav-btn" onclick="filterView('faculty', this)">Faculty</button>
-            <button class="nav-btn" onclick="filterView('room', this)">Room</button>
-            <button class="nav-btn" onclick="filterView('lab', this)">Labs (Resource)</button>
+        <div class="nav-links" id="category-btns">
+            <span style="align-self: center; font-weight: bold; color: #444; width: 80px;">Show:</span>
+            <button class="nav-btn active" onclick="filterCategory('all', this)">All</button>
+            <button class="nav-btn" onclick="filterCategory('faculty', this)">Faculty</button>
+            <button class="nav-btn" onclick="filterCategory('room', this)">Rooms</button>
+            <button class="nav-btn" onclick="filterCategory('lab', this)">Labs</button>
+        </div>
+
+        <div class="nav-links" id="day-btns">
+            <span style="align-self: center; font-weight: bold; color: #444; width: 80px;">Day Filtering:</span>
+            <button class="nav-btn active" onclick="filterDay('all', this)">Full Week</button>
+            <button class="nav-btn" onclick="filterDay('Monday', this)">Monday</button>
+            <button class="nav-btn" onclick="filterDay('Tuesday', this)">Tuesday</button>
+            <button class="nav-btn" onclick="filterDay('Wednesday', this)">Wednesday</button>
+            <button class="nav-btn" onclick="filterDay('Thursday', this)">Thursday</button>
+            <button class="nav-btn" onclick="filterDay('Friday', this)">Friday</button>
         </div>
     </div>
 
@@ -106,7 +128,11 @@ Purpose:
         <div class="calendar-name">{{ title }}</div>
         <div class="calendar-wrapper">
             <div class="header">Time</div>
-            <div class="header">Mon</div><div class="header">Tue</div><div class="header">Wed</div><div class="header">Thu</div><div class="header">Fri</div>
+            <div class="header day-head head-MON">Mon</div>
+            <div class="header day-head head-TUE">Tue</div>
+            <div class="header day-head head-WED">Wed</div>
+            <div class="header day-head head-THU">Thu</div>
+            <div class="header day-head head-FRI">Fri</div>
 
             {% for hour in range(8, 20) %}
                 <div class="time-label" style="grid-row: {{ loop.index + 1 }};">
@@ -116,7 +142,7 @@ Purpose:
 
             {% set days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] %}
             {% for day_name in days %}
-                <div class="day-column" style="grid-column: {{ loop.index + 1 }};">
+                <div class="day-column col-{{ day_name }}" style="grid-column: {{ loop.index + 1 }};">
                     {% for a in assignments %}
                         {% if a.day|trim|upper == day_name %}
                             {% set start_parts = a.start.split(':') %}
@@ -165,7 +191,6 @@ Purpose:
     <div id="view-lab" class="filter-section" style="display:none;">
         <h2 class="section-title">Lab Resource Schedules</h2>
         <div class="schedules-grid">
-            {# We iterate through all unique lab types found in the total assignments list #}
             {% set lab_types = [] %}
             {% for a in data.assignments %}
                 {% if a.lab and a.lab not in lab_types %}
@@ -185,17 +210,11 @@ Purpose:
         </div>
     </div>
 
-    <div class="footer-summary no-print">
-        <div class="legend-grid">
-            <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
-            <div class="legend-item"><div class="swatch" style="background: var(--lab-color); border-color: var(--lab-border);"></div>Lab</div>
-        </div>
-    </div>
-
     <script>
-        function filterView(view, btn) {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        function filterCategory(view, btn) {
+            document.querySelectorAll('#category-btns .nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+
             const sections = document.querySelectorAll('.filter-section');
             sections.forEach(s => s.style.display = 'none');
 
@@ -206,6 +225,19 @@ Purpose:
             } else {
                 document.getElementById('view-' + view).style.display = 'block';
             }
+        }
+
+        function filterDay(day, btn) {
+            document.querySelectorAll('#day-btns .nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const wrappers = document.querySelectorAll('.calendar-wrapper');
+            wrappers.forEach(wrapper => {
+                wrapper.className = 'calendar-wrapper'; 
+                if (day !== 'all') {
+                    wrapper.classList.add('filter-' + day);
+                }
+            });
         }
     </script>
 </body>
