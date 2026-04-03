@@ -1,6 +1,6 @@
 <!--
 Author: Ian Swartz
-Date: 2026-03-08
+Date: 2026-04-02
 
 Visual Schedule (used when exporting schedule(s) to a visual file)
 
@@ -12,10 +12,8 @@ Purpose:
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Departmental Visual Schedule</title>
+    <title>Calendar Visual Schedule</title>
     <style>
-
-        /* CSS Variables - used for colors and sizing. */
         :root {
             --hour-height: 60px;
             --bg-color: #f8f9fa;
@@ -24,101 +22,85 @@ Purpose:
             --lecture-border: #2196f3;
             --lab-color: rgba(156, 39, 176, 0.1);
             --lab-border: #9c27b0;
+            --accent: #0D9488;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); }
         
-        /* UI elements huhidden during printing. */
         .no-print { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 30px; background: white; padding: 15px 25px; 
+            background: white; padding: 15px 25px; 
             border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+            margin-bottom: 20px;
         }
+
+        .top-nav { display: flex; justify-content: space-between; align-items: center; }
+        .nav-links { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+        
+        .nav-btn {
+            padding: 8px 16px; border: 1px solid var(--border-color);
+            background: white; border-radius: 6px; cursor: pointer;
+            font-weight: 600; color: #64748b; transition: all 0.2s;
+        }
+
+        .nav-btn:hover { background: #f1f5f9; }
+        .nav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
         .section-title { border-bottom: 3px solid #333; margin: 40px 0 20px; padding-bottom: 10px; font-size: 1.5rem; text-transform: uppercase; }
-
-        /* Flexible grib used to show multiple calendars side-by-side. (Will most likely change when drop down menu is added.) */
-        .schedules-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-            gap: 30px;
-        }
+        .schedules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
 
         .calendar-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .calendar-name { text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
 
-        /* Core Calendar Logic -
-            1 column for time labels + 5 columns for MON-FRI
-            1 row for headers + 12 rows (one for each hour from 8am to 8pm). */
         .calendar-wrapper {
-            position: relative; 
-            display: grid;
+            position: relative; display: grid;
             grid-template-columns: 80px repeat(5, 1fr);
             grid-template-rows: 50px repeat(12, var(--hour-height));
-            border: 1px solid var(--border-color);
-            background: #fff;
+            border: 1px solid var(--border-color); background: #fff;
         }
 
         .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 0.9rem; }
-        
-        .time-label { 
-            grid-column: 1; 
-            border-right: 1px solid var(--border-color); 
-            font-size: 0.75rem; color: #6c757d; 
-            display: flex; justify-content: center; padding-top: 5px;
-            border-bottom: 1px solid #f8f9fa;
-        }
+        .time-label { grid-column: 1; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: #6c757d; display: flex; justify-content: center; padding-top: 5px; border-bottom: 1px solid #f8f9fa; }
 
-        /* Day columns use a linear-gradient to create visual "hour" stripes automatically. */
         .day-column { 
-            position: relative; 
-            grid-row: 2 / span 12; 
+            position: relative; grid-row: 2 / span 12; 
             border-right: 1px solid var(--border-color); 
             background-image: linear-gradient(var(--border-color) 1px, transparent 1px); 
             background-size: 100% var(--hour-height); 
         }
 
-        /* Course cards are positioned absolutely based on time within the day-column. */
         .course-card {
-            position: absolute; 
-            left: 2px; right: 2px; 
-            padding: 5px;
-            border-radius: 4px; border-left: 4px solid; 
-            font-size: 0.7rem; line-height: 1.2;
-            z-index: 10; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
+            position: absolute; left: 2px; right: 2px; padding: 5px;
+            border-radius: 4px; border-left: 4px solid; font-size: 0.7rem; line-height: 1.2;
+            z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;
         }
 
-        /* Old style used to discover time conflicts - not needed anymore, but kept just in case. */
-        /* .conflict { border: 2px solid var(--conflict-color) !important; border-left-width: 6px !important; background-color: rgba(255, 68, 68, 0.15) !important; z-index: 20 !important; } */
-        
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
         .course-meta { font-size: 0.65rem; color: #444; }
 
-        .footer-summary {
-            margin-top: 25px; display: flex; justify-content: center; align-items: center;
-            background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);
-        }
+        .footer-summary { margin-top: 25px; display: flex; justify-content: center; align-items: center; background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
         .legend-grid { display: flex; gap: 30px; }
         .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; }
         .swatch { width: 16px; height: 16px; border-radius: 3px; border-left: 4px solid; }
 
-        /* Print settings - optimizes layout for pdf/paper. */
-        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } }
+        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } .filter-section { display: block !important; } }
     </style>
 </head>
 <body>
 
-    <!--    Jinja2 syntax used for the html body code.
-            Errors regarding the '{% ... %}' and '{{ ... }}' are false positives.
-            The errors show up due to VS Code trying to read them as "Standard CSS". -->
-
     <div class="no-print">
-        <h1>Master Visual View #{{ data.index + 1 }}</h1>
-        <button onclick="window.print()" style="padding: 10px 20px; cursor:pointer;">Print PDF</button>
+        <div class="top-nav">
+            <h1>Master Visual View #{{ data.index + 1 }}</h1>
+            <button onclick="window.print()">Print PDF</button>
+        </div>
+        
+        <div class="nav-links">
+            <button class="nav-btn active" onclick="filterView('all', this)">All</button>
+            <button class="nav-btn" onclick="filterView('faculty', this)">Faculty</button>
+            <button class="nav-btn" onclick="filterView('room', this)">Room</button>
+            <button class="nav-btn" onclick="filterView('lab', this)">Labs (Resource)</button>
+        </div>
     </div>
-    
+
     {% macro render_calendar(title, assignments) %}
     <div class="calendar-container">
         <div class="calendar-name">{{ title }}</div>
@@ -132,7 +114,6 @@ Purpose:
                 </div>
             {% endfor %}
 
-            {# Create 5 columns. We loop through the data for each specific day column #}
             {% set days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] %}
             {% for day_name in days %}
                 <div class="day-column" style="grid-column: {{ loop.index + 1 }};">
@@ -141,27 +122,18 @@ Purpose:
                             {% set start_parts = a.start.split(':') %}
                             {% set s_h = start_parts[0]|int %}
                             {% set s_m = start_parts[1]|int %}
-                            
-                            {# Start time: (Current Hour - Start Hour 8) * 60px + minutes #}
                             {% set top_px = (s_h - 8) * 60 + s_m %}
                             {% set height_px = a.duration|int %}
 
-                            {# Conflict check #}
-                            {% set is_conflict = false %}
-                            {% for other in assignments %}
-                                {% if a != other and a.day == other.day and a.start == other.start and a.room == other.room %}
-                                    {% set is_conflict = true %}
-                                {% endif %}
-                            {% endfor %}
-
-                            <div class="course-card {{ 'conflict' if is_conflict }}" 
+                            <div class="course-card" 
                                  style="top: {{ top_px }}px; height: {{ height_px - 2 }}px; 
                                         background-color: {{ 'var(--lab-color)' if a.lab else 'var(--lecture-color)' }};
                                         border-color: {{ 'var(--lab-border)' if a.lab else 'var(--lecture-border)' }};">
                                 <span class="course-id">{{ a.course_id }}</span>
                                 <div class="course-meta">
                                     <strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>
-                                    {{ a.faculty if title != a.faculty else a.room }}
+                                    Room: {{ a.room }}<br>
+                                    Fac: {{ a.faculty }}
                                 </div>
                             </div>
                         {% endif %}
@@ -172,6 +144,47 @@ Purpose:
     </div>
     {% endmacro %}
 
+    <div id="view-room" class="filter-section">
+        <h2 class="section-title">Room Master Schedules</h2>
+        <div class="schedules-grid">
+            {% for room, items in data.by_room.items() %}
+                {{ render_calendar(room, items) }}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="view-faculty" class="filter-section">
+        <h2 class="section-title">Faculty Master Schedules</h2>
+        <div class="schedules-grid">
+            {% for faculty, items in data.by_faculty.items() %}
+                {{ render_calendar(faculty, items) }}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="view-lab" class="filter-section" style="display:none;">
+        <h2 class="section-title">Lab Resource Schedules</h2>
+        <div class="schedules-grid">
+            {# We iterate through all unique lab types found in the total assignments list #}
+            {% set lab_types = [] %}
+            {% for a in data.assignments %}
+                {% if a.lab and a.lab not in lab_types %}
+                    {% set _ = lab_types.append(a.lab) %}
+                {% endif %}
+            {% endfor %}
+
+            {% for lab_name in lab_types|sort %}
+                {% set lab_assignments = [] %}
+                {% for a in data.assignments %}
+                    {% if a.lab == lab_name %}
+                        {% set _ = lab_assignments.append(a) %}
+                    {% endif %}
+                {% endfor %}
+                {{ render_calendar(lab_name ~ " Lab", lab_assignments) }}
+            {% endfor %}
+        </div>
+    </div>
+
     <div class="footer-summary no-print">
         <div class="legend-grid">
             <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
@@ -179,19 +192,21 @@ Purpose:
         </div>
     </div>
 
-    <h2 class="section-title">Room Master Schedules</h2>
-    <div class="schedules-grid">
-        {% for room, items in data.by_room.items() %}
-            {{ render_calendar(room, items) }}
-        {% endfor %}
-    </div>
+    <script>
+        function filterView(view, btn) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const sections = document.querySelectorAll('.filter-section');
+            sections.forEach(s => s.style.display = 'none');
 
-    <h2 class="section-title">Faculty Master Schedules</h2>
-    <div class="schedules-grid">
-        {% for faculty, items in data.by_faculty.items() %}
-            {{ render_calendar(faculty, items) }}
-        {% endfor %}
-    </div>
-
+            if (view === 'all') {
+                document.getElementById('view-room').style.display = 'block';
+                document.getElementById('view-faculty').style.display = 'block';
+                document.getElementById('view-lab').style.display = 'none';
+            } else {
+                document.getElementById('view-' + view).style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html>
