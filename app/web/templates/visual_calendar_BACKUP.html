@@ -8,6 +8,11 @@ Purpose:
   The visual schedule file that is created when exporting a schedule(s)
 -->
 
+<!-- 
+BACKUP FOR THE "visual_schedule.html" file.
+Best working version.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,56 +38,93 @@ Purpose:
             margin-bottom: 20px;
         }
 
-        .top-nav { display: flex; justify-content: space-between; align-items: center; }
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .nav-links { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
         
         .nav-btn {
-            padding: 8px 16px; border: 1px solid var(--border-color);
-            background: white; border-radius: 6px; cursor: pointer;
-            font-weight: 600; color: #64748b; transition: all 0.2s;
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
         }
 
         .nav-btn:hover { background: #f1f5f9; }
         .nav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
         .section-title { border-bottom: 3px solid #333; margin: 40px 0 20px; padding-bottom: 10px; font-size: 1.5rem; text-transform: uppercase; }
-        .schedules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
+
+        .schedules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 30px;
+        }
 
         .calendar-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .calendar-name { text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
 
         .calendar-wrapper {
-            position: relative; display: grid;
+            position: relative; 
+            display: grid;
             grid-template-columns: 80px repeat(5, 1fr);
             grid-template-rows: 50px repeat(12, var(--hour-height));
-            border: 1px solid var(--border-color); background: #fff;
+            border: 1px solid var(--border-color);
+            background: #fff;
         }
 
         .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 0.9rem; }
-        .time-label { grid-column: 1; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: #6c757d; display: flex; justify-content: center; padding-top: 5px; border-bottom: 1px solid #f8f9fa; }
+        
+        .time-label { 
+            grid-column: 1; 
+            border-right: 1px solid var(--border-color); 
+            font-size: 0.75rem; color: #6c757d; 
+            display: flex; justify-content: center; padding-top: 5px;
+            border-bottom: 1px solid #f8f9fa;
+        }
 
         .day-column { 
-            position: relative; grid-row: 2 / span 12; 
+            position: relative; 
+            grid-row: 2 / span 12; 
             border-right: 1px solid var(--border-color); 
             background-image: linear-gradient(var(--border-color) 1px, transparent 1px); 
             background-size: 100% var(--hour-height); 
         }
 
         .course-card {
-            position: absolute; left: 2px; right: 2px; padding: 5px;
-            border-radius: 4px; border-left: 4px solid; font-size: 0.7rem; line-height: 1.2;
-            z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;
+            position: absolute; 
+            left: 2px; right: 2px; 
+            padding: 5px;
+            border-radius: 4px; border-left: 4px solid; 
+            font-size: 0.7rem; line-height: 1.2;
+            z-index: 10; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
         .course-meta { font-size: 0.65rem; color: #444; }
 
-        .footer-summary { margin-top: 25px; display: flex; justify-content: center; align-items: center; background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .footer-summary {
+            margin-top: 25px; display: flex; justify-content: center; align-items: center;
+            background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);
+        }
         .legend-grid { display: flex; gap: 30px; }
         .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; }
         .swatch { width: 16px; height: 16px; border-radius: 3px; border-left: 4px solid; }
 
-        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } .filter-section { display: block !important; } }
+        @media print { 
+            .no-print { display: none; } 
+            .schedules-grid { grid-template-columns: 1fr 1fr; }
+            .filter-section { display: block !important; } /* Ensure all show when printing */
+        }
     </style>
 </head>
 <body>
@@ -90,14 +132,14 @@ Purpose:
     <div class="no-print">
         <div class="top-nav">
             <h1>Master Visual View #{{ data.index + 1 }}</h1>
-            <button onclick="window.print()">Print PDF</button>
+            <button onclick="window.print()" style="padding: 10px 20px; cursor:pointer; border-radius:6px; border:1px solid #ccc; background:#333; color:white; font-weight:bold;">Print PDF</button>
         </div>
         
         <div class="nav-links">
             <button class="nav-btn active" onclick="filterView('all', this)">All</button>
             <button class="nav-btn" onclick="filterView('faculty', this)">Faculty</button>
             <button class="nav-btn" onclick="filterView('room', this)">Room</button>
-            <button class="nav-btn" onclick="filterView('lab', this)">Labs (Resource)</button>
+            <button class="nav-btn" onclick="filterView('lab', this)">Lab</button>
         </div>
     </div>
 
@@ -132,8 +174,7 @@ Purpose:
                                 <span class="course-id">{{ a.course_id }}</span>
                                 <div class="course-meta">
                                     <strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>
-                                    Room: {{ a.room }}<br>
-                                    Fac: {{ a.faculty }}
+                                    {{ a.faculty if title != a.faculty else a.room }}
                                 </div>
                             </div>
                         {% endif %}
@@ -163,24 +204,15 @@ Purpose:
     </div>
 
     <div id="view-lab" class="filter-section" style="display:none;">
-        <h2 class="section-title">Lab Resource Schedules</h2>
+        <h2 class="section-title">Lab Specific Schedules</h2>
         <div class="schedules-grid">
-            {# We iterate through all unique lab types found in the total assignments list #}
-            {% set lab_types = [] %}
-            {% for a in data.assignments %}
-                {% if a.lab and a.lab not in lab_types %}
-                    {% set _ = lab_types.append(a.lab) %}
+            {% for room, items in data.by_room.items() %}
+                {# Only render the room if it contains at least one assignment marked as a lab #}
+                {% set has_lab = [] %}
+                {% for a in items %}{% if a.lab %}{% set _ = has_lab.append(1) %}{% endif %}{% endfor %}
+                {% if has_lab %}
+                    {{ render_calendar(room, items) }}
                 {% endif %}
-            {% endfor %}
-
-            {% for lab_name in lab_types|sort %}
-                {% set lab_assignments = [] %}
-                {% for a in data.assignments %}
-                    {% if a.lab == lab_name %}
-                        {% set _ = lab_assignments.append(a) %}
-                    {% endif %}
-                {% endfor %}
-                {{ render_calendar(lab_name ~ " Lab", lab_assignments) }}
             {% endfor %}
         </div>
     </div>
@@ -194,15 +226,19 @@ Purpose:
 
     <script>
         function filterView(view, btn) {
+            // Update button styles
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+
+            // Hide all sections
             const sections = document.querySelectorAll('.filter-section');
             sections.forEach(s => s.style.display = 'none');
 
+            // Show selected
             if (view === 'all') {
                 document.getElementById('view-room').style.display = 'block';
                 document.getElementById('view-faculty').style.display = 'block';
-                document.getElementById('view-lab').style.display = 'none';
+                document.getElementById('view-lab').style.display = 'none'; // Keep lab out of "All" to avoid duplicates
             } else {
                 document.getElementById('view-' + view).style.display = 'block';
             }
