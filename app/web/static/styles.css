@@ -1,6 +1,6 @@
 /*
 Author: Antonio Corona, Ian Swartz
-Date: 2026-03-26
+Date: 2026-04-04
 
 Stylesheet
 
@@ -143,23 +143,38 @@ input:focus {
         box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
 }
 
-/* Buttons */
-button {
+/* Buttons & Button-Styled Links */
+/* Altered due to mixed stlying with calendar view button. */
+button, 
+.button {
+    /* Layout & Alignment */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 8px 12px;
-
+    
+    /* Typography */
     color: #fff;
-    background: var(--accent);
+    font-family: inherit;
+    font-size: 13.33px;
+    text-decoration: none;
+    white-space: nowrap;
 
+    /* Background & Border */
+    background: var(--accent);
     border: 1px solid var(--accent);
     border-radius: 8px;
     cursor: pointer;
 
-    transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+    /* Animation */
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-button:hover {
+button:hover, 
+.button:hover {
     background: var(--accent-hover);
     border-color: var(--accent-hover);
+    color: #fff;
 }
 
 .button-row {

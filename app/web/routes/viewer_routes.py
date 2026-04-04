@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-03-26
+# Date: 2026-04-04
 """
 Schedule Viewer Routes
 
@@ -265,7 +265,7 @@ def visual_BACKUP():
         return redirect(url_for("viewer.viewer"))
     
     # We keep the old template name here
-    return render_template("visual_BACKUP.html", data=data)
+    return render_template("visual_calendar_BACKUP.html", data=data)
 
 # route for exporting the currnet schedule to a calendar schedule view
 @bp.get("/visual_view")

@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Ian Swartz, Tanner Ness
-Date: 2026-04-02
+Date: 2026-04-04
 
 Schedule Viewer Template
 
@@ -400,11 +400,12 @@ Extends:
           </button>
 
           <!--
+                    CURRENTLY NOT NEEDED (kept just in case)
                     Grid View:
                       - opens the current schedule in a separate tab/window
                       - useful for time-grid based validation
                   -->
-          <a
+          <!-- <a
             href="{{ url_for('viewer.grid_view') }}"
             target="_blank"
             class="button"
@@ -425,14 +426,15 @@ Extends:
             onmouseout="this.style.backgroundColor = 'var(--accent)'"
           >
             Class Grid View (Current)
-          </a>
+          </a> -->
 
           <!--
+                    CURRENTLY NOT NEEDED (kept just in case)
                     Visual View:
                       - only available when the selected schedule has no conflicts
                       - blocked schedules show an explanatory disabled button instead
                   -->
-          <a
+          <!-- <a
             href="{{ url_for('viewer.visual_BACKUP') }}"
             target="_blank"
             class="button"
@@ -449,24 +451,29 @@ Extends:
             "
           >
             Visual View (OLD)
-          </a>
-          <a
-            href="{{ url_for('viewer.visual_view') }}"
-            target="_blank"
-            class="button"
-            style="
-              display: inline-block;
-              background-color: var(--accent);
-              color: white;
-              padding: 8px 12px;
-              border: 1px solid var(--accent);
-              border-radius: 8px;
-              text-decoration: none;
-              font-size: 13.33px;
-              white-space: nowrap;
-            "
-          >
-            Calendar View (NEW)
+          </a> -->
+
+
+          <!-- 
+          Calendar View:
+            - A weekly calendar view (MON-FRI), showing all the master schedules to a given schedule.
+            - Key includes the colors of lecture vs. lab classes.
+            - Print PDF button for the ability to print schedules. 
+            - Sorting for if you want to view/show All, Faculty, Room, or Lab schedules.
+            (Show: 'All', 'Faculty', 'Rooms', 'Labs')
+
+            - If you sort by 'Faculty', 'Rooms', or 'Labs' there is further filtering options 
+            populated by whatever is within your schedule. All filtering also includes a button to show all (default).
+            (Examples:
+             'Show: Faculty' 'Filter: Hobbs'
+             'Show: Rooms' 'Filter: Roddy 140'
+             'Show: Labs' 'Filter: Mac')   
+
+            - Day filtering (works with both sorting by category, and filtering by varibales within schedule).
+            (Day Filter: 'Full Week', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+          -->
+          <a href="{{ url_for('viewer.visual_view') }}" target="_blank" class="button">
+            Calendar View
           </a>
         </div>
       </div>
@@ -519,6 +526,18 @@ Extends:
       </form>
       {% else %} {% endif %}
     </div>
+
+
+    <!--  Notes for users regarding the need to save schedules due to the generator
+          clearing the viewer of schedules when new schedules generate. -->
+
+    <section class = "card" style = "margin-bottom:-10px">
+      <div class="row">
+
+        <p>*Note: When generating schedules, the viewer will be cleared of it's current schedules, so make sure to save the schedule you want to keep (you can then import the saved schedules).</p>
+
+      </div>
+    </section>
 
     <!--
     ============================================================
