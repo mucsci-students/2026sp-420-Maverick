@@ -42,10 +42,8 @@ Extends:
   - base.html
 -->
 
-{% extends "base.html" %}
-
-{% set title = "Schedule Viewer" %}
-{% block content %}
+{% extends "base.html" %} {% set title = "Schedule Viewer" %} {% block content
+%}
 
 <h1>Schedule Viewer</h1>
 
@@ -73,51 +71,77 @@ Extends:
       - Left side: Prev / current count / Next / direct select
       - Right side: reset/clear viewer action
   -->
-  <div class="row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-  
-  <div style="display: flex; gap: 15px; align-items: center;">
-  <div class="row">
-
-    <!--
-      Prev Button:
+  <div
+    class="row"
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    "
+  >
+    <div style="display: flex; gap: 15px; align-items: center">
+      <div class="row">
+        <!--
+        Prev Button:
         - POST /viewer/prev
         - Disabled when:
             * no schedules are loaded, OR
             * current schedule is the first schedule
-    -->
-    <form method="post" action="/viewer/prev">
-      <button type="submit"
-              {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
-        Prev
-      </button>
-    </form>
+        -->
+        <form method="post" action="/viewer/prev">
+          <button
+            type="submit"
+            {%
+            if
+            not
+            data.has_schedules
+            or
+            data.is_first
+            %}disabled{%
+            endif
+            %}
+          >
+            Prev
+          </button>
+        </form>
 
-    <!--
-      Schedule Counter:
+        <!--
+        Schedule Counter:
         - Shows current schedule position (1-based for user readability)
         - If no schedules exist, shows 0 / 0
-    -->
-    <div>
-      <strong>Schedule:</strong>
-      {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
-    </div>
+        -->
+        <div>
+          <strong>Schedule:</strong>
+          {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
+        </div>
 
-    <!--
-      Next Button:
+        <!--
+        Next Button:
         - POST /viewer/next
         - Disabled when:
             * no schedules are loaded, OR
             * current schedule is the last schedule
-    -->
-    <form method="post" action="/viewer/next">
-      <button type="submit"
-              {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
-        Next
-      </button>
-    </form>
+        -->
+        <form method="post" action="/viewer/next">
+          <button
+            type="submit"
+            {%
+            if
+            not
+            data.has_schedules
+            or
+            data.is_last
+            %}disabled{%
+            endif
+            %}
+          >
+            Next
+          </button>
+        </form>
 
-    <!-- 
-      Direct Schedule Selection Dropdown 
+        <!-- 
+        Direct Schedule Selection Dropdown 
         - POST /viewer/select
         - Submits a 0-based index (value="{{ idx }}")
         - Displays user-friendly 1-based labels (Schedule 1, Schedule 2, ...)
@@ -126,38 +150,54 @@ Extends:
             * Once user selects a schedule, the selection stays in sync with
               the currently active schedule (via data.user_selected + data.index)
         - Disabled when no schedules exist
-    -->
-    <form method="post"
+        -->
+        <form
+          method="post"
           action="/viewer/select"
           class="row"
-          style="gap: 8px; align-items: center; margin-left: auto;">
+          style="gap: 8px; align-items: center; margin-left: auto"
+        >
+          <select
+            id="schedule_index"
+            name="index"
+            {%
+            if
+            not
+            data.has_schedules
+            %}disabled{%
+            endif
+            %}
+            onchange="if (this.value !== '') this.form.submit();"
+          >
+            <!-- Placeholder shows initially until user selects something -->
+            <option
+              value=""
+              disabled
+              {%
+              if
+              not
+              data.user_selected
+              %}selected{%
+              endif
+              %}
+            >
+              Select Schedule
+            </option>
 
-      <select id="schedule_index"
-              name="index"
-              {% if not data.has_schedules %}disabled{% endif %}
-              onchange="if(this.value !== '') this.form.submit()">
+            <!-- Real schedule options (0-based values, 1-based labels) -->
+            {% for idx in range(data.count) %}
+            <option
+              value="{{ idx }}"
+              {% if data.user_selected and idx == data.index %}selected{% endif %}
+            >
+              Schedule {{ idx + 1 }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
 
-        <!-- Placeholder shows initially until user selects something -->
-        <option value=""
-                disabled
-                {% if not data.user_selected %}selected{% endif %}>
-          Select Schedule
-        </option>
-
-        <!-- Real schedule options (0-based values, 1-based labels) -->
-        {% for idx in range(data.count) %}
-          <option value="{{ idx }}"
-                  {% if data.user_selected and idx == data.index %}selected{% endif %}>
-            Schedule {{ idx + 1 }}
-          </option>
-        {% endfor %}
-
-      </select>
-    </form>
-
-  </div>
-
-  <!--
+      <!--
     Reset / Clear Viewer:
       POST /viewer/reset
 
@@ -168,35 +208,40 @@ Extends:
     UX:
       - uses confirm() to prevent accidental destructive action
   -->
-  <form method="post" action="/viewer/reset">
-    <button type="submit" class="button-outline" 
-            style="background-color: #ff4444; color: white; border: none;"
-            onclick="return confirm('Are you sure you want to clear all schedules?')">
-      Reset/Clear Schedule Viewer
-    </button>
-  </form>
-</div>
-
-<!--
-  ============================================================
-  IMPORT / EXPORT / ALTERNATE VIEW CONTROLS
-  ============================================================
-
-  This area supports:
-    - importing schedule JSON files from the user's system
-    - exporting one or more loaded schedules to JSON or CSV
-    - opening alternate representations of the current schedule
-        * Grid View
-        * Visual View (only when no conflicts exist)
-
-  Notes:
-    - Multi-file import is enabled on the file input.
-    - Export options are only shown when schedules are loaded.
-    - Visual View is blocked for schedules with time conflicts.
--->
-<div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;"> 
+      <form method="post" action="/viewer/reset">
+        <button
+          type="submit"
+          class="button-outline"
+          style="background-color: #ff4444; color: white; border: none"
+          onclick="
+            return confirm('Are you sure you want to clear all schedules?');
+          "
+        >
+          Reset/Clear Schedule Viewer
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!--
+    ============================================================
+    IMPORT / EXPORT / ALTERNATE VIEW CONTROLS
+    ============================================================
+
+    This area supports:
+      - importing schedule JSON files from the user's system
+      - exporting one or more loaded schedules to JSON or CSV
+      - opening alternate representations of the current schedule
+          * Grid View
+          * Visual View (only when no conflicts exist)
+
+    Notes:
+      - Multi-file import is enabled on the file input.
+      - Export options are only shown when schedules are loaded.
+      - Visual View is blocked for schedules with time conflicts.
+  -->
+  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0">
+    <!--
     Upload / Import from local system:
       POST /viewer/import_file
 
@@ -205,16 +250,31 @@ Extends:
       - requires at least one file
       - allows multiple file selection
   -->
-  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0; display: flex; align-items: center;">
-    <label style="min-width: 200px;">Upload/Import from System</label>
-    <div style="display: flex; gap: 10px; width: 60%;">
-      <input type="file" name="schedule_file" accept=".json" required style="flex-grow: 1;" multiple>
-      <button type="submit" style="white-space: nowrap;">Upload/Import Files</button>
-    </div>
-  </form>
+    <form
+      method="post"
+      action="/viewer/import_file"
+      enctype="multipart/form-data"
+      class="row"
+      style="margin: 0; display: flex; align-items: center"
+    >
+      <label style="min-width: 200px">Upload/Import from System</label>
+      <div style="display: flex; gap: 10px; width: 60%">
+        <input
+          type="file"
+          name="schedule_file"
+          accept=".json"
+          required
+          style="flex-grow: 1"
+          multiple
+        />
+        <button type="submit" style="white-space: nowrap">
+          Upload/Import Files
+        </button>
+      </div>
+    </form>
 
-  {% if data.has_schedules %}
-      <!--
+    {% if data.has_schedules %}
+    <!--
         Export Controls:
           Visible only when schedules are present in the viewer.
 
@@ -223,104 +283,206 @@ Extends:
           - export selected schedules to JSON or CSV
           - quick links to alternate rendered views of current schedule
       -->
-      <form method="post" class="row" style="margin: 0; display: flex; align-items: flex-start;">
-          <label style="min-width: 200px; margin-top: 8px;">Export to System</label>
-          
-          <div style="display: flex; flex-direction: column; gap: 10px; width: 60%;">
-              
-              <!--
+    <form
+      method="post"
+      class="row"
+      style="margin: 0; display: flex; align-items: flex-start"
+    >
+      <label style="min-width: 200px; margin-top: 8px">Export to System</label>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 60%">
+        <!--
                 Export schedule picker:
                   - "All Schedules" checkbox toggles all schedule checkboxes
                   - each checkbox value uses the 0-based schedule index
-              -->              
-              <details style="border: 1px solid #ccc; border-radius: 4px; background: white; width: 100%; max-width: 350px;">
-                  <summary style="padding: 8px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;">
-                      <span>Select Schedules... (for JSON/CSV)</span>
-                      <span style="font-size: 0.7em; color: #666;">▼</span>
-                  </summary>
+              -->
+        <details
+          style="
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            width: 100%;
+            max-width: 350px;
+          "
+        >
+          <summary
+            style="
+              padding: 8px 12px;
+              cursor: pointer;
+              list-style: none;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              outline: none;
+            "
+          >
+            <span>Select Schedules... (for JSON/CSV)</span>
+            <span style="font-size: 0.7em; color: #666">▼</span>
+          </summary>
 
-                  <div style="padding: 10px 12px; border-top: 1px solid #eee; max-height: 150px; overflow-y: auto;">
-                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-                          <input type="checkbox" id="export_all" onchange="toggleAllSchedules(this)" style="margin: 0; margin-left: -120px;">
-                          <span style="font-weight: bold; font-size: 0.9em;">All Schedules</span>
-                      </label>
+          <div
+            style="
+              padding: 10px 12px;
+              border-top: 1px solid #eee;
+              max-height: 150px;
+              overflow-y: auto;
+            "
+          >
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 8px;
+              "
+            >
+              <input
+                type="checkbox"
+                id="export_all"
+                onchange="toggleAllSchedules(this)"
+                style="margin: 0; margin-left: -120px"
+              />
+              <span style="font-weight: bold; font-size: 0.9em"
+                >All Schedules</span
+              >
+            </label>
 
-                      {% for idx in range(data.count) %}
-                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 4px;">
-                          <input type="checkbox" name="schedule_indices" value="{{ idx }}" class="schedule-checkbox" style="margin: 0;  margin-left: -120px;">
-                          <span style="font-size: 0.9em;">Schedule {{ idx + 1 }}</span>
-                      </label>
-                      {% endfor %}
-                  </div>
-              </details>
+            {% for idx in range(data.count) %}
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                margin-bottom: 4px;
+              "
+            >
+              <input
+                type="checkbox"
+                name="schedule_indices"
+                value="{{ idx }}"
+                class="schedule-checkbox"
+                style="margin: 0; margin-left: -120px"
+              />
+              <span style="font-size: 0.9em">Schedule {{ idx + 1 }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </details>
 
-              <!--
+        <!--
                 Export / view action row:
                   - Export JSON submits to viewer.export_file
                   - Export CSV submits to viewer.export_csv
                   - Grid View opens current schedule in a new tab
                   - Visual View opens only when current schedule has no conflicts
-              -->              
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                  
-                  <button type="submit" formaction="{{ url_for('viewer.export_file') }}" style="white-space: nowrap; padding: 7px 15px;">
-                      Export JSON
-                  </button>
+              -->
+        <div
+          style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center"
+        >
+          <button
+            type="submit"
+            formaction="{{ url_for('viewer.export_file') }}"
+            style="white-space: nowrap; padding: 7px 15px"
+          >
+            Export JSON
+          </button>
 
-                  <button type="submit" formaction="{{ url_for('viewer.export_csv') }}" 
-                          style="white-space: nowrap; padding: 7px 15px;">
-                      Export CSV
-                  </button>
+          <button
+            type="submit"
+            formaction="{{ url_for('viewer.export_csv') }}"
+            style="white-space: nowrap; padding: 7px 15px"
+          >
+            Export CSV
+          </button>
 
-                  <!--
+          <!--
                     Grid View:
                       - opens the current schedule in a separate tab/window
                       - useful for time-grid based validation
-                  -->                  
-                  <a href="{{ url_for('viewer.grid_view') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid #4CAF50; border-radius: 8px; text-decoration: none; font-size: 13.33px; line-height: normal; white-space: nowrap; transition: background 0.15s ease;"
-                    onmouseover="this.style.backgroundColor='var(--accent-hover)';"
-                    onmouseout="this.style.backgroundColor='var(--accent)';"
-                  >
-                      Class Grid View (Current)
-                  </a>
+                  -->
+          <a
+            href="{{ url_for('viewer.grid_view') }}"
+            target="_blank"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: var(--accent);
+              color: white;
+              padding: 8px 12px;
+              border: 1px solid #4caf50;
+              border-radius: 8px;
+              text-decoration: none;
+              font-size: 13.33px;
+              line-height: normal;
+              white-space: nowrap;
+              transition: background 0.15s ease;
+            "
+            onmouseover="this.style.backgroundColor = 'var(--accent-hover)'"
+            onmouseout="this.style.backgroundColor = 'var(--accent)'"
+          >
+            Class Grid View (Current)
+          </a>
 
-                  <!--
+          <!--
                     Visual View:
                       - only available when the selected schedule has no conflicts
                       - blocked schedules show an explanatory disabled button instead
                   -->
-                  <a href="{{ url_for('viewer.visual_BACKUP') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; white-space: nowrap;">
-                      Visual View (OLD)
-                  </a>
-                  <a href="{{ url_for('viewer.visual_view') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; white-space: nowrap;">
-                      Calendar View (NEW)
-                  </a>
+          <a
+            href="{{ url_for('viewer.visual_BACKUP') }}"
+            target="_blank"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: var(--accent);
+              color: white;
+              padding: 8px 12px;
+              border: 1px solid var(--accent);
+              border-radius: 8px;
+              text-decoration: none;
+              font-size: 13.33px;
+              white-space: nowrap;
+            "
+          >
+            Visual View (OLD)
+          </a>
+          <a
+            href="{{ url_for('viewer.visual_view') }}"
+            target="_blank"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: var(--accent);
+              color: white;
+              padding: 8px 12px;
+              border: 1px solid var(--accent);
+              border-radius: 8px;
+              text-decoration: none;
+              font-size: 13.33px;
+              white-space: nowrap;
+            "
+          >
+            Calendar View (NEW)
+          </a>
+        </div>
+      </div>
+    </form>
 
-              </div>
-          </div>
-      </form>
+    <script>
+      function toggleAllSchedules(source) {
+        const checkboxes = document.getElementsByClassName("schedule-checkbox");
+        for (let i = 0; i < checkboxes.length; i++) {
+          checkboxes[i].checked = source.checked;
+        }
+      }
+    </script>
+    {% endif %}
 
-      <script>
-          function toggleAllSchedules(source) {
-              const checkboxes = document.getElementsByClassName('schedule-checkbox');
-              for(let i = 0; i < checkboxes.length; i++) {
-                  checkboxes[i].checked = source.checked;
-              }
-          }
-      </script>
-  {% endif %}
-
-
-  <!--
+    <!--
     Legacy path-based import/export controls.
     Kept for development/testing convenience and backward compatibility.
   -->
@@ -333,24 +495,32 @@ Extends:
       </div>
     </form> -->
 
+    <div class="row">
+      <form
+        method="post"
+        action="/viewer/import"
+        class="row"
+        onsubmit="return confirm('Import file?');"
+      >
+        <label>Import path</label>
+        <input name="path" value="schedules.json" />
+        <button type="submit">Import</button>
+      </form>
+      {% if is_export_enabled %}
+      <form
+        method="post"
+        action="/viewer/export"
+        class="row"
+        onsubmit="return confirm('Export file?');"
+      >
+        <label>Export path</label>
+        <input name="path" value="schedules.json" />
+        <button type="submit">Export</button>
+      </form>
+      {% else %} {% endif %}
+    </div>
 
-  <div class="row">
-    <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">
-      <label>Import path</label>
-      <input name="path" value="schedules.json">
-      <button type="submit">Import</button>
-    </form>
-    {% if is_export_enabled %}
-    <form method="post" action="/viewer/export" class="row" onsubmit="return confirm('Export file?');">
-      <label>Export path</label>
-      <input name="path" value="schedules.json">
-      <button type="submit">Export</button>
-    </form>
-    {% else %}
-    {% endif %}
-  </div>
-
-  <!--
+    <!--
     ============================================================
     METADATA / DEBUG SECTION
     ============================================================
@@ -369,18 +539,27 @@ Extends:
       - verifying imported/exported schedule identity
       - confirming which schedule is currently active
   -->
-  <h2>Meta</h2>
-  <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
-
+    <h2>Meta</h2>
+    <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
+  </div>
 </section>
 
-
-
 <section class="card">
-  <div class="row" style="align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
-    <h2 style="margin: 0;">Schedule Display</h2>
-    
-    <div style="display: flex; gap: 10px; align-items: center; margin-left: auto;">
+  <div
+    class="row"
+    style="
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+    "
+  >
+    <h2 style="margin: 0">Schedule Display</h2>
+
+    <div
+      style="display: flex; gap: 10px; align-items: center; margin-left: auto"
+    >
       <label for="view_type_select"><strong>View Mode:</strong></label>
       <select id="view_type_select" onchange="toggleViewMode(this.value)">
         <option value="tabular-view" selected>Tabular View</option>
@@ -389,20 +568,33 @@ Extends:
     </div>
   </div>
 
-  <div id="calendar-view-panel" class="view-panel" style="display: none;">
-    <iframe src="{{ url_for('viewer.visual_view') }}" 
-            style="width: 100%; height: 800px; border: none; border-radius: 8px;" 
-            id="calendar-frame">
+  <div id="calendar-view-panel" class="view-panel" style="display: none">
+    <iframe
+      src="{{ url_for('viewer.visual_view') }}"
+      style="width: 100%; height: 800px; border: none; border-radius: 8px"
+      id="calendar-frame"
+    >
     </iframe>
   </div>
 
   <div id="tabular-view-panel" class="view-panel">
-    <div class="row" style="align-items: center; gap: 10px; margin-bottom: 20px;">
-      <h3 style="margin: 0;">Tabular Filters</h3>
+    <div
+      class="row"
+      style="align-items: center; gap: 10px; margin-bottom: 20px"
+    >
+      <h3 style="margin: 0">Tabular Filters</h3>
 
-      <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
-        <button type="button" id="clear_filters" class="button-outline" style="padding: 5px 10px; font-size: 12px;">
-          Show Schedule/Clear
+      <div
+        class="row"
+        style="gap: 10px; align-items: center; margin-left: auto"
+      >
+        <button
+          type="button"
+          id="clear_filters"
+          class="button-outline"
+          style="padding: 5px 10px; font-size: 12px"
+        >
+          Clear Tabular Table
         </button>
 
         <select id="master_menu" class="mode-select" data-group="master">
@@ -421,58 +613,209 @@ Extends:
       </div>
     </div>
 
-    <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
+    <div class="tab-panel" id="tab-master-faculty-table" style="display: none">
       <h3>Master Table: By Faculty</h3>
       {% for fac, rows in data.by_faculty.items() %}
-        <h4>{{ fac }}</h4>
-        <table>
-          <thead><tr><th>Course</th><th>Room</th><th>Start Time</th></tr></thead>
-          <tbody>
-            {% for r in rows %}
-            <tr><td>{{ r.course_id }}</td><td>{{ r.room }}</td><td>{{ r.time }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h4>{{ fac }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Room</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.room }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endfor %}
     </div>
 
-    <div class="tab-panel" id="tab-master-room-table" style="display:none;">
+    <div class="tab-panel" id="tab-master-room-table" style="display: none">
       <h3>Master Table: By Room</h3>
       {% for room, rows in data.by_room.items() %}
-        <h4>{{ room }}</h4>
-        <table>
-          <thead><tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr></thead>
-          <tbody>
-            {% for r in rows %}
-            <tr><td>{{ r.course_id }}</td><td>{{ r.faculty }}</td><td>{{ r.time }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h4>{{ room }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Faculty</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.faculty }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endfor %}
     </div>
 
-    <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
+    <div class="tab-panel" id="tab-master-lab-table" style="display: none">
+      <h3>Master Table: By Lab</h3>
+      {% if data.by_lab %} {% for lab, rows in data.by_lab.items() %}
+      <h4>{{ lab }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Faculty</th>
+            <th>Room</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.faculty }}</td>
+            <td>{{ r.room }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endfor %} {% else %}
+      <p>No lab assignments found for this schedule.</p>
+      {% endif %}
+    </div>
+
+    <div
+      class="tab-panel"
+      id="tab-filter-by-faculty-table"
+      style="display: none"
+    >
       <h3>Filtered Table: By Faculty</h3>
-      <select id="faculty_filter_select" style="margin-bottom: 10px;">
+      <select id="faculty_filter_select" style="margin-bottom: 10px">
         <option value="" selected disabled>Select Faculty</option>
         {% for fac in faculty_options %}
-          <option value="{{ fac }}">{{ fac }}</option>
+        <option value="{{ fac }}">{{ fac }}</option>
         {% endfor %}
       </select>
+
+      <p id="faculty_filter_empty" style="display: none">
+        No assignments found for the selected faculty.
+      </p>
+
       {% for fac, rows in data.by_faculty.items() %}
-        <div class="entity-filter-group faculty-filter-group" data-entity="{{ fac }}" style="display:none;">
-          <table>
-            <tbody>
-              {% for r in rows %}
-              <tr><td>{{ r.course_id }}</td><td>{{ r.room }}</td><td>{{ r.time }}</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <div
+        class="entity-filter-group faculty-filter-group"
+        data-entity="{{ fac }}"
+        style="display: none"
+      >
+        <table>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% endfor %}
     </div>
-    
+
+    <div class="tab-panel" id="tab-filter-by-room-table" style="display: none">
+      <h3>Filtered Table: By Room</h3>
+      <select id="room_filter_select" style="margin-bottom: 10px">
+        <option value="" selected disabled>Select Room</option>
+        {% for room in room_options %}
+        <option value="{{ room }}">{{ room }}</option>
+        {% endfor %}
+      </select>
+
+      <p id="room_filter_empty" style="display: none">
+        No assignments found for the selected room.
+      </p>
+
+      {% for room, rows in data.by_room.items() %}
+      <div
+        class="entity-filter-group room-filter-group"
+        data-entity="{{ room }}"
+        style="display: none"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Faculty</th>
+              <th>Lab</th>
+              <th>Start Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.faculty }}</td>
+              <td>{{ r.lab }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
     </div>
+
+    <div class="tab-panel" id="tab-filter-by-lab-table" style="display: none">
+      <h3>Filtered Table: By Lab</h3>
+      <select id="lab_filter_select" style="margin-bottom: 10px">
+        <option value="" selected disabled>Select Lab</option>
+        {% for lab in lab_options %}
+        <option value="{{ lab }}">{{ lab }}</option>
+        {% endfor %}
+      </select>
+
+      <p id="lab_filter_empty" style="display: none">
+        No assignments found for the selected lab.
+      </p>
+
+      {% for lab, rows in data.by_lab.items() %}
+      <div
+        class="entity-filter-group lab-filter-group"
+        data-entity="{{ lab }}"
+        style="display: none"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Faculty</th>
+              <th>Room</th>
+              <th>Start Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.faculty }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </section>
 
 <script>
@@ -481,20 +824,20 @@ Extends:
    */
   function toggleViewMode(viewId) {
     // Hide all panels
-    document.querySelectorAll('.view-panel').forEach(panel => {
-      panel.style.display = 'none';
+    document.querySelectorAll(".view-panel").forEach((panel) => {
+      panel.style.display = "none";
     });
-    
+
     // Show selected panel
-    const activePanel = document.getElementById(viewId + '-panel');
+    const activePanel = document.getElementById(viewId + "-panel");
     if (activePanel) {
-      activePanel.style.display = 'block';
+      activePanel.style.display = "block";
     }
 
     // Refresh iframe if switching to calendar to ensure layout is correct
-    if (viewId === 'calendar-view') {
-      const frame = document.getElementById('calendar-frame');
-      frame.src = frame.src; 
+    if (viewId === "calendar-view") {
+      const frame = document.getElementById("calendar-frame");
+      frame.src = frame.src;
     }
   }
 </script>

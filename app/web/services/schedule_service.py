@@ -434,12 +434,25 @@ def _group_by(assignments, key):
             - Faculty
 
     Notes:
-        - Missing keys are grouped under 'Unknown' to keep the UI stable & to prevent template errors.
+        - lab grouping ignores empyt/none Values
     """
     grouped = {}
     for a in assignments:
-        k = a.get(key, "Unknown")
-        grouped.setdefault(k, []).append(a)
+        value = a.get(key, "")
+
+        if value is None:
+            value = ""
+
+        value = str(value).strip()
+
+        if not value:
+            continue
+
+        if key == "lab" and value.lower() == "none":
+            continue
+
+        grouped.setdefault(value, []).append(a)
+
     return grouped
 
 
@@ -526,6 +539,8 @@ def get_view_data():
         "has_schedules": has_schedules,
         "is_first": is_first,
         "is_last": is_last,
+
+        "user_selected": user_selected,
 
         # Created for the visual view export
         "has_conflicts": _check_for_conflicts(assignments)
