@@ -52,14 +52,20 @@ def _csv_split(line: str) -> List[str]:
     return next(csv.reader(StringIO(line)))
 
 
-def _explode_meetings(meetings_field: str) -> List[Tuple[str, str]]:
+def _minutes_between(start: str, end: str) -> int:
+    sh, sm = map(int, start.split(":"))
+    eh, em = map(int, end.split(":"))
+    return (eh * 60 + em) - (sh * 60 + sm)
+
+
+def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str]]:
     """
     Turns:
       'MON 10:40-11:30,WED 10:40-11:30,FRI 10:40-11:30'
     into:
-      [('MON','10:40'), ('WED','10:40'), ('FRI','10:40')]
+      [('MON', '10:40', '11:30', '50'), ...]
     """
-    out: List[Tuple[str, str]] = []
+    out: List[Tuple[str, str, str, str]] = []
     if not meetings_field:
         return out
 
@@ -68,7 +74,11 @@ def _explode_meetings(meetings_field: str) -> List[Tuple[str, str]]:
         chunk = chunk.strip().strip('"').strip("'")
         m = _MEETING_RE.match(chunk)
         if m:
-            out.append((m.group(1), m.group(2)))
+            day = m.group(1)
+            start = m.group(2)
+            end = m.group(3)
+            duration = str(_minutes_between(start, end))
+            out.append((day, start, end, duration))
     return out
 
 
@@ -243,7 +253,6 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
     # Reliable variables from config (not from solver string formatting)
     room = parts[2] if len(parts) > 2 else ""
     credits = _credits_for_course(course_id, cfg)
-    duration = _duration_for_course(course_id, cfg)
     lab = parts[3] if len(parts) > 3 else ""
 
     # Collect all meeting chunks (some outputs split them)
@@ -251,12 +260,9 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
     meetings_field = ",".join(meeting_chunks)
     meetings = _explode_meetings(meetings_field)
 
-    meetings_field = ",".join(meeting_chunks)
-    meetings = _explode_meetings(meetings_field)
-
     rows: List[Dict[str, Any]] = []
 
-    for idx, (day, start) in enumerate(meetings, start=1):
+    for idx, (day, start, end, duration) in enumerate(meetings, start=1):
         rows.append({
             "schedule_id": schedule_id,
             "course_id": course_id,
@@ -279,7 +285,7 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
             "room": room,
             "faculty": faculty,
             "lab": lab,
-            "duration": duration,
+            "duration": "",
             "credits": credits,
             "meeting_index": 1,
         })
