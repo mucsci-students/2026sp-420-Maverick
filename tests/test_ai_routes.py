@@ -159,3 +159,44 @@ def test_ai_command_handles_service_exception(monkeypatch):
 
     assert response.status_code == 200
     assert b"AI processing failed: service exploded" in response.data
+
+
+def test_ai_command_renders_tool_applied_result(monkeypatch):
+    """
+    Ensures the route renders a successful tool-execution result.
+    """
+    app = _make_app()
+
+    monkeypatch.setattr(
+        "app.web.routes.ai_routes.process_ai_command",
+        lambda command: {
+            "success": True,
+            "message": "Added course CS102 with 3 credits in room Roddy 140.",
+            "changes_applied": True,
+            "tool_calls": ["add_course"],
+            "model": "gpt-5-mini",
+        },
+    )
+    monkeypatch.setattr(
+        "app.web.routes.ai_routes.render_template",
+        lambda template, **kwargs: (
+            f"rendered:{kwargs['ai_result']['message']}:"
+            f"{kwargs['ai_result']['changes_applied']}"
+        ),
+    )
+
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {"config": {}}
+
+    response = client.post(
+        "/ai/command",
+        data={"command": "Add course CS102 with 3 credits in Roddy 140"},
+    )
+
+    assert response.status_code == 200
+    assert (
+        b"rendered:Added course CS102 with 3 credits in room Roddy 140.:True"
+        in response.data
+    )
