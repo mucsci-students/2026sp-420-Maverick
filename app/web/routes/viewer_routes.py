@@ -55,18 +55,29 @@ def viewer():
     cfg = _get_cgf()
     config_block = cfg.get("config", {})
 
+
+    """
+    FILTER DROPDOWN OPTIONS
+
+    These populate the filter dropdowns in viewer.html.
+
+    IMPORTANT:
+    - Values must match keys used in _group_by()
+    - Mismatch will cause filters to show empty tables
+
+    If dropdown selection does not show results:
+    - verify options match grouped keys exactly
+    """
     room_options = [
         room.strip()
         for room in config_block.get("rooms", [])
         if isinstance(room, str) and room.strip()
     ]
-
     lab_options = [
         lab.strip()
         for lab in config_block.get("labs", [])
         if isinstance(lab, str) and lab.strip()
     ]
-
     faculty_options = [
         fac.get("name", "").strip()
         for fac in config_block.get("faculty", [])

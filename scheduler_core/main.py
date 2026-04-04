@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-03-30
+# Date: 2026-04-02
 """
 scheduler_core/main.py
 
@@ -41,7 +41,7 @@ FIELDNAMES = [
 
 # Matches: "MON 10:40-11:30"
 _MEETING_RE = re.compile(
-    r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})\^?$"
+    r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})(\^?)$"
 )
 
 def _csv_split(line: str) -> List[str]:
@@ -58,14 +58,16 @@ def _minutes_between(start: str, end: str) -> int:
     return (eh * 60 + em) - (sh * 60 + sm)
 
 
-def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str]]:
+def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str, bool]]:
     """
     Turns:
-      'MON 10:40-11:30,WED 10:40-11:30,FRI 10:40-11:30'
+      'MON 10:40-11:30,WED 10:40-11:30^,FRI 10:40-11:30'
     into:
-      [('MON', '10:40', '11:30', '50'), ...]
+      [('MON', '10:40', '11:30', '50', False),
+       ('WED', '10:40', '11:30', '50', True),
+       ('FRI', '10:40', '11:30', '50', False)]
     """
-    out: List[Tuple[str, str, str, str]] = []
+    out: List[Tuple[str, str, str, str, bool]] = []
     if not meetings_field:
         return out
 
@@ -78,7 +80,8 @@ def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str]]:
             start = m.group(2)
             end = m.group(3)
             duration = str(_minutes_between(start, end))
-            out.append((day, start, end, duration))
+            is_lab_meeting = m.group(4) == "^"
+            out.append((day, start, end, duration, is_lab_meeting))
     return out
 
 
@@ -94,77 +97,6 @@ def _safe_as_csv(course_obj: Any) -> str:
             pass
     return repr(course_obj)
 
-
-# def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any) -> List[Dict[str, Any]]:
-#     """
-#     Converts one solver course/model object into meeting-level flat rows.
-
-#     Your observed scheduler output behaves like:
-#       parts[0] = course_id     (e.g., CS101.01)
-#       parts[1] = faculty       (e.g., Dr. Smith)
-#       parts[2] = meetings      (quoted; contains commas)
-#                  e.g. "MON 10:40-11:30,WED 10:40-11:30,FRI 10:40-11:30"
-#       parts[3] = room          (e.g., Room A)
-
-#     We parse that reliably using csv.reader (NOT string.split).
-#     Then we explode meetings into one row per day.
-#     """
-#     line = _safe_as_csv(course_obj)
-
-#     try:
-#         parts = [p.strip() for p in _csv_split(line)]
-#     except Exception:
-#         # If parsing fails, fall back to a very conservative split
-#         parts = [p.strip() for p in line.split(",")]
-
-#     course_id = parts[0] if len(parts) > 0 else ""
-#     faculty = parts[1] if len(parts) > 1 else ""
-#     meetings_field = parts[2] if len(parts) > 2 else ""
-#     room = parts[3] if len(parts) > 3 else ""
-
-#     meetings = _explode_meetings(meetings_field)
-
-#     # Lab: your current configs may include lab requirements, but this
-#     # particular scheduler output doesn't provide a clean lab field.
-#     lab = ""
-
-#     rows: List[Dict[str, Any]] = []
-
-#     # Meeting-level rows (MWF -> 3 rows)
-#     for idx, (day, start) in enumerate(meetings, start=1):
-#         rows.append(
-#             {
-#                 "schedule_id": schedule_id,
-#                 "course_id": course_id,
-#                 "day": day,
-#                 "start": start,
-#                 "room": room,
-#                 "faculty": faculty,
-#                 "lab": lab,
-#                 "duration": "",
-#                 "credits": "",
-#                 "meeting_index": idx,
-#             }
-#         )
-
-#     # If no meetings were parsed, still emit a single fallback row
-#     if not rows:
-#         rows.append(
-#             {
-#                 "schedule_id": schedule_id,
-#                 "course_id": course_id,
-#                 "day": "",
-#                 "start": "",
-#                 "room": room,
-#                 "faculty": faculty,
-#                 "lab": lab,
-#                 "duration": "",
-#                 "credits": "",
-#                 "meeting_index": 1,
-#             }
-#         )
-
-#     return rows
 
 def _room_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
     base = course_id.split(".")[0]  # CS101.01 -> CS101
@@ -239,6 +171,8 @@ def _duration_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
                     return str(m["duration"])
     return ""
 
+
+
 def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     line = _safe_as_csv(course_obj)
 
@@ -253,7 +187,24 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
     # Reliable variables from config (not from solver string formatting)
     room = parts[2] if len(parts) > 2 else ""
     credits = _credits_for_course(course_id, cfg)
-    lab = parts[3] if len(parts) > 3 else ""
+
+    """
+    LAB ASSIGNMENT LOGIC
+
+    Lab is assigned ONLY to meetings marked with '^' in scheduler output.
+
+    - parts[3] = lab name (course-level)
+    - '^' indicates which meeting is the actual lab
+
+    This ensures:
+    - only true lab sessions appear in lab filters/tables
+    - lecture meetings are not incorrectly labeled as labs
+
+    If lab filtering looks wrong, verify this mapping first.
+    """
+    course_lab = parts[3] if len(parts) > 3 else ""
+    if course_lab in {"None", "none", "null", "NULL"}:
+        course_lab = ""
 
     # Collect all meeting chunks (some outputs split them)
     meeting_chunks = parts[4:]
@@ -262,7 +213,7 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
 
     rows: List[Dict[str, Any]] = []
 
-    for idx, (day, start, end, duration) in enumerate(meetings, start=1):
+    for idx, (day, start, end, duration, is_lab_meeting) in enumerate(meetings, start=1):
         rows.append({
             "schedule_id": schedule_id,
             "course_id": course_id,
@@ -270,7 +221,7 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
             "start": start,
             "room": room,
             "faculty": faculty,
-            "lab": lab,
+            "lab": course_lab if is_lab_meeting else "",
             "duration": duration,
             "credits": credits,
             "meeting_index": idx,
@@ -284,7 +235,7 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
             "start": "",
             "room": room,
             "faculty": faculty,
-            "lab": lab,
+            "lab": "",
             "duration": "",
             "credits": credits,
             "meeting_index": 1,
@@ -302,17 +253,6 @@ def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> Itera
     """
     combined = CombinedConfig(**cfg)
     s = Scheduler(combined)
-
-
-    # for schedule_id, schedule in enumerate(s.get_models(), start=1):
-    #     schedule_rows: List[Dict[str, Any]]= []
-    #     for course in schedule:
-    #        schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
-
-    #     yield schedule_rows
-
-    #     if schedule_id >= limit:
-    #         break
 
     for schedule_id, schedule in enumerate(s.get_models(), start=1):
         course_models = list(schedule)
