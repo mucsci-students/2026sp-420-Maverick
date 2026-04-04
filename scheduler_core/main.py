@@ -40,8 +40,9 @@ FIELDNAMES = [
 ]
 
 # Matches: "MON 10:40-11:30"
-_MEETING_RE = re.compile(r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})$")
-
+_MEETING_RE = re.compile(
+    r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})\^?$"
+)
 
 def _csv_split(line: str) -> List[str]:
     """
@@ -240,16 +241,15 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
     faculty = parts[1] if len(parts) > 1 else ""
 
     # Reliable variables from config (not from solver string formatting)
-    room = _room_for_course(course_id, cfg)
+    room = parts[2] if len(parts) > 2 else ""
     credits = _credits_for_course(course_id, cfg)
     duration = _duration_for_course(course_id, cfg)
-    lab = _lab_for_course(course_id, cfg)
+    lab = parts[3] if len(parts) > 3 else ""
 
     # Collect all meeting chunks (some outputs split them)
-    meeting_chunks = []
-    for p in parts:
-        if any(d in p for d in ["MON", "TUE", "WED", "THU", "FRI"]):
-            meeting_chunks.append(p)
+    meeting_chunks = parts[4:]
+    meetings_field = ",".join(meeting_chunks)
+    meetings = _explode_meetings(meetings_field)
 
     meetings_field = ",".join(meeting_chunks)
     meetings = _explode_meetings(meetings_field)
@@ -300,10 +300,30 @@ def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> List[
     s = Scheduler(combined)
 
 
+    # for schedule_id, schedule in enumerate(s.get_models(), start=1):
+    #     schedule_rows: List[Dict[str, Any]]= []
+    #     for course in schedule:
+    #        schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+
+    #     yield schedule_rows
+
+    #     if schedule_id >= limit:
+    #         break
+
     for schedule_id, schedule in enumerate(s.get_models(), start=1):
-        schedule_rows: List[Dict[str, Any]]= []
-        for course in schedule:
-           schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+        course_models = list(schedule)
+
+        print(f"\n=== RAW SCHEDULER OUTPUT: schedule {schedule_id} ===")
+        for course in course_models:
+            print(_safe_as_csv(course))
+
+        schedule_rows: List[Dict[str, Any]] = []
+        for course in course_models:
+            schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+
+        print(f"\n================ PROCESSED OUTPUT (Schedule {schedule_id}) ================")
+        for row in schedule_rows:
+            print(f"{row['course_id']} | {row['day']} {row['start']} | room={row['room']}")
 
         yield schedule_rows
 
