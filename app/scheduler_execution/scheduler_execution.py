@@ -72,35 +72,6 @@ class SchedulerExecution:
         with open(self.config_file, "r") as file:
             self.cfg = json.load(file)
 
-    # This should be calling the Scheduler we were given by Killian -AC
-    # Generates Schedules 
-    # def _generate_schedules(self) -> List[Dict[str, Any]]:
-    #     config = self.cfg.get("config", {})
-    #     courses = config.get("courses", [])
-    #     faculty_list = config.get("faculty", [])
-    #     rooms = config.get("rooms", [])
-
-    #     schedules: List[Dict[str, Any]] = []
-
-    #     schedule_id = 1
-
-    #     for course in courses:
-    #         for faculty in faculty_list:
-    #             for room in rooms:
-
-    #                 schedule = {
-    #                     "schedule_id": schedule_id,
-    #                     "course": course.get("course_id"),
-    #                     "faculty": faculty.get("name"),
-    #                     "room": room,
-    #                     "credits": course.get("credits")
-    #                 }
-
-    #                 schedules.append(schedule)
-    #                 schedule_id += 1
-
-    #     return schedules
-
     def _generate_schedules(self, limit: int, optimize: bool) -> List[Dict[str, Any]]:
         """
         Thin wrapper around scheduler_core.main.generate_schedules.
@@ -139,20 +110,6 @@ class SchedulerExecution:
     ) -> None:
         with open(self.output_file, "w") as file:
             json.dump(schedules, file, indent=4)
-
-    # Writes schedules in CSV format.
-    # def _write_csv(
-    #     self,
-    #     schedules: List[Dict[str, Any]]
-    # ) -> None:
-
-    #     if not schedules:
-    #         return
-
-    #     with open(self.output_file, "w", newline="") as file:
-    #         writer = csv.DictWriter(file, fieldnames=schedules[0].keys())
-    #         writer.writeheader()
-    #         writer.writerows(schedules)
 
     def _write_csv(self, schedules):
         # schedules is a flat List[Dict[str, Any]]
