@@ -27,6 +27,8 @@ Notes:
     - It focuses only on getting a real stateless AI response working.
 """
 
+import json
+
 # Existing config service import used for pulling high-level status
 # about the current configuration. We do not mutate config yet in Phase 2.
 from app.web.services.config_service import get_config_status
@@ -35,6 +37,7 @@ from app.web.services.config_service import get_config_status
 # external API setup does not clutter the AI orchestration logic.
 from app.web.services.openai_client import get_openai_client, get_model_name
 
+from app.web.services.ai_tools import get_tool_definitions, execute_tool
 
 # ------------------------------------------------------------------
 # Base Prompt
@@ -176,8 +179,46 @@ def process_ai_command(user_command: str) -> dict:
         model=model_name,
         instructions=build_base_prompt(),
         input=build_user_input(cleaned_command),
+        tools=get_tool_definitions(),
     )
 
+    # ---------------------------------------------
+    # TOOL HANDLING
+    # ---------------------------------------------
+    # The Responses API may return one or more output items.
+    # If the model decides to call one of our approved function tools,
+    # we detect that here, parse its JSON arguments, execute the tool,
+    # and return the backend result immediately.
+
+    for item in getattr(response, "output", []):
+        item_type = getattr(item, "type", None)
+
+        # Function tools are returned as "function_call" items.
+        if item_type == "function_call":
+            tool_name = getattr(item, "name", None)
+            raw_arguments = getattr(item, "arguments", "{}")
+
+            try:
+                arguments = json.loads(raw_arguments)
+            except json.JSONDecodeError:
+                return {
+                    "success": False,
+                    "message": (
+                        f"AI returned invalid tool arguments for '{tool_name}'."
+                    ),
+                    "changes_applied": False,
+                    "tool_calls": [tool_name] if tool_name else [],
+                    "model": model_name,
+                }
+
+            result = execute_tool(tool_name, arguments)
+
+            # Optional but useful: include tool name in the result payload
+            result.setdefault("tool_calls", [tool_name] if tool_name else [])
+            result.setdefault("model", model_name)
+
+            return result
+        
     ai_message = extract_text_from_response(response)
 
     return {

@@ -9,11 +9,13 @@ Purpose:
 - Validate prompt and user-input construction
 - Confirm response-text extraction behavior
 - Ensure AI command processing returns structured results
+- Verify function-tool execution behavior for Phase 3
 
 These are base-case service tests designed to:
 - Improve coverage for AI orchestration logic
 - Confirm stateless request construction
 - Catch regressions in response formatting behavior
+- Verify tool calls are dispatched correctly
 """
 
 from types import SimpleNamespace
@@ -93,17 +95,21 @@ def test_process_ai_command_rejects_blank_input():
     assert "No command was provided." in result["message"]
 
 
-def test_process_ai_command_success(monkeypatch):
+def test_process_ai_command_success_without_tool_call(monkeypatch):
     """
-    Ensures AI command processing builds a successful structured response.
+    Ensures AI command processing builds a successful structured response
+    when the model returns plain text and no tool call.
     """
-    fake_response = SimpleNamespace(output_text="Add course interpreted successfully.")
+    fake_response = SimpleNamespace(
+        output_text="Add course interpreted successfully.",
+        output=[],
+    )
 
     class FakeResponses:
         """
         Fake nested responses API with a create() method.
         """
-        def create(self, model, instructions, input):
+        def create(self, model, instructions, input, tools=None):
             return fake_response
 
     class FakeClient:
@@ -131,6 +137,10 @@ def test_process_ai_command_success(monkeypatch):
             "schedules_updated": False,
         },
     )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_tool_definitions",
+        lambda: [{"type": "function", "name": "add_course"}],
+    )
 
     result = process_ai_command("Add CMSC 161")
 
@@ -139,3 +149,122 @@ def test_process_ai_command_success(monkeypatch):
     assert result["tool_calls"] == []
     assert result["model"] == "gpt-5-mini"
     assert result["message"] == "Add course interpreted successfully."
+
+
+def test_process_ai_command_executes_function_tool_call(monkeypatch):
+    """
+    Ensures a returned function_call item is parsed and executed through
+    the tool dispatcher.
+    """
+    fake_response = SimpleNamespace(
+        output_text="",
+        output=[
+            SimpleNamespace(
+                type="function_call",
+                name="add_course",
+                arguments='{"course_id": "CS102", "credits": 3, "room": "Roddy 140"}',
+            )
+        ],
+    )
+
+    class FakeResponses:
+        def create(self, model, instructions, input, tools=None):
+            return fake_response
+
+    class FakeClient:
+        def __init__(self):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_openai_client",
+        lambda: FakeClient(),
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_model_name",
+        lambda: "gpt-5-mini",
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_config_status",
+        lambda: {
+            "loaded": True,
+            "path": "configs/config_dev.json",
+            "counts": {"courses": 3},
+            "unsaved_changes": False,
+            "schedules_updated": False,
+        },
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_tool_definitions",
+        lambda: [{"type": "function", "name": "add_course"}],
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.execute_tool",
+        lambda tool_name, args: {
+            "success": True,
+            "message": f"Executed {tool_name} for {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = process_ai_command("Add course CS102 with 3 credits in Roddy 140")
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["tool_calls"] == ["add_course"]
+    assert result["model"] == "gpt-5-mini"
+    assert result["message"] == "Executed add_course for CS102"
+
+
+def test_process_ai_command_returns_error_for_invalid_tool_arguments(monkeypatch):
+    """
+    Ensures invalid JSON arguments from the AI tool call are handled safely.
+    """
+    fake_response = SimpleNamespace(
+        output_text="",
+        output=[
+            SimpleNamespace(
+                type="function_call",
+                name="add_course",
+                arguments='{"course_id": "CS102", "credits": 3, ',
+            )
+        ],
+    )
+
+    class FakeResponses:
+        def create(self, model, instructions, input, tools=None):
+            return fake_response
+
+    class FakeClient:
+        def __init__(self):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_openai_client",
+        lambda: FakeClient(),
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_model_name",
+        lambda: "gpt-5-mini",
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_config_status",
+        lambda: {
+            "loaded": True,
+            "path": "configs/config_dev.json",
+            "counts": {"courses": 3},
+            "unsaved_changes": False,
+            "schedules_updated": False,
+        },
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_tool_definitions",
+        lambda: [{"type": "function", "name": "add_course"}],
+    )
+
+    result = process_ai_command("Add course CS102 with 3 credits in Roddy 140")
+
+    assert result["success"] is False
+    assert result["changes_applied"] is False
+    assert result["tool_calls"] == ["add_course"]
+    assert result["model"] == "gpt-5-mini"
+    assert "invalid tool arguments" in result["message"].lower()

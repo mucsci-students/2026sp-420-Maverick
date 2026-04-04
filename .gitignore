@@ -34,3 +34,6 @@ node_modules/
 *.egg-info/
 dist/
 build/
+
+# Interface Extra File
+working_config.json
