@@ -1,11 +1,16 @@
 <!--
 Author: Ian Swartz
-Date: 2026-04-03
+Date: 2026-04-04
 
 Visual Schedule (used when exporting schedule(s) to a visual file)
 
 Purpose:
   The visual schedule file that is created when exporting a schedule(s)
+-->
+
+<!-- 
+BACKUP FOR THE "visual_schedule.html" file.
+Best working version.
 -->
 
 <!DOCTYPE html>
@@ -32,6 +37,20 @@ Purpose:
             border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
             margin-bottom: 20px;
         }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; transition: opacity 0.2s; }
+        .btn-print { background: #333; color: white; }
+        .btn-close { background: #dc3545; color: white; margin-left: 8px; }
+        .btn:hover { opacity: 0.8; }
+
+        .header-summary {
+            display: flex; justify-content: space-between; align-items: center;
+            background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);
+        }
+        .legend-grid { display: flex; gap: 20px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .swatch { width: 14px; height: 14px; border-radius: 3px; border-left: 3px solid; }
+
 
         .top-nav { display: flex; justify-content: space-between; align-items: center; }
         .nav-links { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
@@ -101,8 +120,15 @@ Purpose:
     <div class="no-print">
         <div class="top-nav">
             <h1>Master Visual View #{{ data.index + 1 }}</h1>
-            <button onclick="window.print()">Print PDF</button>
+            <button class="btn btn-print" onclick="window.print()">Print PDF</button>
         </div>
+    
+    <div class="header-summary">
+        <div class="legend-grid">
+            <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
+            <div class="legend-item"><div class="swatch" style="background: var(--lab-color); border-color: var(--lab-border);"></div>Lab</div>
+        </div>
+    </div>
         
         <div class="nav-links" id="category-btns">
             <span style="align-self: center; font-weight: bold; color: #444; width: 80px;">Show:</span>
