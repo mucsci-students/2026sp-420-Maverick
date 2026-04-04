@@ -36,5 +36,4 @@ dist/
 build/
 
 # Interface Extra File
-working_config.jsonconfigs/working_config.json
 configs/working_config.json
