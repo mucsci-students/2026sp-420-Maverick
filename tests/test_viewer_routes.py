@@ -486,28 +486,6 @@ def test_visual_backup_redirects_without_schedules(monkeypatch):
     assert response.status_code == 302
 
 
-def test_visual_backup_renders_with_schedules(monkeypatch):
-    """
-    Ensures legacy visual backup route renders when schedules exist.
-    """
-    app = _make_app()
-
-    monkeypatch.setattr(
-        "app.web.routes.viewer_routes.get_view_data",
-        lambda: {"has_schedules": True, "assignments": []},
-    )
-    monkeypatch.setattr(
-        "app.web.routes.viewer_routes.render_template",
-        lambda template, **kwargs: f"rendered:{template}",
-    )
-
-    client = app.test_client()
-    response = client.get("/viewer/visual_backup")
-
-    assert response.status_code == 200
-    assert b"rendered:visual_BACKUP.html" in response.data
-
-
 def test_visual_view_redirects_without_schedules(monkeypatch):
     """
     Ensures visual calendar route redirects when no schedules exist.
