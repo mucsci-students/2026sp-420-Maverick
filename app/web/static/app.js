@@ -86,6 +86,30 @@ function initViewerTables() {
   const filterMenu = document.getElementById("filter_menu");
   const clearBtn = document.getElementById("clear_filters");
 
+
+  // ===============================
+  // Schedule Viewer Filtering Logic
+  // ===============================
+  
+  /**
+   * CLIENT-SIDE FILTERING LOGIC
+   *
+   * Controls visibility of grouped tables based on dropdown selection.
+   *
+   * Depends on:
+   * - viewer.html structure (IDs + data-entity attributes)
+   * - backend grouping keys from schedule_service.py
+   *
+   * Flow:
+   * 1. User selects value from dropdown
+   * 2. Matching group (data-entity) is shown
+   * 3. All others are hidden
+   *
+   * If filtering breaks:
+   * - Check HTML IDs
+   * - Check data-entity values
+   * - Check backend grouping output
+   */
   // Room filter controls
   const roomFilterSelect = document.getElementById("room_filter_select");
   const roomGroups = document.querySelectorAll(".room-filter-group");

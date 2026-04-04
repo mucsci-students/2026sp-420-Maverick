@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Ian Swartz, Tanner Ness
-Date: 2026-03-26
+Date: 2026-04-02
 
 Schedule Viewer Template
 
@@ -692,6 +692,28 @@ Extends:
       {% endif %}
     </div>
 
+
+    <!--
+    FILTER TABLE UI STRUCTURE
+
+    This template defines:
+    - Master tables (all data grouped)
+    - Filter tables (dropdown-driven visibility)
+
+    CRITICAL:
+    - Element IDs must match app.js selectors:
+        room_filter_select
+        lab_filter_select
+        faculty_filter_select
+
+    - Group containers must use:
+        class="entity-filter-group"
+        data-entity="{{ value }}"
+
+    If filtering stops working:
+    1. Check IDs match app.js
+    2. Check data-entity values match backend grouping keys
+    -->
     <div
       class="tab-panel"
       id="tab-filter-by-faculty-table"

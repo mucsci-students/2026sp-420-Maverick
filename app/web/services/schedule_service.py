@@ -414,6 +414,20 @@ def _check_for_conflicts(assignments: List[Dict]) -> bool:
 # Viewer Grouping Helpers
 # ------------------------------
 
+"""
+GROUPING LOGIC (USED BY VIEWER FILTER TABLES)
+
+This function determines how assignments are grouped for:
+- Master tables (by room, lab, faculty)
+- Filtered tables (dropdown-based filtering in viewer.html)
+
+IMPORTANT:
+- Empty values are ignored
+- Lab grouping excludes "None" values
+- Any change here directly impacts viewer filtering behavior
+
+If filtering UI behaves incorrectly, start debugging here.
+"""
 def _group_by(assignments, key):
     """
     Groups assignment rows by a specific field for tabular rendering.
@@ -460,6 +474,24 @@ def _group_by(assignments, key):
 # Core Viewer Data Function
 # ------------------------------
 
+"""
+VIEW DATA AGGREGATION FOR SCHEDULE VIEWER
+
+This function prepares all data used by:
+- viewer.html (tables + dropdowns)
+- app.js (client-side filtering)
+
+Includes:
+- grouped data (by_room, by_lab, by_faculty)
+- dropdown options (via routes)
+- conflict flags
+- navigation state
+
+If UI tables or filters are missing/broken, check:
+1. grouping output here
+2. route injection
+3. template rendering
+"""
 def get_view_data():
     """
     Builds the complete data bundle needed by the Schedule Viewer UI.
