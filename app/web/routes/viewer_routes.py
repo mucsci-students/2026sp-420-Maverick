@@ -256,16 +256,16 @@ def export_csv():
         flash(f"CSV Export failed: {e}", "error")
         return redirect(url_for("viewer.viewer"))
 
-# route for the backup/old visual view
-@bp.get("/visual_backup")
-def visual_BACKUP():
-    data = get_view_data()
-    if not data["has_schedules"]:
-        flash("No schedules found.", "error")
-        return redirect(url_for("viewer.viewer"))
+# route for the backup/old visual view (NO LONGER NEEDED, kept as legacy code)
+# @bp.get("/visual_backup")
+# def visual_BACKUP():
+#     data = get_view_data()
+#     if not data["has_schedules"]:
+#         flash("No schedules found.", "error")
+#         return redirect(url_for("viewer.viewer"))
     
-    # We keep the old template name here
-    return render_template("visual_calendar_BACKUP.html", data=data)
+#     # We keep the old template name here
+#     return render_template("visual_calendar_BACKUP.html", data=data)
 
 # route for exporting the currnet schedule to a calendar schedule view
 @bp.get("/visual_view")
