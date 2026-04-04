@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-03-27
+# Date: 2026-04-04
 """
 AI Service
 
@@ -8,23 +8,29 @@ Implements the core orchestration logic for the Sprint 3 Chunk A AI Chat Tool.
 Responsibilities:
     - Build the base/system prompt for the AI tool
     - Submit a single user command to the OpenAI API
-    - Keep each request stateless
-    - Return a structured response for the Flask route layer
+    - Provide tool definitions (function-calling interface)
+    - Detect and execute backend tools selected by the AI
+    - Return structured results for the Flask route layer
 
 Architectural Role:
     - Acts as the Service-layer coordinator for AI-assisted configuration
       interactions.
-    - Bridges the Flask controller layer and the OpenAI client utility layer.
+    - Bridges the Flask controller layer and:
+        • OpenAI client (external API)
+        • AI tool execution layer (internal backend logic)
 
 High-Level Flow:
     1. Receive one natural language command from the route layer
     2. Build the system/base prompt
-    3. Send one stateless request to the OpenAI Responses API
-    4. Return the model's response in a UI-friendly structure
+    3. Send a stateless request to the OpenAI Responses API
+    4. Allow the model to select a tool (if applicable)
+    5. Execute the selected tool via ai_tools.py
+    6. Return a structured result (success, message, changes_applied)
 
 Notes:
-    - This Phase 2 version does not yet execute backend tools/functions.
-    - It focuses only on getting a real stateless AI response working.
+    - This implementation is stateless (no conversation history).
+    - All configuration changes are executed through approved tools.
+    - The AI never directly modifies configuration data.
 """
 
 import json
@@ -131,8 +137,9 @@ def extract_text_from_response(response) -> str:
     Returns:
         str: The extracted text, or a fallback message if none is found.
     """
-    # The official SDK exposes a convenience output_text field on Responses
-    # objects when text output is available.
+    # The OpenAI Responses API exposes a convenience `output_text` field
+    # when the model returns plain text (no tool call).
+    # We use this as the fallback when no function execution occurs.
     text = getattr(response, "output_text", None)
 
     if text and str(text).strip():
@@ -145,10 +152,13 @@ def process_ai_command(user_command: str) -> dict:
     """
     Process a single natural language command using the OpenAI API.
 
-    Phase 2 Behavior:
+    Phase 3 Behavior:
         - Sends one stateless request to OpenAI
-        - Does not yet execute backend tools/functions
-        - Returns interpretation/help text only
+        - Provides tool definitions (function-calling interface)
+        - Detects and executes backend tools when selected by the model
+        - Returns either:
+            • A tool execution result (changes applied)
+            • Or a plain-text AI response (no changes applied)
 
     Args:
         user_command (str): The current one-off AI command from the user.
@@ -183,12 +193,19 @@ def process_ai_command(user_command: str) -> dict:
     )
 
     # ---------------------------------------------
-    # TOOL HANDLING
+    # TOOL HANDLING 
     # ---------------------------------------------
-    # The Responses API may return one or more output items.
-    # If the model decides to call one of our approved function tools,
-    # we detect that here, parse its JSON arguments, execute the tool,
-    # and return the backend result immediately.
+    # The Responses API may return structured output items.
+    # If the model selects one of our approved function tools:
+    #   1. Extract the tool name and JSON arguments
+    #   2. Parse the arguments safely
+    #   3. Execute the tool via ai_tools.execute_tool()
+    #   4. Return the backend result immediately
+    #
+    # This ensures:
+    #   - AI does not directly modify configuration
+    #   - All changes go through controlled service-layer logic
+    #   - The system remains safe and deterministic
 
     for item in getattr(response, "output", []):
         item_type = getattr(item, "type", None)
