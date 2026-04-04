@@ -44,7 +44,7 @@ def viewer():
     
     ref = (request.referrer or "")
 
-    if get_schedules_updated() & ('/config' in ref):
+    if get_schedules_updated() and ('/config' in ref):
         cfg = _get_cgf()
         update_schedules(cfg)
         set_schedules_updated(False)
