@@ -20,7 +20,7 @@ from __future__ import annotations
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Iterator
 
 from scheduler import Scheduler
 from scheduler.config import CombinedConfig
@@ -292,9 +292,7 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
 
     return rows
 
-
-
-def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> List[Dict[str, Any]]:
+def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> Iterator[List[Dict[str, Any]]]:
     """
     Runs the scheduler and returns flat meeting-level rows.
 
@@ -335,10 +333,3 @@ def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> List[
 
         if schedule_id >= limit:
             break
-
-    # Normalize keys so CSV/JSON always has consistent columns
-    normalized: List[Dict[str, Any]] = []
-    for r in schedule_rows:
-        normalized.append({k: r.get(k, "") for k in FIELDNAMES})
-
-    return normalized
