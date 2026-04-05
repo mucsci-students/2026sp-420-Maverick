@@ -295,6 +295,67 @@ def test_process_ai_command_executes_rename_course_tool_call(monkeypatch):
     assert result["message"] == "Renamed CS163 to CS370"
 
 
+def test_process_ai_command_executes_remove_course_lab_tool_call(monkeypatch):
+    """
+    Ensures a remove_course_lab function_call is executed correctly.
+    """
+    fake_response = SimpleNamespace(
+        output_text="",
+        output=[
+            SimpleNamespace(
+                type="function_call",
+                name="remove_course_lab",
+                arguments='{"course_id": "CS199"}',
+            )
+        ],
+    )
+
+    class FakeResponses:
+        def create(self, model, instructions, input, tools=None):
+            return fake_response
+
+    class FakeClient:
+        def __init__(self):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_openai_client",
+        lambda: FakeClient(),
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_model_name",
+        lambda: "gpt-5-mini",
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_config_status",
+        _mock_status,
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service._get_working_config",
+        _mock_working_config,
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.get_tool_definitions",
+        lambda: [{"type": "function", "name": "remove_course_lab"}],
+    )
+    monkeypatch.setattr(
+        "app.web.services.ai_service.execute_tool",
+        lambda tool_name, args: {
+            "success": True,
+            "message": f"Removed lab from {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = process_ai_command("Remove the lab from CS199")
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["tool_calls"] == ["remove_course_lab"]
+    assert result["model"] == "gpt-5-mini"
+    assert result["message"] == "Removed lab from CS199"
+
+
 def test_process_ai_command_executes_modify_course_credits_tool_call(monkeypatch):
     """
     Ensures a modify_course_credits function_call is executed correctly.

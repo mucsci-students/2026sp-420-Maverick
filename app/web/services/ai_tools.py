@@ -288,6 +288,18 @@ def get_tool_definitions():
         },
         {
             "type": "function",
+            "name": "remove_course_lab",
+            "description": "Remove the lab assigned to an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
+                },
+                "required": ["course_id"],
+            },
+        },
+        {
+            "type": "function",
             "name": "modify_course_faculty",
             "description": "Change the faculty list assigned to an existing course.",
             "parameters": {
@@ -455,6 +467,10 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
             return False, "Missing required field: course_id"
         if not args.get("lab"):
             return False, "Missing required field: lab"
+        
+    if tool_name == "remove_course_lab":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
 
     if tool_name == "modify_course_faculty":
         if not args.get("course_id"):
@@ -556,6 +572,9 @@ def execute_tool(tool_name: str, args: dict) -> dict:
 
         if tool_name == "modify_course_lab":
             return modify_course_lab_tool(args)
+
+        if tool_name == "remove_course_lab":
+            return remove_course_lab_tool(args)
 
         if tool_name == "modify_course_faculty":
             return modify_course_faculty_tool(args)
@@ -783,6 +802,25 @@ def modify_course_lab_tool(args: dict) -> dict:
         "message": f"Changed lab for course {args['course_id']} to {args['lab']}.",
         "changes_applied": True,
         "details": {"action": "modify_course_lab", **args},
+    }
+
+
+def remove_course_lab_tool(args: dict) -> dict:
+    """
+    Remove the lab assigned to an existing course.
+
+    The backend modify_course() clears the lab only when it receives
+    an empty string, not None.
+    """
+    modify_course_service(
+        course_id=args["course_id"],
+        lab="",
+    )
+    return {
+        "success": True,
+        "message": f"Removed lab from course {args['course_id']}.",
+        "changes_applied": True,
+        "details": {"action": "remove_course_lab", **args},
     }
 
 

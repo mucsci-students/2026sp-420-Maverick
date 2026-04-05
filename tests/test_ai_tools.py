@@ -24,6 +24,7 @@ from app.web.services.ai_tools import (
     modify_course_credits_tool,
     modify_course_room_tool,
     modify_course_lab_tool,
+    remove_course_lab_tool,
     modify_course_faculty_tool,
     modify_course_conflicts_tool,
     remove_room_tool,
@@ -42,6 +43,7 @@ def test_get_tool_definitions_contains_expected_tools():
     assert "modify_course_credits" in names
     assert "modify_course_room" in names
     assert "modify_course_lab" in names
+    assert "remove_course_lab" in names
     assert "modify_course_faculty" in names
     assert "modify_course_conflicts" in names
     assert "remove_room" in names
@@ -108,6 +110,29 @@ def test_execute_tool_dispatches_add_course(monkeypatch):
     assert result["success"] is True
     assert result["changes_applied"] is True
     assert result["message"] == "Added CS102"
+
+
+def test_execute_tool_dispatches_remove_course_lab(monkeypatch):
+    """
+    Ensures execute_tool routes remove_course_lab requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.remove_course_lab_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Removed lab from {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "remove_course_lab",
+        {"course_id": "CS199"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Removed lab from CS199"
 
 
 def test_execute_tool_dispatches_rename_course(monkeypatch):
@@ -325,6 +350,32 @@ def test_add_course_tool_calls_service_wrapper(monkeypatch):
     assert result["changes_applied"] is True
     assert "Added course CS102" in result["message"]
 
+
+def test_remove_course_lab_tool_calls_service_wrapper(monkeypatch):
+    """
+    Ensures remove_course_lab_tool delegates to modify_course_service
+    with an empty lab string so the backend clears the lab list.
+    """
+    captured = {}
+
+    def fake_modify_course_service(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.modify_course_service",
+        fake_modify_course_service,
+    )
+
+    result = remove_course_lab_tool({"course_id": "CS199"})
+
+    assert captured == {
+        "course_id": "CS199",
+        "lab": "",
+    }
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert "Removed lab from course CS199" in result["message"]
+    
 
 def test_rename_course_tool_calls_service_wrapper(monkeypatch):
     """

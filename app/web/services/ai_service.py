@@ -87,13 +87,14 @@ When using tools:
 For faculty availability:
 - use set_faculty_day_unavailable to mark a faculty member unavailable on a specific day
 
-For course updates, use these specific tools:
-- use rename_course when the user wants to rename a course
-- use modify_course_credits when the user wants to change credits
-- use modify_course_room when the user wants to change the room
-- use modify_course_lab when the user wants to change the lab
-- use modify_course_faculty when the user wants to change faculty assignments
-- use modify_course_conflicts when the user wants to replace the full conflicts list
+For course updates, use the most specific available tool:
+- use rename_course for renaming a course
+- use modify_course_credits for changing credits
+- use modify_course_room for changing a room
+- use modify_course_lab for assigning or changing a lab
+- use remove_course_lab for removing a lab from a course
+- use modify_course_faculty for changing faculty assignments
+- use modify_course_conflicts for changing conflict lists
 - use add_conflict or remove_conflict when the user wants to add or remove a single conflict relationship
 
 Examples:
