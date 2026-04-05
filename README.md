@@ -362,6 +362,36 @@ These can be loaded directly through the GUI.
 
 ---
 
+### Design Patterns
+
+1. Observer (Behavioral Pattern)
+Located in 
+```
+app/web/templates/visual_schedule.html
+```
+Details:
+- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
+- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
+
+- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
+
+- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
+- A new function is called when the state changes. 
+- If a top category is changed then the sub-filters are reset.
+
+- Observer 1 is used to update the main view sections.
+(All, Faculty, Rooms, Labs)
+- State also controls the visibility of the sub-filtering.
+(e.g.: Show-Faculty, Filter - Hobbs)
+
+- Observer 2 is used to update the calendar container visibility (sub-filtering).
+
+- Observer 3 is used to update the day grid layout.
+
+- Event handlers are used to update the UI button styles, and update the state.
+
+---
+
 ### Service Layer
 
 Located in:

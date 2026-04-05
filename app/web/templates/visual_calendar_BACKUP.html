@@ -40,8 +40,12 @@ Best working version.
 
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; transition: opacity 0.2s; }
         .btn-print { background: #333; color: white; }
-        .btn-close { background: #dc3545; color: white; margin-left: 8px; }
-        .btn:hover { opacity: 0.8; }
+        .nav-btn {
+            padding: 8px 16px; border: 1px solid var(--border-color);
+            background: white; border-radius: 6px; cursor: pointer;
+            font-weight: 600; color: #64748b; transition: all 0.2s;
+            white-space: nowrap;
+        }
 
         .header-summary {
             display: flex; justify-content: space-between; align-items: center;
@@ -51,10 +55,8 @@ Best working version.
         .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
         .swatch { width: 14px; height: 14px; border-radius: 3px; border-left: 3px solid; }
 
-
         .top-nav { display: flex; justify-content: space-between; align-items: center; }
-        .nav-links { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
-        
+
         .nav-btn {
             padding: 8px 16px; border: 1px solid var(--border-color);
             background: white; border-radius: 6px; cursor: pointer;
@@ -63,6 +65,9 @@ Best working version.
 
         .nav-btn:hover { background: #f1f5f9; }
         .nav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .nav-links { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; flex-wrap: wrap; }
+        .filter-label { align-self: center; font-weight: bold; color: #444; width: 100px; flex-shrink: 0; }
 
         .section-title { border-bottom: 3px solid #333; margin: 40px 0 20px; padding-bottom: 10px; font-size: 1.5rem; text-transform: uppercase; }
         .schedules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
@@ -77,42 +82,27 @@ Best working version.
             border: 1px solid var(--border-color); background: #fff;
         }
 
-        .calendar-wrapper[class*="filter-"] {
-            grid-template-columns: 80px 1fr !important;
-        }
+        /* Day Filtering Logic */
+        .calendar-wrapper[class*="filter-day-"] { grid-template-columns: 80px 1fr !important; }
+        .calendar-wrapper[class*="filter-day-"] .day-column,
+        .calendar-wrapper[class*="filter-day-"] .header.day-head { display: none; }
 
-        .calendar-wrapper[class*="filter-"] .day-column,
-        .calendar-wrapper[class*="filter-"] .header.day-head { display: none; }
-
-        .calendar-wrapper.filter-Monday .col-MON, .calendar-wrapper.filter-Monday .head-MON,
-        .calendar-wrapper.filter-Tuesday .col-TUE, .calendar-wrapper.filter-Tuesday .head-TUE,
-        .calendar-wrapper.filter-Wednesday .col-WED, .calendar-wrapper.filter-Wednesday .head-WED,
-        .calendar-wrapper.filter-Thursday .col-THU, .calendar-wrapper.filter-Thursday .head-THU,
-        .calendar-wrapper.filter-Friday .col-FRI, .calendar-wrapper.filter-Friday .head-FRI { 
-            display: block !important;
-            grid-column: 2 !important; 
+        .calendar-wrapper.filter-day-Monday .col-MON, .calendar-wrapper.filter-day-Monday .head-MON,
+        .calendar-wrapper.filter-day-Tuesday .col-TUE, .calendar-wrapper.filter-day-Tuesday .head-TUE,
+        .calendar-wrapper.filter-day-Wednesday .col-WED, .calendar-wrapper.filter-day-Wednesday .head-WED,
+        .calendar-wrapper.filter-day-Thursday .col-THU, .calendar-wrapper.filter-day-Thursday .head-THU,
+        .calendar-wrapper.filter-day-Friday .col-FRI, .calendar-wrapper.filter-day-Friday .head-FRI { 
+            display: block !important; grid-column: 2 !important; 
         }
 
         .header { background: #f1f3f4; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 0.9rem; }
         .time-label { grid-column: 1; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: #6c757d; display: flex; justify-content: center; padding-top: 5px; border-bottom: 1px solid #f8f9fa; }
+        .day-column { position: relative; grid-row: 2 / span 12; border-right: 1px solid var(--border-color); background-image: linear-gradient(var(--border-color) 1px, transparent 1px); background-size: 100% var(--hour-height); }
 
-        .day-column { 
-            position: relative; grid-row: 2 / span 12; 
-            border-right: 1px solid var(--border-color); 
-            background-image: linear-gradient(var(--border-color) 1px, transparent 1px); 
-            background-size: 100% var(--hour-height); 
-        }
-
-        .course-card {
-            position: absolute; left: 2px; right: 2px; padding: 5px;
-            border-radius: 4px; border-left: 4px solid; font-size: 0.7rem; line-height: 1.2;
-            z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;
-        }
-
+        .course-card { position: absolute; left: 2px; right: 2px; padding: 5px; border-radius: 4px; border-left: 4px solid; font-size: 0.7rem; line-height: 1.2; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
-        .course-meta { font-size: 0.65rem; color: #444; }
-
-        @media print { .no-print { display: none; } .schedules-grid { grid-template-columns: 1fr 1fr; } }
+        
+        @media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
@@ -122,7 +112,7 @@ Best working version.
             <h1>Master Visual View #{{ data.index + 1 }}</h1>
             <button class="btn btn-print" onclick="window.print()">Print PDF</button>
         </div>
-    
+
     <div class="header-summary">
         <div class="legend-grid">
             <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
@@ -131,15 +121,21 @@ Best working version.
     </div>
         
         <div class="nav-links" id="category-btns">
-            <span style="align-self: center; font-weight: bold; color: #444; width: 80px;">Show:</span>
+            <span class="filter-label">Show:</span>
             <button class="nav-btn active" onclick="filterCategory('all', this)">All</button>
             <button class="nav-btn" onclick="filterCategory('faculty', this)">Faculty</button>
             <button class="nav-btn" onclick="filterCategory('room', this)">Rooms</button>
             <button class="nav-btn" onclick="filterCategory('lab', this)">Labs</button>
         </div>
 
+        <div class="nav-links sub-filter-row" id="sub-filter-container" style="display: none;">
+            <span class="filter-label" id="sub-filter-label">Filter:</span>
+            <div id="sub-filter-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                </div>
+        </div>
+
         <div class="nav-links" id="day-btns">
-            <span style="align-self: center; font-weight: bold; color: #444; width: 80px;">Day Filtering:</span>
+            <span class="filter-label">Day Filter:</span>
             <button class="nav-btn active" onclick="filterDay('all', this)">Full Week</button>
             <button class="nav-btn" onclick="filterDay('Monday', this)">Monday</button>
             <button class="nav-btn" onclick="filterDay('Tuesday', this)">Tuesday</button>
@@ -149,8 +145,8 @@ Best working version.
         </div>
     </div>
 
-    {% macro render_calendar(title, assignments) %}
-    <div class="calendar-container">
+    {% macro render_calendar(title, assignments, identifier) %}
+    <div class="calendar-container" data-name="{{ identifier }}">
         <div class="calendar-name">{{ title }}</div>
         <div class="calendar-wrapper">
             <div class="header">Time</div>
@@ -159,34 +155,17 @@ Best working version.
             <div class="header day-head head-WED">Wed</div>
             <div class="header day-head head-THU">Thu</div>
             <div class="header day-head head-FRI">Fri</div>
-
             {% for hour in range(8, 20) %}
-                <div class="time-label" style="grid-row: {{ loop.index + 1 }};">
-                    {{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}
-                </div>
+                <div class="time-label" style="grid-row: {{ loop.index + 1 }};">{{ hour if hour <= 12 else hour - 12 }}:00 {{ 'AM' if hour < 12 else 'PM' }}</div>
             {% endfor %}
-
-            {% set days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] %}
-            {% for day_name in days %}
+            {% for day_name in ['MON', 'TUE', 'WED', 'THU', 'FRI'] %}
                 <div class="day-column col-{{ day_name }}" style="grid-column: {{ loop.index + 1 }};">
                     {% for a in assignments %}
                         {% if a.day|trim|upper == day_name %}
-                            {% set start_parts = a.start.split(':') %}
-                            {% set s_h = start_parts[0]|int %}
-                            {% set s_m = start_parts[1]|int %}
-                            {% set top_px = (s_h - 8) * 60 + s_m %}
-                            {% set height_px = a.duration|int %}
-
-                            <div class="course-card" 
-                                 style="top: {{ top_px }}px; height: {{ height_px - 2 }}px; 
-                                        background-color: {{ 'var(--lab-color)' if a.lab else 'var(--lecture-color)' }};
-                                        border-color: {{ 'var(--lab-border)' if a.lab else 'var(--lecture-border)' }};">
+                            {% set s_h = a.start.split(':')[0]|int %}{% set s_m = a.start.split(':')[1]|int %}
+                            <div class="course-card" style="top: {{ (s_h - 8) * 60 + s_m }}px; height: {{ a.duration|int - 2 }}px; background-color: {{ 'var(--lab-color)' if a.lab else 'var(--lecture-color)' }}; border-color: {{ 'var(--lab-border)' if a.lab else 'var(--lecture-border)' }};">
                                 <span class="course-id">{{ a.course_id }}</span>
-                                <div class="course-meta">
-                                    <strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>
-                                    Room: {{ a.room }}<br>
-                                    Fac: {{ a.faculty }}
-                                </div>
+                                <div class="course-meta"><strong>{{ a.start }}</strong> ({{ a.duration }}m)<br>Room: {{ a.room }}<br>Fac: {{ a.faculty }}</div>
                             </div>
                         {% endif %}
                     {% endfor %}
@@ -199,18 +178,14 @@ Best working version.
     <div id="view-room" class="filter-section">
         <h2 class="section-title">Room Master Schedules</h2>
         <div class="schedules-grid">
-            {% for room, items in data.by_room.items() %}
-                {{ render_calendar(room, items) }}
-            {% endfor %}
+            {% for room, items in data.by_room.items() %}{{ render_calendar(room, items, room) }}{% endfor %}
         </div>
     </div>
 
     <div id="view-faculty" class="filter-section">
         <h2 class="section-title">Faculty Master Schedules</h2>
         <div class="schedules-grid">
-            {% for faculty, items in data.by_faculty.items() %}
-                {{ render_calendar(faculty, items) }}
-            {% endfor %}
+            {% for faculty, items in data.by_faculty.items() %}{{ render_calendar(faculty, items, faculty) }}{% endfor %}
         </div>
     </div>
 
@@ -218,50 +193,112 @@ Best working version.
         <h2 class="section-title">Lab Resource Schedules</h2>
         <div class="schedules-grid">
             {% set lab_types = [] %}
-            {% for a in data.assignments %}
-                {% if a.lab and a.lab not in lab_types %}
-                    {% set _ = lab_types.append(a.lab) %}
-                {% endif %}
-            {% endfor %}
-
+            {% for a in data.assignments %}{% if a.lab and a.lab not in lab_types %}{% set _ = lab_types.append(a.lab) %}{% endif %}{% endfor %}
             {% for lab_name in lab_types|sort %}
                 {% set lab_assignments = [] %}
-                {% for a in data.assignments %}
-                    {% if a.lab == lab_name %}
-                        {% set _ = lab_assignments.append(a) %}
-                    {% endif %}
-                {% endfor %}
-                {{ render_calendar(lab_name ~ " Lab", lab_assignments) }}
+                {% for a in data.assignments %}{% if a.lab == lab_name %}{% set _ = lab_assignments.append(a) %}{% endif %}{% endfor %}
+                {{ render_calendar(lab_name ~ " Lab", lab_assignments, lab_name) }}
             {% endfor %}
         </div>
     </div>
 
     <script>
-        function filterCategory(view, btn) {
+        // 1. DATA PREPARATION
+        // We extract the unique keys from the Jinja data so JavaScript can build buttons dynamically.
+        const filterData = {
+            faculty: {{ data.by_faculty.keys()|list|tojson }},
+            room: {{ data.by_room.keys()|list|tojson }},
+            lab: (function() {
+                let labs = [];
+                {% for a in data.assignments %}{% if a.lab %}
+                    if(!labs.includes("{{a.lab}}")) labs.push("{{a.lab}}");
+                {% endif %}{% endfor %}
+                return labs.sort();
+            })()
+        };
+
+        // Global variable to track which main category is currently active
+        let currentCategory = 'all';
+
+        // 2. PRIMARY CATEGORY FILTERING (Show: Faculty, Rooms, Labs)
+        function filterCategory(category, btn) {
+            currentCategory = category;
+            
+            // Update button styles in the "Show" row only
             document.querySelectorAll('#category-btns .nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const sections = document.querySelectorAll('.filter-section');
-            sections.forEach(s => s.style.display = 'none');
+            // Hide all main view sections initially
+            document.querySelectorAll('.filter-section').forEach(s => s.style.display = 'none');
+            
+            const subFilterRow = document.getElementById('sub-filter-container');
+            const subFilterBox = document.getElementById('sub-filter-buttons');
 
-            if (view === 'all') {
+            if (category === 'all') {
+                // "All" view shows both Room and Faculty sections, hides the Sub-Filter row
                 document.getElementById('view-room').style.display = 'block';
                 document.getElementById('view-faculty').style.display = 'block';
-                document.getElementById('view-lab').style.display = 'none';
+                subFilterRow.style.display = 'none';
             } else {
-                document.getElementById('view-' + view).style.display = 'block';
+                // Show the specific section and make the sub-filter row visible
+                document.getElementById('view-' + category).style.display = 'block';
+                subFilterRow.style.display = 'flex';
+                
+                // --- Pluralization Logic ---
+                // Map the internal singular category IDs to the desired plural display names
+                const labels = {
+                    'faculty': 'Faculty', // Faculty is already collective
+                    'room': 'Rooms',
+                    'lab': 'Labs'
+                };
+                
+                const displayLabel = labels[category] || category;
+
+                // Build the "All" button for the specific category (e.g., "All Rooms")
+                subFilterBox.innerHTML = `<button class="nav-btn active" onclick="applySubFilter('all', this)">All ${displayLabel}</button>`;
+                
+                // Generate a button for every specific item (Professor name, Room #, etc.)
+                filterData[category].forEach(item => {
+                    subFilterBox.innerHTML += `<button class="nav-btn" onclick="applySubFilter('${item}', this)">${item}</button>`;
+                });
             }
+            
+            // Ensure that when switching categories, we start by showing all schedules in that section
+            applySubFilter('all');
         }
 
+        // 3. SECONDARY ENTITY FILTERING (Filter: Yang, Room 101, etc.)
+        function applySubFilter(name, btn) {
+            // Update styling for buttons within the sub-filter row only
+            if (btn) {
+                document.querySelectorAll('#sub-filter-buttons .nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+
+            // Target only the calendar containers within the currently active section
+            const containers = document.querySelectorAll(`#view-${currentCategory} .calendar-container`);
+            containers.forEach(c => {
+                // Show if "All" is selected OR if the container's data-name matches the button clicked
+                if (name === 'all' || c.getAttribute('data-name') === name) {
+                    c.style.display = 'block';
+                } else {
+                    c.style.display = 'none';
+                }
+            });
+        }
+
+        // 4. DAY FILTERING (Monday, Tuesday, etc.)
         function filterDay(day, btn) {
+            // Update active state for day buttons only
             document.querySelectorAll('#day-btns .nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const wrappers = document.querySelectorAll('.calendar-wrapper');
-            wrappers.forEach(wrapper => {
+            // Apply the CSS class to the calendar-wrapper to trigger the grid layout change
+            document.querySelectorAll('.calendar-wrapper').forEach(wrapper => {
+                // Reset classes, keeping the base wrapper class
                 wrapper.className = 'calendar-wrapper'; 
                 if (day !== 'all') {
-                    wrapper.classList.add('filter-' + day);
+                    wrapper.classList.add('filter-day-' + day);
                 }
             });
         }
