@@ -17,6 +17,7 @@ from app.web.services.config_service import (
     add_faculty_service,
     remove_faculty_service,
     modify_faculty_service,
+    set_faculty_day_unavailable_service,
     add_room_service,
     remove_room_service,
     modify_room_service,
@@ -102,6 +103,19 @@ def get_tool_definitions():
                 },
                 "required": ["name"],
             },
+        },
+        {
+            "type": "function",
+            "name": "set_faculty_day_unavailable",
+            "description": "Mark a faculty member as unavailable on a specific day by setting that day's times to an empty list.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "day": {"type": "string"}
+                },
+                "required": ["name", "day"]
+            }
         },
 
         # --------------------------------------------------------
@@ -381,6 +395,12 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
     if tool_name == "add_faculty" and not args.get("appointment_type"):
         return False, "Missing required field: appointment_type"
 
+    if tool_name == "set_faculty_day_unavailable":
+        if not args.get("name"):
+            return False, "Missing required field: name"
+        if not args.get("day"):
+            return False, "Missing required field: day"
+    
     if tool_name in {"add_room", "remove_room"} and not args.get("room"):
         return False, "Missing required field: room"
 
@@ -497,6 +517,9 @@ def execute_tool(tool_name: str, args: dict) -> dict:
 
         if tool_name == "modify_faculty":
             return modify_faculty_tool(args)
+        
+        if tool_name == "set_faculty_day_unavailable":
+            return set_faculty_day_unavailable_tool(args)
 
         if tool_name == "add_room":
             return add_room_tool(args)
@@ -600,6 +623,28 @@ def modify_faculty_tool(args: dict) -> dict:
         "message": f"Modified faculty {args['name']}.",
         "changes_applied": True,
         "details": {"action": "modify_faculty", **args},
+    }
+
+
+def set_faculty_day_unavailable_tool(args: dict) -> dict:
+    """
+    Mark a faculty member unavailable on a specific day by clearing
+    the time ranges for that day.
+    """
+    set_faculty_day_unavailable_service(
+        name=args["name"],
+        day=args["day"],
+    )
+
+    return {
+        "success": True,
+        "message": f"Set faculty {args['name']} as unavailable on {args['day']}.",
+        "changes_applied": True,
+        "details": {
+            "action": "set_faculty_day_unavailable",
+            "name": args["name"],
+            "day": args["day"],
+        },
     }
 
 

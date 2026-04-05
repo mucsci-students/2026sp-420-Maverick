@@ -700,6 +700,25 @@ def modify_faculty_service(**kwargs):
     modify_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
+def set_faculty_day_unavailable_service(name: str, day: str):
+    """
+    Mark a faculty member unavailable on a specific day by setting that
+    day's time list to an empty list.
+    """
+    cfg = _get_cgf()
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+
+    day = day.upper()
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            faculty.setdefault("times", {})
+            faculty["times"][day] = []
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' does not exist")
+
 
 # ================================================================
 # Room Management

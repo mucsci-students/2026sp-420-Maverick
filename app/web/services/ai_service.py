@@ -84,6 +84,9 @@ When using tools:
 - Use the most specific available tool for the request
 - Do not use a broad course modification pattern when a specific course tool exists
 
+For faculty availability:
+- use set_faculty_day_unavailable to mark a faculty member unavailable on a specific day
+
 For course updates, use these specific tools:
 - use rename_course when the user wants to rename a course
 - use modify_course_credits when the user wants to change credits
