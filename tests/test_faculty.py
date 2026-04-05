@@ -37,6 +37,7 @@ Related User Stories:
 
 import pytest
 from app.faculty_management import faculty_management
+from typing import List
 
 # ---------------------------
 # Delete Faculty
@@ -111,6 +112,15 @@ def test_add_faculty_adjunct_with_prefs(example):
     assert new_fac["maximum_credits"] == 4, "Adjunct should have 4 max credits."
     assert new_fac["preferences"] == test_prefs, "Preferences were not stored correctly."
 
+def test_add_faculty_same_name(example):
+    """Ensures adding a duplicate name raises a ValueError"""
+    
+    test_prefs = [{"course_id": "CS101", "weight": 5}]
+
+    with pytest.raises(ValueError):
+        faculty_management.add_faculty(example, "Dr. Smith", "adjunct", prefs=test_prefs  )
+
+
 # ---------------------------
 # Modify Faculty
 # ---------------------------
@@ -138,3 +148,126 @@ def test_modify_faculty_member_nonexistent(example):
             "MR BOBBY",
             maximum_credits=10
         )
+
+def test_modify_faculty_update_appointment_type(example):
+    """Ensures updating a faculty member's appointment type updates all related defaults."""
+    name = example["config"]["faculty"][0]['name']
+    
+    faculty_management.modify_faculty(
+        example,
+        name,
+        appointment_type="adjunct"
+    )
+    
+    faculty = next(f for f in example["config"]["faculty"] if f["name"] == name)
+    
+    assert faculty["maximum_credits"] == 4
+    assert faculty["minimum_credits"] == 0
+    assert faculty["unique_course_limit"] == 1
+
+def test_modify_faculty_manual_credit_overrides(example):
+    """Ensures manually overriding minimum_credits and unique_course_limit."""
+    name = example["config"]["faculty"][0]['name']
+    new_min_credits = 8
+    new_unique_limit = 3
+    
+    faculty_management.modify_faculty(
+        example,
+        name,
+        minimum_credits=new_min_credits,
+        unique_course_limit=new_unique_limit
+    )
+    
+    faculty = next(f for f in example["config"]["faculty"] if f["name"] == name)
+    
+    assert faculty["minimum_credits"] == new_min_credits, "Minimum credits not updated."
+    assert faculty["unique_course_limit"] == new_unique_limit, "Unique course limit not updated."
+
+def test_modify_faculty_update_availability(example):
+    """Test updating a faculty member's availability."""
+    name = example["config"]["faculty"][0]['name']
+    test_day = "MON"
+    test_time_range = "13:00-16:00"
+    
+    faculty_management.modify_faculty(
+        example,
+        name,
+        day=test_day,
+        time_range=test_time_range
+    )
+    
+    faculty = next(f for f in example["config"]["faculty"] if f["name"] == name)
+    
+    assert faculty["times"][test_day] == [test_time_range], "Availability not updated correctly."
+    assert faculty["times"]["TUE"] == ["09:00-17:00"], "Other days should keep defaults."
+
+def test_modify_faculty_replace_preferences(example):
+    """Ensures replacing a faculty member's preferences."""
+    name = example["config"]["faculty"][0]['name']
+    new_prefs = [
+        {"course_id": "CS101", "weight": 9},
+        {"course_id": "CS201", "weight": 4}
+    ]
+    
+    faculty_management.modify_faculty(
+        example,
+        name,
+        prefs=new_prefs
+    )
+    
+    faculty = next(f for f in example["config"]["faculty"] if f["name"] == name)
+    
+    assert faculty["preferences"] == new_prefs
+
+# ---------------------------
+# Faculty default
+# ---------------------------
+def test_faculty_defaults_raises_error():
+    """Ensures faculty_defaults raises a ValueError when given an unknown appointment type"""
+    with pytest.raises(ValueError):
+        faculty_management.faculty_defaults("something")
+
+# ---------------------------
+# Faculty Build Time
+# ---------------------------
+
+def test_faculty_build_times_partial_raises_error():
+    with pytest.raises(ValueError):
+        """Ensures build_times raises a ValueError because of ambigutiy."""
+        faculty_management.build_times("", "")
+
+def test_faculty_build_times_invalid_day_raises_error():
+    with pytest.raises(ValueError):
+        """Ensures build_times raises a ValueError of invalid day."""
+        faculty_management.build_times("something", "12-7")
+
+def test_faculty_build_times_invalid_time_range_raises_error():
+    with pytest.raises(ValueError):
+        """Ensures build_times raises a ValueError because of invalid time."""
+        faculty_management.build_times("WED", "128")
+
+def test_faculty_build():
+    """Ensures build_times returns a dict."""
+
+    times = faculty_management.build_times("WED", "9:00-17:00")
+    
+    assert isinstance(times, dict)
+# ---------------------------
+# preference parser
+# ---------------------------
+
+def test_parse_prefs_none():
+    """Ensures parse_prefs returns [] if no value passed"""
+    prefs = faculty_management.parse_prefs("")
+    assert prefs == []
+
+def test_parse_prefs_no_colon():
+    "Ensures parse_prefs raises a ValueError when there is no colon"
+    with pytest.raises(ValueError):
+        faculty_management.parse_prefs(["CS1208", "CS9991"])
+
+def test_parse_prefs():
+    "Ensures parse_prefs returns a list"
+    prefs = faculty_management.parse_prefs(["CS101:8", "CS201:5"])
+    assert isinstance(prefs, List)
+
