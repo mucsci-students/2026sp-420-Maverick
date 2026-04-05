@@ -178,6 +178,8 @@ def generate():
     # 2. Generate Schedules via Service Layer
     # ----------------------------------------
 
+    session_id = session.sid
+
     try:
         # Persist Generator overrides so the UI stays consistent after generating
         session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
@@ -191,7 +193,11 @@ def generate():
         return ("", 204)
 
     except Exception as e:
-        # Catch-all so UI doesn’t crash on user-facing errors
+        # Catch-all so UI doesn't crash on user-facing errors
+        with progress_lock:
+            generation_progress[session_id] = 0
+            is_running[session_id] = False
+        
         flash(f"Generate failed: {e}", "error")
         return redirect(url_for("run.generator"))
 

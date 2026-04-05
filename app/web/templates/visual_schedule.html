@@ -52,12 +52,6 @@ Purpose:
 
         .top-nav { display: flex; justify-content: space-between; align-items: center; }
 
-        .nav-btn {
-            padding: 8px 16px; border: 1px solid var(--border-color);
-            background: white; border-radius: 6px; cursor: pointer;
-            font-weight: 600; color: #64748b; transition: all 0.2s;
-        }
-
         .nav-btn:hover { background: #f1f5f9; }
         .nav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
@@ -77,7 +71,6 @@ Purpose:
             border: 1px solid var(--border-color); background: #fff;
         }
 
-        /* Day Filtering Logic */
         .calendar-wrapper[class*="filter-day-"] { grid-template-columns: 80px 1fr !important; }
         .calendar-wrapper[class*="filter-day-"] .day-column,
         .calendar-wrapper[class*="filter-day-"] .header.day-head { display: none; }
@@ -108,12 +101,12 @@ Purpose:
             <button class="btn btn-print" onclick="window.print()">Print PDF</button>
         </div>
 
-    <div class="header-summary">
-        <div class="legend-grid">
-            <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
-            <div class="legend-item"><div class="swatch" style="background: var(--lab-color); border-color: var(--lab-border);"></div>Lab</div>
+        <div class="header-summary">
+            <div class="legend-grid">
+                <div class="legend-item"><div class="swatch" style="background: var(--lecture-color); border-color: var(--lecture-border);"></div>Lecture</div>
+                <div class="legend-item"><div class="swatch" style="background: var(--lab-color); border-color: var(--lab-border);"></div>Lab</div>
+            </div>
         </div>
-    </div>
         
         <div class="nav-links" id="category-btns">
             <span class="filter-label">Show:</span>
@@ -125,8 +118,7 @@ Purpose:
 
         <div class="nav-links sub-filter-row" id="sub-filter-container" style="display: none;">
             <span class="filter-label" id="sub-filter-label">Filter:</span>
-            <div id="sub-filter-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                </div>
+            <div id="sub-filter-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
 
         <div class="nav-links" id="day-btns">
@@ -170,13 +162,6 @@ Purpose:
     </div>
     {% endmacro %}
 
-    <div id="view-room" class="filter-section">
-        <h2 class="section-title">Room Master Schedules</h2>
-        <div class="schedules-grid">
-            {% for room, items in data.by_room.items() %}{{ render_calendar(room, items, room) }}{% endfor %}
-        </div>
-    </div>
-
     <div id="view-faculty" class="filter-section">
         <h2 class="section-title">Faculty Master Schedules</h2>
         <div class="schedules-grid">
@@ -184,7 +169,14 @@ Purpose:
         </div>
     </div>
 
-    <div id="view-lab" class="filter-section" style="display:none;">
+    <div id="view-room" class="filter-section">
+        <h2 class="section-title">Room Master Schedules</h2>
+        <div class="schedules-grid">
+            {% for room, items in data.by_room.items() %}{{ render_calendar(room, items, room) }}{% endfor %}
+        </div>
+    </div>
+
+    <div id="view-lab" class="filter-section">
         <h2 class="section-title">Lab Resource Schedules</h2>
         <div class="schedules-grid">
             {% set lab_types = [] %}
@@ -198,8 +190,68 @@ Purpose:
     </div>
 
     <script>
-        // 1. DATA PREPARATION
-        // We extract the unique keys from the Jinja data so JavaScript can build buttons dynamically.
+        const CalendarState = {
+            state: {
+                category: 'all',
+                subFilter: 'all',
+                day: 'all'
+            },
+            observers: [],
+
+            subscribe(fn) {
+                this.observers.push(fn);
+            },
+
+            set(key, value) {
+                this.state[key] = value;
+                if (key === 'category') this.state.subFilter = 'all';
+                this.notify();
+            },
+
+            notify() {
+                this.observers.forEach(fn => fn(this.state));
+            }
+        };
+
+        // --- OBSERVER 1: Update Main View Sections ---
+        CalendarState.subscribe((state) => {
+            document.querySelectorAll('.filter-section').forEach(section => {
+                const isAll = state.category === 'all';
+                const isMatch = section.id === 'view-' + state.category;
+                
+                if (isAll) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = isMatch ? 'block' : 'none';
+                }
+            });
+
+            // Handle the sub-filter row visibility
+            const subRow = document.getElementById('sub-filter-container');
+            subRow.style.display = (state.category === 'all') ? 'none' : 'flex';
+        });
+
+        // --- OBSERVER 2: Update Calendar Container Visibility ---
+        CalendarState.subscribe((state) => {
+            const containers = document.querySelectorAll('.calendar-container');
+            containers.forEach(container => {
+                const name = container.getAttribute('data-name');
+                const isVisible = (state.subFilter === 'all' || name === state.subFilter);
+                container.style.display = isVisible ? 'block' : 'none';
+            });
+        });
+
+        // --- OBSERVER 3: Update Day Grid Layout ---
+        CalendarState.subscribe((state) => {
+            document.querySelectorAll('.calendar-wrapper').forEach(wrapper => {
+                wrapper.className = 'calendar-wrapper'; 
+                if (state.day !== 'all') {
+                    wrapper.classList.add('filter-day-' + state.day);
+                }
+            });
+        });
+
+        // Data Preparation
         const filterData = {
             faculty: {{ data.by_faculty.keys()|list|tojson }},
             room: {{ data.by_room.keys()|list|tojson }},
@@ -212,90 +264,44 @@ Purpose:
             })()
         };
 
-        // Global variable to track which main category is currently active
-        let currentCategory = 'all';
-
-        // 2. PRIMARY CATEGORY FILTERING (Show: Faculty, Rooms, Labs)
+        /**
+         * Event Handlers
+         * These functions now only two things:
+         * 1. Update UI button styles.
+         * 2. Update the State (The Subject).
+         */
         function filterCategory(category, btn) {
-            currentCategory = category;
+            updateButtonHighlight('#category-btns', btn);
             
-            // Update button styles in the "Show" row only
-            document.querySelectorAll('#category-btns .nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Hide all main view sections initially
-            document.querySelectorAll('.filter-section').forEach(s => s.style.display = 'none');
-            
-            const subFilterRow = document.getElementById('sub-filter-container');
-            const subFilterBox = document.getElementById('sub-filter-buttons');
-
-            if (category === 'all') {
-                // "All" view shows both Room and Faculty sections, hides the Sub-Filter row
-                document.getElementById('view-room').style.display = 'block';
-                document.getElementById('view-faculty').style.display = 'block';
-                subFilterRow.style.display = 'none';
-            } else {
-                // Show the specific section and make the sub-filter row visible
-                document.getElementById('view-' + category).style.display = 'block';
-                subFilterRow.style.display = 'flex';
-                
-                // --- Pluralization Logic ---
-                // Map the internal singular category IDs to the desired plural display names
-                const labels = {
-                    'faculty': 'Faculty', // Faculty is already collective
-                    'room': 'Rooms',
-                    'lab': 'Labs'
-                };
-                
+            // Build the sub-filter buttons if needed
+            if (category !== 'all') {
+                const subBox = document.getElementById('sub-filter-buttons');
+                const labels = {'faculty': 'Faculty', 'room': 'Rooms', 'lab': 'Labs'};
                 const displayLabel = labels[category] || category;
 
-                // Build the "All" button for the specific category (e.g., "All Rooms")
-                subFilterBox.innerHTML = `<button class="nav-btn active" onclick="applySubFilter('all', this)">All ${displayLabel}</button>`;
-                
-                // Generate a button for every specific item (Professor name, Room #, etc.)
+                subBox.innerHTML = `<button class="nav-btn active" onclick="applySubFilter('all', this)">All ${displayLabel}</button>`;
                 filterData[category].forEach(item => {
-                    subFilterBox.innerHTML += `<button class="nav-btn" onclick="applySubFilter('${item}', this)">${item}</button>`;
+                    subBox.innerHTML += `<button class="nav-btn" onclick="applySubFilter('${item}', this)">${item}</button>`;
                 });
             }
-            
-            // Ensure that when switching categories, we start by showing all schedules in that section
-            applySubFilter('all');
+
+            CalendarState.set('category', category);
         }
 
-        // 3. SECONDARY ENTITY FILTERING (Filter: Yang, Room 101, etc.)
         function applySubFilter(name, btn) {
-            // Update styling for buttons within the sub-filter row only
-            if (btn) {
-                document.querySelectorAll('#sub-filter-buttons .nav-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            }
-
-            // Target only the calendar containers within the currently active section
-            const containers = document.querySelectorAll(`#view-${currentCategory} .calendar-container`);
-            containers.forEach(c => {
-                // Show if "All" is selected OR if the container's data-name matches the button clicked
-                if (name === 'all' || c.getAttribute('data-name') === name) {
-                    c.style.display = 'block';
-                } else {
-                    c.style.display = 'none';
-                }
-            });
+            updateButtonHighlight('#sub-filter-buttons', btn);
+            CalendarState.set('subFilter', name);
         }
 
-        // 4. DAY FILTERING (Monday, Tuesday, etc.)
         function filterDay(day, btn) {
-            // Update active state for day buttons only
-            document.querySelectorAll('#day-btns .nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            updateButtonHighlight('#day-btns', btn);
+            CalendarState.set('day', day);
+        }
 
-            // Apply the CSS class to the calendar-wrapper to trigger the grid layout change
-            document.querySelectorAll('.calendar-wrapper').forEach(wrapper => {
-                // Reset classes, keeping the base wrapper class
-                wrapper.className = 'calendar-wrapper'; 
-                if (day !== 'all') {
-                    wrapper.classList.add('filter-day-' + day);
-                }
-            });
+        function updateButtonHighlight(containerId, activeBtn) {
+            if (!activeBtn) return;
+            document.querySelectorAll(`${containerId} .nav-btn`).forEach(b => b.classList.remove('active'));
+            activeBtn.classList.add('active');
         }
     </script>
 </body>

@@ -128,3 +128,8 @@ def test_modify_room_nonexistent(example):
     """Ensures renaming a room that doesn't exist raises ValueError."""
     with pytest.raises(ValueError):
         room_management.modify_room(example, "Room 999", "Room X")
+
+def test_modify_room_same_name(example):
+    """Ensures renaming a room to the same name raises a ValueError."""
+    with pytest.raises(ValueError):
+        room_management.modify_room(example, "Room A", "Room A")

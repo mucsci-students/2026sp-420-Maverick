@@ -1,25 +1,26 @@
 <!--
 Author: Antonio Corona
-Date: 2026-03-26
+Date: 2026-04-05
 
 AI Chat Page
 
 Purpose:
-    Provides the UI for the Sprint 3 Chunk A AI Chat Tool.
+    Provides the UI for the Sprint 3 / Phase 4 AI Chat Tool.
 
 Responsibilities:
     - Display a one-off command form
     - Let the user submit a natural language configuration request
     - Show AI processing results
     - Reinforce the stateless design of the feature
+    - Provide example commands to guide correct usage
 
 Architectural Role:
     - Acts as the View layer for AI-assisted configuration editing.
     - Works with ai_routes.py and ai_service.py.
 
 Notes:
-    - This page is intentionally simple for Phase 1.
     - Each command is processed independently.
+    - The examples below reflect the currently supported AI tools.
 -->
 
 {% extends "base.html" %}
@@ -32,21 +33,34 @@ Notes:
       each request is processed independently.
     </p>
 
+    <div class="msg" style="margin-top: 16px;">
+      <strong>Example commands:</strong>
+      <ul style="margin-top: 10px; padding-left: 20px;">
+        <li><code>Add course CS103 with 3 credits in Roddy 151 with no lab and no faculty</code></li>
+        <li><code>Rename course CS161 to CS370</code></li>
+        <li><code>Change the credits of CS199 to 4</code></li>
+        <li><code>Delete the lab for CS102</code></li>
+      </ul>
+      <p style="margin-top: 10px;">
+        For best results, use exact course IDs, room names, lab names, and faculty names.
+      </p>
+    </div>
+
     {% if not config_loaded %}
-      <div class="msg error">
+      <div class="msg error" style="margin-top: 16px;">
         No configuration is currently loaded. Please load a config in the
         Config Editor before using AI Chat.
       </div>
     {% endif %}
 
-    <form method="post" action="{{ url_for('ai.ai_command') }}">
+    <form method="post" action="{{ url_for('ai.ai_command') }}" style="margin-top: 16px;">
       <label for="command"><strong>Command</strong></label><br>
       <textarea
         id="command"
         name="command"
         rows="6"
         style="width: 100%; margin-top: 8px;"
-        placeholder="Example: Add course CS102 with 3 credits"
+        placeholder="Example: Add course CMSC 410 with 4 credits in Room A with lab Apple Lab and with faculty Dr. Hardy"
       >{{ user_command or "" }}</textarea>
 
       <div style="margin-top: 12px;">
@@ -65,6 +79,11 @@ Notes:
 
       {% if ai_result.tool_calls %}
         <p><strong>Tool Calls:</strong> {{ ai_result.tool_calls }}</p>
+      {% endif %}
+
+      {% if ai_result.details %}
+        <p><strong>Details:</strong></p>
+        <pre style="white-space: pre-wrap;">{{ ai_result.details }}</pre>
       {% endif %}
     </section>
   {% endif %}
