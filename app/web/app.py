@@ -1,31 +1,46 @@
 # Author: Antonio Corona
-# Date: 2026-02-20
+# Date: 2026-04-05
 """
 Flask Application Factory
 
 This module defines the create_app() function, which initializes
-and configures the Flask application for Sprint 2.
+and configures the Flask application.
 
 Responsibilities:
 - Create the Flask app instance
+- Configure Flask settings
+- Configure server-side sessions
 - Register blueprints (routes)
-- Configure basic settings (secret key, etc.)
+- Support local/runtime configuration for secret key loading
 
 This serves as the main entry point for the web-based GUI.
 """
 
 # app/web/app.py
-import os
+
 from flask import Flask
 from flask_session import Session
 
+from app.config_runtime import get_flask_secret_key, get_openai_api_key
+
 def create_app():
+    """
+    Application factory for the Maverick Scheduler Flask app.
+    """
     app = Flask(__name__)
 
-    # Needed for session + flash messages
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
+    # ---------------------------------------------------------
+    # Core Flask configuration
+    # ---------------------------------------------------------
+    # Load the secret key from app/local_settings.py first,
+    # then environment variables, then a development fallback.
+    app.config["SECRET_KEY"] = get_flask_secret_key()
 
-    # Flask Session configuration
+    # ---------------------------------------------------------
+    # Flask-Session configuration
+    # ---------------------------------------------------------
+    # Store session data on the filesystem so config editing and
+    # working state persist across requests during local use.
     app.config["SESSION_TYPE"] = "filesystem"
     app.config["SESSION_PERMANENT"] = False
     app.config["SESSION_USE_SIGNER"] = True
@@ -34,27 +49,37 @@ def create_app():
     # Initializes server-side sessions
     Session(app)
 
-    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    # ---------------------------------------------------------
+    # Optional startup warning for missing OpenAI key
+    # ---------------------------------------------------------
+    # This does not stop the app from starting, because non-AI routes
+    # should still work even if AI is not configured.
+    if not get_openai_api_key():
+        print(
+            "Warning: OpenAI API key not found. "
+            "Set OPENAI_API_KEY in app/local_settings.py or your environment "
+            "to use the AI Chat Tool."
+            
+            "Missing OpenAI API key. Set it in app/local_settings.py "
+            "or as an environment variable."
+        )
 
-    # handles the case if the openai api key is missing from CI
-    # currently prints a message
-    if not openai_api_key:
-       print("Error: API key not found. please check it is set correctly in actions workflow.")
-
-    # Blueprints (routes)
+    # ---------------------------------------------------------
+    # Register blueprints
+    # ---------------------------------------------------------
     from app.web.routes.config_routes import bp as config_bp
     from app.web.routes.run_routes import bp as run_bp
     from app.web.routes.viewer_routes import bp as viewer_bp
+    from app.web.routes.ai_routes import bp as ai_bp
 
     app.register_blueprint(config_bp)
     app.register_blueprint(run_bp)
     app.register_blueprint(viewer_bp)
-
-    # AI blueprint (route)
-    from app.web.routes.ai_routes import bp as ai_bp
     app.register_blueprint(ai_bp)
 
+    # ---------------------------------------------------------
     # Simple home redirect
+    # ---------------------------------------------------------
     @app.get("/")
     def home():
         return '<meta http-equiv="refresh" content="0; url=/config">'
