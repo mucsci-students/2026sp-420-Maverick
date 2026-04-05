@@ -298,6 +298,20 @@ uv run pytest --cov=app --cov-branch --cov-report=term-missing --cov-report=xml
 
 ---
 
+## Configuration Files
+
+Example configurations are included in:
+
+```
+configs/config_dev.json
+configs/config_test.json
+configs/config_base.json
+```
+
+These can be loaded directly through the GUI.
+
+---
+
 ## MVC Architecture
 
 The project follows a **Model–View–Controller** architecture.
@@ -355,6 +369,7 @@ Responsible for:
 ### Service Layer
 
 Located in:
+
 ```
 app/web/services/
 ```
@@ -362,21 +377,7 @@ Services connect Flask routes to the scheduling logic.
 
 ---
 
-## Configuration Files
-
-Example configurations are included in:
-
-```
-configs/config_dev.json
-configs/config_test.json
-configs/config_base.json
-```
-
-These can be loaded directly through the GUI.
-
----
-
-### Design Patterns
+## Design Pattern: Observer
 
 1. Observer (Behavioral Pattern)
 Located in 
@@ -419,18 +420,46 @@ Details:
 
 - The js keeps queuing commands which are periodically checked (app.js)
 
-
 ---
 
-### Service Layer
+## Design Pattern: Command
 
-Located in:
+Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
 
-```
-app/web/services/
-```
+### Problem
 
-Services connect Flask routes to the scheduling logic.
+The AI chat tool allows users to modify the scheduler configuration using natural language (e.g., “Add course CS102” or “Remove Room A”). This creates the challenge of safely handling many different types of requests without hardcoding logic for each case or allowing unrestricted direct access to the configuration.
+
+### Pattern
+
+The **Command pattern** encapsulates a request as an object, allowing it to be parameterized and executed independently. This aligns with the definition from the course slides: encapsulating a command request as an object.
+
+### Implementation
+
+In our system, each user request is interpreted by the AI and mapped to a specific backend tool function:
+
+- `add_course`
+- `remove_room`
+- `rename_course`
+- `modify_course_credits`
+
+Each of these operations represents a **command**, consisting of:
+
+- a command name (tool name)
+- arguments (parameters for the action)
+- execution logic (handled by backend functions)
+
+The `execute_tool(tool_name, args)` function acts as a dispatcher, routing each request to the correct command implementation.
+
+### How It Solves the Problem
+
+By encapsulating user actions as commands:
+
+- The system can safely control which operations are allowed
+- New commands can be added without modifying existing logic
+- The AI does not directly manipulate the configuration, improving security and maintainability
+
+This approach makes the system more modular, and extensible.
 
 ---
 
@@ -470,12 +499,6 @@ Make sure you:
 2. generated schedules from /run
 
 3. navigated to /viewer
-
----
-
-### Visual view is blocked
-
-The viewer disables the visual schedule view when time conflicts are detected in the current schedule.
 
 ---
 
