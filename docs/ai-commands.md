@@ -160,11 +160,13 @@ The AI system uses the following backend tools:
 - `modify_course_credits`
 - `modify_course_room`
 - `modify_course_lab`
+- `remove_course_lab`
 - `modify_course_faculty`
 - `modify_course_conflicts`
 - `add_faculty`
 - `remove_faculty`
 - `modify_faculty`
+- `set_faculty_day_unavailable_tool`
 - `add_room`
 - `remove_room`
 - `rename_room`
