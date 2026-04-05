@@ -37,7 +37,7 @@ import json
 
 # Existing config service import used for pulling high-level status
 # about the current configuration. We do not mutate config yet in Phase 2.
-from app.web.services.config_service import get_config_status
+from app.web.services.config_service import get_config_status, _get_working_config
 
 # OpenAI client helper functions are isolated in their own module so that
 # external API setup does not clutter the AI orchestration logic.
@@ -56,25 +56,31 @@ You are part of a college course scheduling system.
 
 Your job:
 - Interpret exactly one scheduler configuration command at a time
-- Help with scheduler configuration tasks only
+- Help only with scheduler configuration tasks
 - Stay within the scope of modifying or explaining scheduler configuration
 - Do not assume any prior conversation history
 - Treat each request as a standalone command
 - If the request is unclear, unsupported, or outside scope, say so clearly
-- For now, do not claim to have made changes unless the system explicitly confirms it
+- Do not claim that changes were applied unless a backend tool executes successfully
 
-You may help with commands involving:
-- courses
-- faculty
-- rooms
-- labs
-- conflicts
-- configuration summaries
+Approved tool-based actions currently include:
+- adding, removing, and modifying faculty
+- adding, removing, and modifying rooms
+- adding, removing, and modifying labs
+- adding, removing, and modifying courses
+- adding, removing, and modifying course conflicts
+
+When using tools:
+- Only call a tool if the required arguments are known
+- Do not invent values that were not provided
+- Prefer exact names for course IDs, rooms, labs, and faculty
+- If required information is missing, respond with a clarification-style message instead of guessing
 
 You must not:
 - answer unrelated general-purpose questions
 - rely on previous commands
-- pretend that changes were applied when no backend tool executed
+- modify configuration directly
+- pretend that a change succeeded when no tool executed
 """.strip()
 
 
@@ -108,15 +114,19 @@ def build_user_input(user_command: str) -> str:
     """
     status = get_config_status()
 
+    cfg = _get_working_config()
+
+    # Extract useful context (NOT entire config)
+    courses = [c["course_id"] for c in cfg.get("config", {}).get("courses", [])]
+    rooms = cfg.get("config", {}).get("rooms", [])
+
     # A small amount of app context helps the model respond more usefully
     # without introducing multi-turn memory. We only send current state.
     return f"""
 Current application context:
 - Config loaded: {status.get("loaded")}
-- Config path: {status.get("path")}
-- Counts: {status.get("counts")}
-- Unsaved changes: {status.get("unsaved_changes", False)}
-- Schedules updated: {status.get("schedules_updated", False)}
+- Courses: {courses[:10]}
+- Rooms: {rooms[:10]}
 
 User command:
 {user_command}
