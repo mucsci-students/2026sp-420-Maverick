@@ -660,7 +660,7 @@ function initConfigExport() {
   });
 }
 
-// Progress bar
+// starts the generation process
 async function startGenerationProgress() {
 
     const form = document.getElementById("generate")
@@ -673,21 +673,24 @@ async function startGenerationProgress() {
     progress_bar.value = 0;
 
     // resets the progress 
-    await fetch("/run/reset")
+    await fetch("/run/reset", {method: "POST"});
 
-    const res = fetch("/run/generate", {
+    // begins checking for updates to send to the progress bar object
+    checkGenerationProgress();
+
+    // starts the generation process
+    const res = await fetch("/run/generate", {
       method: "POST",
       body: new FormData(form)
     });
 
-    // Begins checking for updates to send to the progress bar object
-    checkGenerationProgress();
-
+    // if generation fails
     if (!res.ok) {
       console.error("Generation failed");
     }
 }
 
+// keeps track of the current progress of the progress bar
 let progress_bar_current_progress = 0;
 
 // Continuously checks for updates to the progress bar
@@ -700,12 +703,13 @@ async function checkGenerationProgress() {
 
         // console.log("data received:", data)
 
+        // if the generation is still in progress or the progress bar has to catch up
         if (data.progress < 100 || progress_bar_current_progress < 100) {
+          
             // Periodically checks for schedule progress updates
-            // console.log("progress bar: ", data.progress)
-
             incrementProgressBar(data.progress)
 
+            // determines how often to check for updates/speed of the progress bar
             setTimeout(() => checkGenerationProgress(data.progress), 250);
         } else {
               incrementProgressBar(100)
@@ -757,29 +761,24 @@ function updateProgressUI(current_progress) {
   progress_bar_flavor_text(current_progress);
 }
 
-// chnages the flavor-text to show the appropriate message based on percentage loaded
+// changes the flavor-text to show the appropriate message based on percentage loaded
 function progress_bar_flavor_text(progress) {
     const flavor_text = document.getElementById("flavor-text"); 
 
       if (progress == 0){
           flavor_text.innerHTML = "Please wait";
-          console.log("start")
 
-      }else if (progress == 25) {
+      } else if (progress == 25) {
           flavor_text.innerHTML = "About a quarter of the way there"
-          console.log("quarter")
 
       } else if (progress == 50) {
           flavor_text.innerHTML = "Halfway there"
-          console.log("halfway")
 
       } else if (progress == 75) {
           flavor_text.innerHTML = "Nearly there"
-          console.log("three quarters")
 
       } else if (progress == 100) {
           flavor_text.innerHTML = "Generation completed. Redirecting to viewer..."
-          console.log("finished")
       }
 
 }
