@@ -236,6 +236,29 @@ The Schedule Viewer allows users to:
 
 ---
 
+## Local AI and Flask Configuration
+
+To run the AI Chat Tool locally with your own settings, create a local settings file:
+
+```bash
+cp app/local_settings.example.py app/local_settings.py
+```
+
+Then open `app/local_settings.py` and fill in your own values:
+
+```
+OPENAI_API_KEY = "your-openai-api-key"
+FLASK_SECRET_KEY = "your-flask-secret-key"
+MAVERICK_OPENAI_MODEL = "gpt-5-mini"
+```
+
+### Notes
+- `app/local_settings.py` is ignored by Git and should not be committed
+- Environment variables are still supported as a fallback
+- `gpt-5-mini` is the default model if no model is provided
+
+---
+
 ## 🤖 AI Chat Tool (Natural Language Configuration)
 
 The Maverick Scheduler includes an AI-powered assistant that allows users to modify configurations using natural language.
