@@ -986,11 +986,13 @@ def remove_time_slot_service(day, start_time, end_time):
 
     slots = cfg["time_slot_config"]["time_slots"].get(day, [])
 
-    if isinstance(index, str):
-        index = int(index)
-
-    if 0 <= index < len(slots):
-        slots.pop(index)
+    cfg["time_slot_config"]["time_slots"][day] = [
+        s for s in slots
+        if not (
+            s.get("start_time") == start_time and
+            s.get("end_time") == end_time
+        )
+    ]
 
     _commit_change(cfg)
 

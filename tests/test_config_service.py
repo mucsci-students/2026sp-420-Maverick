@@ -139,6 +139,13 @@ def test_validate_config_invalid_room():
                 "room": ["Room Z"],
                 "faculty": ["Smith"]
             }]
+        },
+        "time_slot_config": {
+            "days": ["MON", "TUE", "WED", "THU", "FRI"],
+            "time_slots": {
+                "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                "TUE": [], "WED": [], "THU": [], "FRI": []
+            }
         }
     }
     with pytest.raises(ValueError, match="Invalid room 'Room Z'"):
@@ -169,7 +176,18 @@ def test_clear_config(app_context):
 
 def test_export_config_bytes(app_context):
     with app_context.test_request_context():
-        cfg = {"config": {"faculty": []}, "limit": 3}
+        cfg = {
+            "config": {
+                "faculty": []}, 
+                "limit": 3, 
+                "time_slot_config": {
+                    "days": ["MON", "TUE", "WED", "THU", "FRI"],
+                    "time_slots": {
+                        "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                        "TUE": [], "WED": [], "THU": [], "FRI": []
+                    }
+                }
+            }
         session[SESSION_CONFIG_KEY] = cfg
 
         payload, filename = export_config_bytes("my_export")
@@ -198,6 +216,13 @@ def test_validate_config_invalid_credits():
         "config": {
             "faculty": [], "rooms": [], "labs": [],
             "courses": [{"course_id": "CS101", "credits": 0}]
+        }, 
+        "time_slot_config": {
+            "days": ["MON", "TUE", "WED", "THU", "FRI"],
+            "time_slots": {
+                "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                "TUE": [], "WED": [], "THU": [], "FRI": []
+            }
         }
     }
     with pytest.raises(ValueError, match="Invalid credits for course CS101"):
@@ -209,6 +234,13 @@ def test_validate_config_missing_id():
         "config": {
             "faculty": [], "rooms": [], "labs": [],
             "courses": [{"credits": 3}]
+        }, 
+        "time_slot_config": {
+            "days": ["MON", "TUE", "WED", "THU", "FRI"],
+            "time_slots": {
+                "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                "TUE": [], "WED": [], "THU": [], "FRI": []
+            }
         }
     }
     with pytest.raises(ValueError, match="Course with missing course_id."):
@@ -266,7 +298,16 @@ def test_course_service_casts_credits(app_context):
 def test_save_config_fails_validation(app_context, tmp_path):
     with app_context.test_request_context():
         # Invalid config (missing couse_id)
-        session[SESSION_CONFIG_KEY] = {"config": {"courses": [{"credits": 3}]}}
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"courses": [{"credits": 3}]},
+            "time_slot_config": {
+                "days": ["MON", "TUE", "WED", "THU", "FRI"],
+                "time_slots": {
+                    "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                    "TUE": [], "WED": [], "THU": [], "FRI": []
+                }
+            }
+        }
         save_path = tmp_path / "fail.json"
         
         with pytest.raises(ValueError, match="Course with missing course_id."):
