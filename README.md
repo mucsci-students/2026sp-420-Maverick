@@ -404,6 +404,22 @@ Details:
 
 - Event handlers are used to update the UI button styles, and update the state.
 
+2. Command (Behavoiral Pattern)
+Located in 
+```
+app/web/routes/run_routes.py
+app/web/static/app.js
+app/web/templates/generator.html
+```
+Details:
+
+- The user presses the generate button which makes a request not knowing anything about generating schedules (generator.html)
+
+- The generate route makes a request to the generate_schedules_into_session function without knowing anything about it (run_route.py)
+
+- The js keeps queuing commands which are periodically checked (app.js)
+
+
 ---
 
 ### Service Layer

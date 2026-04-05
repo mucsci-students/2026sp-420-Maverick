@@ -25,7 +25,6 @@ def create_app():
     # Needed for session + flash messages
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 
-
     # Flask Session configuration
     app.config["SESSION_TYPE"] = "filesystem"
     app.config["SESSION_PERMANENT"] = False
@@ -34,6 +33,13 @@ def create_app():
 
     # Initializes server-side sessions
     Session(app)
+
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+
+    # handles the case if the openai api key is missing from CI
+    # currently prints a message
+    if not openai_api_key:
+       print("Error: API key not found. please check it is set correctly in actions workflow.")
 
     # Blueprints (routes)
     from app.web.routes.config_routes import bp as config_bp

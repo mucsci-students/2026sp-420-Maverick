@@ -126,3 +126,8 @@ def test_modify_lab_nonexistent(example):
     """Ensures renaming lab that does not exist raises a ValueError."""
     with pytest.raises(ValueError):
         lab_management.modify_lab(example, "Lab 121", "Lab XYZ")
+
+def test_modify_lab_same_name(example):
+    """Ensures renaming a lab to the same name raises a ValueError"""
+    with pytest.raises(ValueError):
+        lab_management.modify_lab(example, "Lab 1", "Lab 1")
