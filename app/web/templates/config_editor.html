@@ -211,16 +211,46 @@ Extends base.html.
       {% endfor %}
     </ul>
 
-    {% if status.conflicts %}
-<div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-  <strong>Configuration Conflicts Detected:</strong>
-  <ul>
-    {% for c in status.conflicts %}
-      <li>{{ c }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
+    <!-- Time Slot Summary -->
+    <h3>Time Slot Summary</h3>
+    <ul>
+      <li>Total Slots: {{ status.time_slot_summary.total_slots }}</li>
+      <li>Patterns: {{ status.time_slot_summary.patterns }}</li>
+      <li>Enabled Patterns: {{ status.time_slot_summary["Enabled Patterns"] }}</li>
+    </ul>
+
+    <!-- Detailed Time Slots -->
+    <h4>Time Slots by Day</h4>
+    <ul>
+      {% for day, slots in status.time_slot_summary_raw.items() %}
+        <li>
+          <strong>{{ day }}</strong>:
+          {% if slots %}
+            {% for s in slots %}
+              {{ s.start_time }}-{{ s.end_time }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          {% else %}
+            None
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <!-- Patterns -->
+    <h4>Meeting Patterns</h4>
+    <ul>
+      {% for p in status.patterns_raw %}
+        <li>
+          <strong>{{ p.pattern_id }}</strong>
+          ({{ p.credits }}cr,
+          {{ p.days }},
+          {{ p.duration }}min,
+          {% if p.enabled %}Enabled{% else %}Disabled{% endif %})
+        </li>
+      {% else %}
+        <li>No patterns defined</li>
+      {% endfor %}
+    </ul>
 
   {% else %}
 
@@ -314,8 +344,45 @@ Extends base.html.
     
     <button type="submit">Modify Faculty</button>
   </form>
-</section>
 
+  <h3>Set Faculty Availability</h3>
+  <form method="post" action="/config/faculty/set_time" class="row">
+    <input name="name" placeholder="Faculty Name (e.g., Dr. Smith)" required>
+    <select name="day" required>
+      <option value="" disabled selected>Day</option>
+      <option value="MON">MON</option>
+      <option value="TUE">TUE</option>
+      <option value="WED">WED</option>
+      <option value="THU">THU</option>
+      <option value="FRI">FRI</option>
+    </select>
+
+  <input name="start_time" placeholder="Start (08:00)" required>
+  <input name="end_time" placeholder="End (12:00)" required>
+
+  <button type="submit">Add Availability</button>
+</form>
+
+<h3>Remove Faculty Availability</h3>
+<form method="post" action="/config/faculty/remove_time" class="row">
+
+  <input name="name" placeholder="Faculty Name" required>
+
+  <select name="day" required>
+    <option value="" disabled selected>Day</option>
+    <option value="MON">MON</option>
+    <option value="TUE">TUE</option>
+    <option value="WED">WED</option>
+    <option value="THU">THU</option>
+    <option value="FRI">FRI</option>
+  </select>
+
+  <input name="start_time" placeholder="Start">
+  <input name="end_time" placeholder="End">
+
+  <button type="submit">Remove</button>
+</form>
+</section>
 <!-- ========================================================= -->
 <!-- Room Management                                        -->
 <!-- ========================================================= -->
@@ -439,6 +506,7 @@ Extends base.html.
     </select>
 
     <input name = "room" placeholder="Room Name (Must Exist) (e.g., Roddy140)" required>
+    <input name = "faculty" placeholder="Faculty Name (Must Exist) (e.g., Dr. Johnson)" required>
     <button type="submit">Add Course</button>
   </form>
 
@@ -467,6 +535,7 @@ Extends base.html.
     </select>
 
     <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
+    <input name="faculty" placeholder="Faculty (comma-spearated if multiple)">
 
     <button type="submit">Modify Course</button>
   </form>
@@ -517,6 +586,143 @@ Extends base.html.
     <input name="old_conflict_course_id" placeholder="Old Conflicting Course ID (e.g., CMSC 201)" required>
     <input name="new_conflict_course_id" placeholder="New Conflicting Course ID (e.g., CMSC 301)">
     <button type="submit">Modify Conflict</button>
+  </form>
+</section>
+
+
+<!-- Time Slot Configuration -->
+<section class="card">
+  <h2>Time Slots</h2>
+
+  <!-- Add Time Slot -->
+  <h3>Add Time Slot</h3>
+  <form method="post" action="/config/timeslot/add">
+    <select name="day" required>
+      <option value="" disabled selected>Select Day</option>
+      <option value="MON">MON</option>
+      <option value="TUE">TUE</option>
+      <option value="WED">WED</option>
+      <option value="THU">THU</option>
+      <option value="FRI">FRI</option>
+    </select>
+
+    <input name="start_time" placeholder="Start Time (e.g., 08:00)" required>
+    <input name="end_time" placeholder="End Time (e.g., 09:15)" required>
+
+    <button type="submit">Add</button>
+  </form>
+
+  <!-- Remove Time Slot -->
+  <h3>Remove Time Slot</h3>
+  <form method="post" action="/config/timeslot/remove">
+    <select name="day" required>
+      <option value="" disabled selected>Select Day</option>
+      <option value="MON">MON</option>
+      <option value="TUE">TUE</option>
+      <option value="WED">WED</option>
+      <option value="THU">THU</option>
+      <option value="FRI">FRI</option>
+    </select>
+
+    <input name="index" placeholder="Slot Number" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <!-- Modify Time Slot -->
+  <h3>Modify Time Slot</h3>
+  <form method="post" action="/config/timeslot/modify">
+    <select name="day" required>
+      <option value="" disabled selected>Select Day</option>
+      <option value="MON">MON</option>
+      <option value="TUE">TUE</option>
+      <option value="WED">WED</option>
+      <option value="THU">THU</option>
+      <option value="FRI">FRI</option>
+    </select>
+
+    <input name="index" placeholder="Slot Number" required>
+    <input name="start_time" placeholder="New Start Time" required>
+    <input name="end_time" placeholder="New End Time" required>
+
+    <button type="submit">Modify</button>
+  </form>
+</section>
+
+<!-- Meeting Pattern Configuration -->
+<section class="card">
+  <h2>Meeting Patterns</h2>
+
+  <!-- Add Pattern -->
+  <h3>Add Pattern</h3>
+  <form method="post" action="/config/pattern/add">
+    <input name="pattern_id" placeholder="Pattern ID (e.g., MWF_3CR)" required>
+
+    <select name="credits" required>
+      <option value="" disabled selected>Credits</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+
+    <input name="days" placeholder="Days (e.g., MON,WED,FRI)" required>
+    <input name="duration" placeholder="Duration (minutes)" required>
+
+    <input name="fixed_start_time" placeholder="Fixed Start Time (optional)">
+
+    <label style="display:flex; align-items:center; gap: -10px;">
+      <input type="checkbox" name="is_lab"> Lab
+    </label>
+
+    <label style="display:flex; align-items:center; gap: -10px;">
+      <input type="checkbox" name="enabled" checked> Enabled
+    </label>
+
+    <button type="submit">Add</button>
+  </form>
+
+  <!-- Remove Pattern -->
+  <h3>Remove Pattern</h3>
+  <form method="post" action="/config/pattern/remove">
+    <input name="pattern_id" placeholder="Pattern ID" required>
+    <button type="submit">Remove</button>
+  </form>
+
+  <!-- Modify Pattern -->
+  <h3>Modify Pattern</h3>
+  <form method="post" action="/config/pattern/modify">
+    <input name="pattern_id" placeholder="Pattern ID" required>
+
+    <input name="days" placeholder="Days (MON,WED)">
+    <input name="duration" placeholder="Duration (minutes)">
+    <select name="credits">
+      <option value="" disabled selected>Credits</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+
+    <input name="fixed_start_time" placeholder="Fixed Start Time">
+
+    <label style="display:flex; align-items:center; gap: -10px;">
+      <input type="checkbox" name="is_lab"> Lab
+    </label>
+
+    <button type="submit">Modify</button>
+  </form>
+
+  <!-- Toggle Pattern -->
+  <h3>Enable / Disable Pattern</h3>
+  <form method="post" action="/config/pattern/toggle">
+    <input name="pattern_id" placeholder="Pattern ID" required>
+
+    <select name="enabled" required>
+      <option value="true">Enable</option>
+      <option value="false">Disable</option>
+    </select>
+
+    <button type="submit">Apply</button>
   </form>
 </section>
 
