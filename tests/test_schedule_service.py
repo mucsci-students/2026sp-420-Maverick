@@ -1,5 +1,5 @@
-# Author: Antonio Corona
-# Date: 2026-04-04
+# Author: Antonio Corona, Ian Swartz
+# Date: 2026-04-05
 """
 test_schedule_service.py
 
@@ -16,6 +16,8 @@ These are base-case tests designed to:
 - Catch regressions in grouping/filter behavior
 """
 
+import pytest
+import io
 from app.web.app import create_app
 from app.web.services.schedule_service import (
     _group_by,
@@ -23,7 +25,13 @@ from app.web.services.schedule_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
+    next_schedule,
+    prev_schedule,
+    select_schedule,
+    export_schedules_to_csv,
+    is_valid_file,
 )
+from flask import session
 
 
 def test_group_by_basic():
@@ -158,3 +166,49 @@ def test_get_view_data_conflicts_flag():
 
         assert "has_conflicts" in result
         assert result["has_conflicts"] is True
+
+
+def test_navigation_clamping(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{"meta":{}}, {"meta":{}}]
+        session[SESSION_SELECTED_INDEX_KEY] = 0
+        
+        next_schedule()
+        assert session[SESSION_SELECTED_INDEX_KEY] == 1
+        
+        next_schedule()
+        assert session[SESSION_SELECTED_INDEX_KEY] == 1 
+        
+        prev_schedule()
+        assert session[SESSION_SELECTED_INDEX_KEY] == 0
+        
+        prev_schedule()
+        assert session[SESSION_SELECTED_INDEX_KEY] == 0
+
+
+def test_select_schedule_bounds(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{"meta":{}}, {"meta":{}}]
+        
+        select_schedule(10)
+        assert session[SESSION_SELECTED_INDEX_KEY] == 1 
+
+
+def test_csv_export_format(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{
+            "assignments": [{"course_id": "CS101", "room": "101", "time": "10:00"}]
+        }]
+        
+        csv_out = export_schedules_to_csv([0])
+        assert "Schedule #,Course ID,Faculty,Room,Lab,Time" in csv_out
+        assert "CS101" in csv_out
+
+
+def test_validation_error(app):
+    bad_data = [{"meta": {"generated_at": "now", "row_count": 1, "schedule_id": 1}, 
+                 "assignments": [{"room": "101"}]}] 
+    
+    with pytest.raises(ValueError) as excinfo:
+        is_valid_file(bad_data)
+    assert "Invalid file" in str(excinfo.value)
