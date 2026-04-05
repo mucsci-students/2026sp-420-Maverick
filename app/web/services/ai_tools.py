@@ -222,26 +222,86 @@ def get_tool_definitions():
         },
         {
             "type": "function",
-            "name": "modify_course",
-            "description": "Modify an existing course. Supports renaming, credits, room, lab, faculty, and conflicts.",
+            "name": "rename_course",
+            "description": "Rename an existing course by changing its course ID.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "course_id": {"type": "string"},
                     "new_course_id": {"type": "string"},
+                },
+                "required": ["course_id", "new_course_id"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "modify_course_credits",
+            "description": "Change the credits of an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
                     "credits": {"type": "integer"},
+                },
+                "required": ["course_id", "credits"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "modify_course_room",
+            "description": "Change the room assigned to an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
                     "room": {"type": "string"},
+                },
+                "required": ["course_id", "room"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "modify_course_lab",
+            "description": "Change the lab assigned to an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
                     "lab": {"type": "string"},
+                },
+                "required": ["course_id", "lab"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "modify_course_faculty",
+            "description": "Change the faculty list assigned to an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
                     "faculty": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
+                },
+                "required": ["course_id", "faculty"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "modify_course_conflicts",
+            "description": "Change the conflicts list assigned to an existing course.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {"type": "string"},
                     "conflicts": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
                 },
-                "required": ["course_id"],
+                "required": ["course_id", "conflicts"],
             },
         },
 
@@ -350,8 +410,43 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
     if tool_name == "remove_course" and not args.get("course_id"):
         return False, "Missing required field: course_id"
 
-    if tool_name == "modify_course" and not args.get("course_id"):
-        return False, "Missing required field: course_id"
+    if tool_name == "rename_course":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if not args.get("new_course_id"):
+            return False, "Missing required field: new_course_id"
+
+    if tool_name == "modify_course_credits":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if args.get("credits") is None or not isinstance(args.get("credits"), int):
+            return False, "credits must be an integer"
+        if args["credits"] <= 0:
+            return False, "credits must be a positive integer"
+
+    if tool_name == "modify_course_room":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if not args.get("room"):
+            return False, "Missing required field: room"
+
+    if tool_name == "modify_course_lab":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if not args.get("lab"):
+            return False, "Missing required field: lab"
+
+    if tool_name == "modify_course_faculty":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if "faculty" not in args or not isinstance(args.get("faculty"), list):
+            return False, "faculty must be a list"
+
+    if tool_name == "modify_course_conflicts":
+        if not args.get("course_id"):
+            return False, "Missing required field: course_id"
+        if "conflicts" not in args or not isinstance(args.get("conflicts"), list):
+            return False, "conflicts must be a list"
 
     if tool_name in {"add_conflict", "remove_conflict"}:
         if not args.get("course_id"):
@@ -427,8 +522,23 @@ def execute_tool(tool_name: str, args: dict) -> dict:
         if tool_name == "remove_course":
             return remove_course_tool(args)
 
-        if tool_name == "modify_course":
-            return modify_course_tool(args)
+        if tool_name == "rename_course":
+            return rename_course_tool(args)
+
+        if tool_name == "modify_course_credits":
+            return modify_course_credits_tool(args)
+
+        if tool_name == "modify_course_room":
+            return modify_course_room_tool(args)
+
+        if tool_name == "modify_course_lab":
+            return modify_course_lab_tool(args)
+
+        if tool_name == "modify_course_faculty":
+            return modify_course_faculty_tool(args)
+
+        if tool_name == "modify_course_conflicts":
+            return modify_course_conflicts_tool(args)
 
         if tool_name == "add_conflict":
             return add_conflict_tool(args)
@@ -579,74 +689,99 @@ def remove_course_tool(args: dict) -> dict:
     }
 
 
-def modify_course_tool(args: dict) -> dict:
-    """
-    Modify an existing course.
-
-    Important:
-        The AI may include optional fields as empty strings, zero values,
-        or empty lists even when the user did not intend to change them.
-        This function cleans the payload before passing it to the backend
-        so only meaningful changes are applied.
-    """
-    cleaned_args = {
-        "course_id": args["course_id"]
-    }
-
-    # Only pass a rename if it is a non-empty string.
-    new_course_id = args.get("new_course_id")
-    if isinstance(new_course_id, str) and new_course_id.strip():
-        cleaned_args["new_course_id"] = new_course_id.strip()
-
-    # Only pass credits if they are a valid positive integer.
-    credits = args.get("credits")
-    if isinstance(credits, int) and credits > 0:
-        cleaned_args["credits"] = credits
-
-    # Only pass room if it is a non-empty string.
-    room = args.get("room")
-    if isinstance(room, str) and room.strip():
-        cleaned_args["room"] = room.strip()
-
-    # Only pass lab if it is a string.
-    # Empty string is allowed here only if you intentionally want to clear lab,
-    # but for now we avoid passing blank lab values from the AI automatically.
-    lab = args.get("lab")
-    if isinstance(lab, str) and lab.strip():
-        cleaned_args["lab"] = lab.strip()
-
-    # Only pass faculty if it is a non-empty list of non-empty strings.
-    faculty = args.get("faculty")
-    if isinstance(faculty, list):
-        cleaned_faculty = [f.strip() for f in faculty if isinstance(f, str) and f.strip()]
-        if cleaned_faculty:
-            cleaned_args["faculty"] = cleaned_faculty
-
-    # Only pass conflicts if it is a non-empty list of non-empty strings.
-    conflicts = args.get("conflicts")
-    if isinstance(conflicts, list):
-        cleaned_conflicts = [c.strip() for c in conflicts if isinstance(c, str) and c.strip()]
-        if cleaned_conflicts:
-            cleaned_args["conflicts"] = cleaned_conflicts
-
-    # Make sure at least one actual modification is being requested.
-    if len(cleaned_args) == 1:
-        return {
-            "success": False,
-            "message": (
-                "No valid course modifications were provided. "
-                "Please specify at least one field to change."
-            ),
-            "changes_applied": False,
-        }
-
-    modify_course_service(**cleaned_args)
-
+def rename_course_tool(args: dict) -> dict:
+    modify_course_service(
+        course_id=args["course_id"],
+        new_course_id=args["new_course_id"],
+    )
     return {
         "success": True,
-        "message": f"Modified course {args['course_id']}.",
+        "message": f"Renamed course {args['course_id']} to {args['new_course_id']}.",
         "changes_applied": True,
-        "details": {"action": "modify_course", **cleaned_args},
+        "details": {"action": "rename_course", **args},
+    }
+
+
+def modify_course_credits_tool(args: dict) -> dict:
+    modify_course_service(
+        course_id=args["course_id"],
+        credits=args["credits"],
+    )
+    return {
+        "success": True,
+        "message": f"Changed credits for course {args['course_id']} to {args['credits']}.",
+        "changes_applied": True,
+        "details": {"action": "modify_course_credits", **args},
+    }
+
+
+def modify_course_room_tool(args: dict) -> dict:
+    modify_course_service(
+        course_id=args["course_id"],
+        room=args["room"],
+    )
+    return {
+        "success": True,
+        "message": f"Changed room for course {args['course_id']} to {args['room']}.",
+        "changes_applied": True,
+        "details": {"action": "modify_course_room", **args},
+    }
+
+
+def modify_course_lab_tool(args: dict) -> dict:
+    modify_course_service(
+        course_id=args["course_id"],
+        lab=args["lab"],
+    )
+    return {
+        "success": True,
+        "message": f"Changed lab for course {args['course_id']} to {args['lab']}.",
+        "changes_applied": True,
+        "details": {"action": "modify_course_lab", **args},
+    }
+
+
+def modify_course_faculty_tool(args: dict) -> dict:
+    cleaned_faculty = [
+        f.strip() for f in args["faculty"]
+        if isinstance(f, str) and f.strip()
+    ]
+
+    modify_course_service(
+        course_id=args["course_id"],
+        faculty=cleaned_faculty,
+    )
+    return {
+        "success": True,
+        "message": f"Updated faculty for course {args['course_id']}.",
+        "changes_applied": True,
+        "details": {
+            "action": "modify_course_faculty",
+            "course_id": args["course_id"],
+            "faculty": cleaned_faculty,
+        },
+    }
+
+
+def modify_course_conflicts_tool(args: dict) -> dict:
+    cleaned_conflicts = [
+        c.strip() for c in args["conflicts"]
+        if isinstance(c, str) and c.strip()
+    ]
+
+    modify_course_service(
+        course_id=args["course_id"],
+        conflicts=cleaned_conflicts,
+    )
+    return {
+        "success": True,
+        "message": f"Updated conflicts for course {args['course_id']}.",
+        "changes_applied": True,
+        "details": {
+            "action": "modify_course_conflicts",
+            "course_id": args["course_id"],
+            "conflicts": cleaned_conflicts,
+        },
     }
 
 
