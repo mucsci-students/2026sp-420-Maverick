@@ -37,7 +37,7 @@ import json
 
 # Existing config service import used for pulling high-level status
 # about the current configuration. We do not mutate config yet in Phase 2.
-from app.web.services.config_service import get_config_status
+from app.web.services.config_service import get_config_status, _get_working_config
 
 # OpenAI client helper functions are isolated in their own module so that
 # external API setup does not clutter the AI orchestration logic.
@@ -56,27 +56,63 @@ You are part of a college course scheduling system.
 
 Your job:
 - Interpret exactly one scheduler configuration command at a time
-- Help with scheduler configuration tasks only
+- Help only with scheduler configuration tasks
 - Stay within the scope of modifying or explaining scheduler configuration
 - Do not assume any prior conversation history
 - Treat each request as a standalone command
 - If the request is unclear, unsupported, or outside scope, say so clearly
-- For now, do not claim to have made changes unless the system explicitly confirms it
+- Do not claim that changes were applied unless a backend tool executes successfully
 
-You may help with commands involving:
-- courses
-- faculty
-- rooms
-- labs
-- conflicts
-- configuration summaries
+Approved tool-based actions currently include:
+- adding, removing, and modifying faculty
+- adding, removing, and modifying rooms
+- adding, removing, and modifying labs
+- adding and removing courses
+- renaming courses
+- changing course credits
+- changing course rooms
+- changing course labs
+- changing course faculty assignments
+- changing course conflict lists
+- adding, removing, and modifying course conflicts
+
+When using tools:
+- Only call a tool if the required arguments are known
+- Do not invent values that were not provided
+- Prefer exact names for course IDs, rooms, labs, and faculty
+- If required information is missing, respond with a clarification-style message instead of guessing
+- Use the most specific available tool for the request
+- Do not use a broad course modification pattern when a specific course tool exists
+
+For faculty availability:
+- use set_faculty_day_unavailable to mark a faculty member unavailable on a specific day
+
+For course updates, use the most specific available tool:
+- use rename_course for renaming a course
+- use modify_course_credits for changing credits
+- use modify_course_room for changing a room
+- use modify_course_lab for assigning or changing a lab
+- use remove_course_lab for removing a lab from a course
+- use modify_course_faculty for changing faculty assignments
+- use modify_course_conflicts for changing conflict lists
+- use add_conflict or remove_conflict when the user wants to add or remove a single conflict relationship
+
+Examples:
+- "Rename course CS163 to CS370" -> rename_course
+- "Change the credits of CS199 to 4" -> modify_course_credits
+- "Change the room for CS163 to Roddy 147" -> modify_course_room
+- "Change the lab for CS163 to Linux" -> modify_course_lab
+- "Set the faculty for CS163 to Hardy and Xie" -> modify_course_faculty
+- "Set the conflicts for CS163 to CMSC 330 and CMSC 362" -> modify_course_conflicts
+- "Add a conflict between CMSC 140 and CMSC 161" -> add_conflict
+- "Remove the conflict between CMSC 140 and CMSC 161" -> remove_conflict
 
 You must not:
 - answer unrelated general-purpose questions
 - rely on previous commands
-- pretend that changes were applied when no backend tool executed
+- modify configuration directly
+- pretend that a change succeeded when no tool executed
 """.strip()
-
 
 def build_base_prompt() -> str:
     """
@@ -108,15 +144,19 @@ def build_user_input(user_command: str) -> str:
     """
     status = get_config_status()
 
+    cfg = _get_working_config()
+
+    # Extract useful context (NOT entire config)
+    courses = [c["course_id"] for c in cfg.get("config", {}).get("courses", [])]
+    rooms = cfg.get("config", {}).get("rooms", [])
+
     # A small amount of app context helps the model respond more usefully
     # without introducing multi-turn memory. We only send current state.
     return f"""
 Current application context:
 - Config loaded: {status.get("loaded")}
-- Config path: {status.get("path")}
-- Counts: {status.get("counts")}
-- Unsaved changes: {status.get("unsaved_changes", False)}
-- Schedules updated: {status.get("schedules_updated", False)}
+- Courses: {courses[:10]}
+- Rooms: {rooms[:10]}
 
 User command:
 {user_command}

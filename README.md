@@ -236,6 +236,20 @@ The Schedule Viewer allows users to:
 
 ---
 
+## 🤖 AI Chat Tool (Natural Language Configuration)
+
+The Maverick Scheduler includes an AI-powered assistant that allows users to modify configurations using natural language.
+
+### Example Commands
+- Add course CS102 with 3 credits in Roddy 140  
+- Change the credits of CS199 to 4  
+- Rename course CS163 to CS370  
+- Add faculty Dr. Jones with appointment type full-time  
+
+👉 Full command reference: [AI Command Guide](docs/ai-commands.md)
+
+---
+
 ## Running Tests
 
 The project uses **pytest**.
