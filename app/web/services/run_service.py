@@ -84,10 +84,10 @@ def _to_int(x: Any, default: int = 0) -> int:
     except Exception:
         return default
 
-
 # ------------------------------
 # Core Service Function
 # ------------------------------
+
 
 def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[str]] = None) -> int:
     """

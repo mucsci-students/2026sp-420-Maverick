@@ -326,10 +326,24 @@ def apply_timeslot_defaults(cfg):
         }
     return cfg
 
+def _ensure_time_slot_defaults(cfg):
+    cfg = apply_timeslot_defaults(cfg)
+    tsc = cfg.setdefault("time_slot_config", {})
+
+    if "time_slots" not in tsc:
+        tsc["time_slots"] = {
+            day: [] for day in tsc.get("days", ["MON", "TUE", "WED", "THU", "FRI"])
+        }
+    
+    if "patterns" not in tsc:
+        tsc["patterns"] = []
+
+    return cfg
 
 # ================================================================
 # Load / Save
 # ================================================================
+
 
 def load_config_into_session(source):
     """
@@ -404,7 +418,6 @@ def load_config_into_session(source):
     # Immediately detect editor-level conflicts for display in the UI.
     conflicts = detect_conflicts(working_copy)
     session["config_conflicts"] = conflicts
-
 
 def save_config_from_session(path: str):
     """
@@ -809,6 +822,119 @@ def remove_conflict_service(**kwargs):
 def modify_conflict_service(**kwargs):
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
+    _commit_change(cfg)
+
+# ==============================================================
+# Time Slot Management
+# ==============================================================
+
+def add_time_slot_service(day, start_time, end_time):
+    cfg = _get_cgf()
+
+    _ensure_time_slot_defaults(cfg)
+
+    slots = cfg["time_slot_config"]["time_slots"].setdefault(day, [])
+
+    slots.append({
+        "start_time": start_time,
+        "end_time": end_time
+    })
+
+    _commit_change(cfg)
+
+def remove_time_slot_service(day, start_time, end_time):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    slots = cfg["time_slot_config"]["time_slots"].get(day, [])
+
+    cfg["time_slot_config"]["time_slots"][day] = [
+        s for s in slots
+        if not (
+            s.get("start_time") == start_time and
+            s.get("end_time") == end_time
+        )
+    ]
+
+    _commit_change(cfg)
+
+def modify_time_slot_service(day, index, start_time, end_time):
+    cfg = _get_cgf()
+
+    _ensure_time_slot_defaults(cfg)
+
+    slots = cfg["time_slot_config"]["time_slots"].get(day, [])
+
+    if 0 <= index < len(slots):
+        slots[index] = {
+            "start_time": start_time,
+            "end_time": end_time
+        }
+    
+    _commit_change(cfg)
+
+# ================================================================
+# Meeting Pattern Management
+# ================================================================
+
+def add_pattern_service(pattern_id, credits, days, duration,
+                        is_lab=False, fixed_start_time=None, enabled=True):
+
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    is_lab = str(is_lab).lower() == "true"
+
+    pattern = {
+        "pattern_id": pattern_id,
+        "credits": int(credits),
+        "days": days,
+        "duration": int(duration),
+        "is_lab": is_lab,
+        "fixed_start_time": fixed_start_time,
+        "enabled": enabled
+    }
+
+    cfg["time_slot_config"]["patterns"].append(pattern)
+
+    _commit_change(cfg)
+
+
+def remove_pattern_service(pattern_id):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    patterns = cfg["time_slot_config"]["patterns"]
+
+    cfg["time_slot_config"]["patterns"] = [
+        p for p in patterns if p.get("pattern_id") != pattern_id
+    ]
+
+    _commit_change(cfg)
+
+
+def modify_pattern_service(pattern_id, **updates):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    for p in cfg["time_slot_config"]["patterns"]:
+        if p.get("pattern_id") == pattern_id:
+            p.update(updates)
+
+    _commit_change(cfg)
+
+
+def toggle_pattern_service(pattern_id, enabled):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    if isinstance(enabled, str):
+        enabled = str(enabled).lower() in ["true", "on", "1"]
+
+    for p in cfg["time_slot_config"]["patterns"]:
+        if p.get("pattern_id") == pattern_id:
+            p["enabled"] = enabled
+
     _commit_change(cfg)
 
 

@@ -113,6 +113,13 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
             "faculty": [],
         },
         "optimizer_flags": ["faculty_course"],
+        "time_slot_config": {
+            "days": ["MON", "TUE", "WED", "THU", "FRI"],
+            "time_slots": {
+                "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                "TUE": [], "WED": [], "THU": [], "FRI": []
+            }
+        }
     }
 
     fake_generated_rows = [
