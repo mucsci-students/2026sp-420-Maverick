@@ -402,6 +402,8 @@ Services connect Flask routes to the scheduling logic.
 
 ## Design Pattern: Command
 
+1. Command (Behavioral Pattern)
+
 Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
 
 ### Problem
@@ -443,7 +445,7 @@ This approach makes the system more modular, and extensible.
 
 ## Design Pattern: Observer
 
-1. Observer (Behavioral Pattern)
+2. Observer (Behavioral Pattern)
 Located in 
 ```
 app/web/templates/visual_schedule.html
@@ -469,9 +471,11 @@ Details:
 
 - Event handlers are used to update the UI button styles, and update the state.
 
-## Design Pattern: state
 
-### Command (Behavoiral Pattern)
+### Design Pattern: State
+
+3. State (Behavoiral Pattern)
+
 Located in 
 ```
 app/web/routes/run_routes.py
@@ -480,20 +484,20 @@ app/web/templates/generator.html
 ```
 Details:
 
-- The progress bar's behavior changes based on the internal state
+- The progress bar's behavior changes based on on how many schedules have currently been generated (app.js)
 
-- uses lots of conditionals to determine how it behaves
+- Uses lots of conditionals to determine how it behaves (app.js)
 
-- UI behavior tied to internal state
+- UI behavior tied to internal state (run_routes.py pinging for updates)
 
 states:
-- initially progress is at 0% when no running/initially started
+- Initially, the progress bar is at 0% when no running/initially started.
 
-- when running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+- When running, the progress bar updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
 
-- completed at 100%
+- Completed at 100%, redirects the user automatically to the viewer page.
 
-- when it encounters and error, show an error message instead of progressing
+- When it encounters and error, show an error message instead of progressing. Allows for retrying.
 
 ---
 
