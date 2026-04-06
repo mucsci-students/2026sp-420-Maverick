@@ -39,6 +39,7 @@ Notes:
 import json
 import os
 import copy
+import re
 
 # Flask session stores the user's active working configuration,
 # editor state, and related UI flags.
@@ -608,6 +609,96 @@ def export_config_bytes(filename: str | None = None):
 # Validation
 # ================================================================
 
+TIME_RE = re.compile(r"^\d{2}:\d{2}$")
+VALID_DAYS = {"MON", "TUE", "WED", "THU", "FRI"}
+
+
+def _minutes_from_hhmm(value: str) -> int:
+    if not TIME_RE.match(value):
+        raise ValueError(f"Invalid time format '{value}'. Use HH:MM.")
+    hour, minute = map(int, value.split(":"))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"Invalid time value '{value}'.")
+    return hour * 60 + minute
+
+
+def _validate_time_slot_config(cfg):
+    tsc = cfg.get("time_slot_config", {})
+
+    times = tsc.get("times", {})
+    classes = tsc.get("classes", [])
+
+    if not isinstance(times, dict):
+        raise ValueError("time_slot_config.times must be a dictionary.")
+
+    if not isinstance(classes, list):
+        raise ValueError("time_slot_config.classes must be a list.")
+
+    # Validate day blocks
+    for day, slots in times.items():
+        if day not in VALID_DAYS:
+            raise ValueError(f"Invalid time-slot day '{day}'.")
+
+        if not isinstance(slots, list):
+            raise ValueError(f"time_slot_config.times['{day}'] must be a list.")
+
+        for slot in slots:
+            if not isinstance(slot, dict):
+                raise ValueError(f"Invalid slot in {day}; expected an object.")
+
+            start = slot.get("start")
+            end = slot.get("end")
+            spacing = slot.get("spacing")
+
+            if start is None or end is None or spacing is None:
+                raise ValueError(f"Each time slot in {day} must include start, spacing, and end.")
+
+            start_mins = _minutes_from_hhmm(str(start))
+            end_mins = _minutes_from_hhmm(str(end))
+
+            if end_mins <= start_mins:
+                raise ValueError(f"Time slot end must be after start in {day}: {start} - {end}")
+
+            if not isinstance(spacing, int) or spacing <= 0:
+                raise ValueError(f"Invalid spacing in {day}: {spacing}")
+
+    # Validate class patterns
+    for idx, klass in enumerate(classes):
+        if not isinstance(klass, dict):
+            raise ValueError(f"Pattern at index {idx} must be an object.")
+
+        credits = klass.get("credits")
+        meetings = klass.get("meetings")
+
+        if not isinstance(credits, int) or credits <= 0:
+            raise ValueError(f"Pattern {idx} has invalid credits: {credits}")
+
+        if not isinstance(meetings, list) or not meetings:
+            raise ValueError(f"Pattern {idx} must have at least one meeting.")
+
+        for meeting in meetings:
+            if not isinstance(meeting, dict):
+                raise ValueError(f"Pattern {idx} contains an invalid meeting object.")
+
+            day = meeting.get("day")
+            duration = meeting.get("duration")
+
+            if day not in VALID_DAYS:
+                raise ValueError(f"Pattern {idx} contains invalid day: {day}")
+
+            if not isinstance(duration, int) or duration <= 0:
+                raise ValueError(f"Pattern {idx} contains invalid duration: {duration}")
+
+            # Meeting day must have at least one time range configured
+            if day not in times or not times.get(day):
+                raise ValueError(
+                    f"Pattern {idx} uses {day}, but no time slots are configured for {day}."
+                )
+
+        start_time = klass.get("start_time")
+        if start_time is not None:
+            _minutes_from_hhmm(str(start_time))
+
 
 def validate_config(cfg):
     """
@@ -661,6 +752,8 @@ def validate_config(cfg):
             if conflict not in [c.get("course_id") for c in courses]:
                 raise ValueError(f"Invalid conflict '{conflict}' in course {cid}")
 
+    _validate_time_slot_config(cfg)
+    
 
 # ================================================================
 # Status

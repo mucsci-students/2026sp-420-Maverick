@@ -30,6 +30,7 @@ from datetime import datetime  # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
+from app.web.services.config_service import SESSION_CONFIG_KEY, validate_config
 from app.web.services.progress_store import (
     generation_progress,
     progress_lock,
@@ -155,6 +156,7 @@ def generate_schedules_into_session(
     # the saved configuration stored in session.
 
     run_cfg = deepcopy(cfg)
+    validate_config(run_cfg)
 
     # ----------------------------------------
     # 3. Apply Per-Run Overrides (Generator UI)
