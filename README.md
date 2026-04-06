@@ -471,6 +471,7 @@ Details:
 
 - Event handlers are used to update the UI button styles, and update the state.
 
+---
 
 ### Design Pattern: State
 
