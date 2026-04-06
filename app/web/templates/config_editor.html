@@ -211,18 +211,34 @@ Extends base.html.
       {% endfor %}
     </ul>
 
-    {% if status.conflicts %}
-<div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-  <strong>Configuration Conflicts Detected:</strong>
-  <ul>
-    {% for c in status.conflicts %}
-      <li>{{ c }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
+  <h3>Time Slots</h3>
+    {% if status.timeslots %}
+    <h4>Time Slots</h4>
+    <ul>
+      {% for ts in status.timeslots %}
+      <li>
+        {{ ts.day }}: {{ ts.start_time }} - {{ ts.end_time }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No time slots defined.</p>
+    {% endif %}
 
-  {% else %}
+  <h3>Meeting Patterns</h3>
+    {% if status.meeting_patterns %}
+    <h4>Meeting Patterns</h4>
+    <ul>
+      {% for mp in status.meeting_patterns %}
+      <li>
+        {{ mp.name }} ({{ mp.days }}) {{ mp.time_range }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No meeting patterns defined.</p>
+
+{% endif %}
 
     <!-- Indicates that no configuration is currently loaded -->
     <p><strong>File Loaded:</strong> No</p>
