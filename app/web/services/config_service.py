@@ -197,34 +197,6 @@ def normalize_time_entry(entry):
 def clean_time(s: str) -> str:
     return s.strip()
 
-def normalize_cfg(cfg):
-    """
-    Normalizes ALL time formats in config:
-    - faculty times
-    - time_slot_config slots
-    """
-
-    cfg = copy.deepcopy(cfg)
-
-    # --------------------------
-    # Normalize faculty times
-    # --------------------------
-    for faculty in cfg.get("config", {}).get("faculty", []):
-        for day, slots in faculty.get("times", {}).items():
-            faculty["times"][day] = [
-                normalize_time_entry(s) for s in slots
-            ]
-
-    # --------------------------
-    # Normalize time slots
-    # --------------------------
-    tsc = cfg.get("time_slot_config", {})
-    for day, slots in tsc.get("time_slots", {}).items():
-        tsc["time_slots"][day] = [
-            normalize_time_entry(s) for s in slots
-        ]
-
-    return cfg
 
 # ================================================================
 # Conflict Helpers
@@ -345,7 +317,7 @@ def _get_cgf():
 
 def _commit_change(cfg):
 
-    cfg = normalize_cfg(cfg)
+    cfg = _get_cgf()
 
     session[SESSION_CONFIG_KEY] = cfg
 
@@ -386,15 +358,10 @@ def _ensure_time_slot_defaults(cfg):
 
     return cfg
 
-def has_time_blocks(cfg):
-    tsc = cfg.get("time_slot_config", {})
-    time_slots = tsc.get("time_slots", {})
-    
-    return any(len(slots) > 0 for slots in time_slots.values())
-
 # ================================================================
 # Load / Save
 # ================================================================
+
 
 def load_config_into_session(source):
     """
@@ -453,7 +420,7 @@ def load_config_into_session(source):
     # Continue with existing logic (Apply defaults, store in session, write working_config.json, etc.)
     # ------------------------------------------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
-    working_copy = normalize_cfg(apply_timeslot_defaults(copy.deepcopy(loaded_config)))
+    working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
     # Store the loaded config and its source identifier in session.
     session[SESSION_CONFIG_KEY] = working_copy
@@ -469,9 +436,6 @@ def load_config_into_session(source):
     # Immediately detect editor-level conflicts for display in the UI.
     conflicts = detect_conflicts(working_copy)
     session["config_conflicts"] = conflicts
-
-def set_config(cfg):
-    return normalize_cfg(cfg)
 
 def save_config_from_session(path: str):
     """
@@ -647,11 +611,6 @@ def validate_config(cfg):
     """
     if "config" not in cfg:
         raise ValueError("Invalid configuration format.")
-
-    if not has_time_blocks(cfg):
-        raise ValueError(
-            "Time blocks are required in the configuration."
-        )
 
     config = cfg["config"]
 
