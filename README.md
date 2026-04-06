@@ -400,52 +400,9 @@ Services connect Flask routes to the scheduling logic.
 
 ---
 
-## Design Pattern: Observer
-
-1. Observer (Behavioral Pattern)
-Located in 
-```
-app/web/templates/visual_schedule.html
-```
-Details:
-- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
-- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
-
-- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
-
-- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
-- A new function is called when the state changes. 
-- If a top category is changed then the sub-filters are reset.
-
-- Observer 1 is used to update the main view sections.
-(All, Faculty, Rooms, Labs)
-- State also controls the visibility of the sub-filtering.
-(e.g.: Show-Faculty, Filter - Hobbs)
-
-- Observer 2 is used to update the calendar container visibility (sub-filtering).
-
-- Observer 3 is used to update the day grid layout.
-
-- Event handlers are used to update the UI button styles, and update the state.
-
-2. Command (Behavoiral Pattern)
-Located in 
-```
-app/web/routes/run_routes.py
-app/web/static/app.js
-app/web/templates/generator.html
-```
-Details:
-
-- The user presses the generate button which makes a request not knowing anything about generating schedules (generator.html)
-
-- The generate route makes a request to the generate_schedules_into_session function without knowing anything about it (run_route.py)
-
-- The js keeps queuing commands which are periodically checked (app.js)
-
----
-
 ## Design Pattern: Command
+
+1. Command (Behavioral Pattern)
 
 Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
 
@@ -486,6 +443,64 @@ This approach makes the system more modular, and extensible.
 
 ---
 
+## Design Pattern: Observer
+
+2. Observer (Behavioral Pattern)
+Located in 
+```
+app/web/templates/visual_schedule.html
+```
+Details:
+- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
+- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
+
+- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
+
+- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
+- A new function is called when the state changes. 
+- If a top category is changed then the sub-filters are reset.
+
+- Observer 1 is used to update the main view sections.
+(All, Faculty, Rooms, Labs)
+- State also controls the visibility of the sub-filtering.
+(e.g.: Show-Faculty, Filter - Hobbs)
+
+- Observer 2 is used to update the calendar container visibility (sub-filtering).
+
+- Observer 3 is used to update the day grid layout.
+
+- Event handlers are used to update the UI button styles, and update the state.
+
+
+### Design Pattern: State
+
+3. State (Behavoiral Pattern)
+
+Located in 
+```
+app/web/routes/run_routes.py
+app/web/static/app.js
+app/web/templates/generator.html
+```
+Details:
+
+- The progress bar's behavior changes based on on how many schedules have currently been generated (app.js)
+
+- Uses lots of conditionals to determine how it behaves (app.js)
+
+- UI behavior tied to internal state (run_routes.py pinging for updates)
+
+states:
+- Initially, the progress bar is at 0% when no running/initially started.
+
+- When running, the progress bar updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+
+- Completed at 100%, redirects the user automatically to the viewer page.
+
+- When it encounters and error, show an error message instead of progressing. Allows for retrying.
+
+---
+
 ## Troubleshooting
 ### Flask will not start
 
@@ -522,6 +537,48 @@ Make sure you:
 2. generated schedules from /run
 
 3. navigated to /viewer
+
+---
+
+## Running Linting, Formatting, and Type Checks
+
+After installing dependencies with:
+
+```bash
+uv sync --dev
+```
+
+Run the linter:
+```
+uv run ruff check .
+```
+
+Run the formatter:
+```
+uv run ruff format .
+```
+
+Check formatting without changing files:
+```
+uv run ruff format . --check
+```
+
+Run ty:
+```
+uv run ty check app tests
+```
+
+### What to run locally after you make changes
+
+From the repo root:
+
+```bash
+uv sync --dev
+uv run ruff check .
+uv run ruff format .
+uv run ty check app tests
+uv run pytest --cov=app --cov-branch --cov-report=xml
+```
 
 ---
 

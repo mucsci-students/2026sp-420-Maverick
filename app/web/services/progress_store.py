@@ -11,5 +11,3 @@ is_running = {}
 
 # simple lock for thread safety
 progress_lock = Lock()
-
-

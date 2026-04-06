@@ -12,7 +12,6 @@ Related User Stories:
     A4 — Room Management
 """
 
-
 from typing import Any, Dict, List
 
 
@@ -28,6 +27,8 @@ Returns    :
             A list of rooms.
             If it is missing from the config file, returns an empty list.
 """
+
+
 def get_room_list(cfg: Dict[str, Any]) -> List[str]:
     return cfg.setdefault("config", {}).setdefault("rooms", [])
 
@@ -41,6 +42,8 @@ Returns    :
            If the room is found, returns the index.
            If the room was not found, -1.
 """
+
+
 def find_room_index(room_list: List[str], room_name: str) -> int:
     name_lower = room_name.lower()
 
@@ -51,6 +54,7 @@ def find_room_index(room_list: List[str], room_name: str) -> int:
 
     return -1
 
+
 """
 Description: remove_room_helper removes the given room from faculty and courses
 Parameters :
@@ -59,37 +63,35 @@ Parameters :
 Returns    :
            Nothing.
 """
+
+
 def remove_room_helper(cfg: Dict[str, Any], room: str) -> None:
 
-    config = cfg.get('config', {})
+    config = cfg.get("config", {})
 
-    course_list = config.get('courses',[])
+    course_list = config.get("courses", [])
 
-    faculty_list =  config.get('faculty', [])
+    faculty_list = config.get("faculty", [])
 
     room_lower = room.lower()
 
     # Removes any instance(s) of room in courses -> 'room' if it exists.
     for course in course_list:
-
-        rooms = course.get('room', [])
+        rooms = course.get("room", [])
 
         for r in range(len(rooms)):
             if rooms[r].lower() == room_lower:
                 rooms.pop(r)
                 break
 
-
     # Removes any instance(s) of room in faculty -> 'room_preferences' if it exists.
     for faculty in faculty_list:
+        room_prefs = faculty.get("room_preferences", {})
 
-        room_prefs = faculty.get('room_preferences', {})
-        
         for r in list(room_prefs):
             if r.lower() == room_lower:
                 room_prefs.pop(r, None)
                 break
-
 
 
 # -----------------------------
@@ -104,18 +106,21 @@ Returns    :
            Nothing.
            If room already exists in room_list, returns ValueError.
 """
+
+
 def add_room(cfg: Dict[str, Any], room: str) -> None:
-    
+
     room_list = get_room_list(cfg)
 
     index = find_room_index(room_list, room)
 
     match index:
         case -1:
-           room_list.append(room)
+            room_list.append(room)
 
         case _:
             raise ValueError(f"Room '{room}' already exists.")
+
 
 """
 Description: remove_room removes a given room from the config file.
@@ -127,58 +132,57 @@ Returns    :
            If room does not exist in room_list, returns ValueError.
              
 """
+
+
 def remove_room(cfg: Dict[str, Any], room: str) -> None:
 
     room_list = get_room_list(cfg)
-    
+
     index = find_room_index(room_list, room)
 
-    match index:        
+    match index:
         case -1:
             raise ValueError(f"Room '{room}' does not exist.")
-        
+
         case _:
             room_list.pop(index)
             remove_room_helper(cfg, room)
-    
-def modify_room (
-        cfg: Dict[str, Any],
-        room : str, 
-        new_name: str
-    ) -> None:
 
-        room_list = get_room_list(cfg)
-        index = find_room_index(room_list, room)
 
-        # Checks to see if room exists
-        if index == -1:
-            raise ValueError(f"Room '{room}' does not exist.")
+def modify_room(cfg: Dict[str, Any], room: str, new_name: str) -> None:
 
-        # Prevent duplicate rename
-        if find_room_index(room_list, new_name) != -1:
-            raise ValueError(f"Room '{new_name}' already exists.")
-        
-        # ========== Update Room Name ==========
-        room_list[index] = new_name
+    room_list = get_room_list(cfg)
+    index = find_room_index(room_list, room)
 
-        config = cfg.get("config", {})
-        course_list = config.get("courses", [])
-        faculty_list = config.get("faculty", [])
+    # Checks to see if room exists
+    if index == -1:
+        raise ValueError(f"Room '{room}' does not exist.")
 
-        old_lower = room.lower()
+    # Prevent duplicate rename
+    if find_room_index(room_list, new_name) != -1:
+        raise ValueError(f"Room '{new_name}' already exists.")
 
-        # ========== Update Room References in Courses ==========
-        for course in course_list:
-            rooms = course.get("room", [])
-            for i in range(len(rooms)):
-                if rooms[i].lower() == old_lower:
-                    rooms[i] = new_name
-                    break
+    # ========== Update Room Name ==========
+    room_list[index] = new_name
 
-        # ========== Update Room References in Faculty ==========
-        for faculty in faculty_list:
-            room_prefs = faculty.get("room_preferences", {})
-            for key in list(room_prefs.keys()):
-                if key.lower() == old_lower:
-                    room_prefs[new_name] = room_prefs.pop(key)
-                    break
+    config = cfg.get("config", {})
+    course_list = config.get("courses", [])
+    faculty_list = config.get("faculty", [])
+
+    old_lower = room.lower()
+
+    # ========== Update Room References in Courses ==========
+    for course in course_list:
+        rooms = course.get("room", [])
+        for i in range(len(rooms)):
+            if rooms[i].lower() == old_lower:
+                rooms[i] = new_name
+                break
+
+    # ========== Update Room References in Faculty ==========
+    for faculty in faculty_list:
+        room_prefs = faculty.get("room_preferences", {})
+        for key in list(room_prefs.keys()):
+            if key.lower() == old_lower:
+                room_prefs[new_name] = room_prefs.pop(key)
+                break

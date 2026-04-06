@@ -16,6 +16,9 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "python-dotenv>=1.2.1",
+    "ruff",
+    "mypy",
+    "ty",
 ]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -35,3 +38,18 @@ omit = [
 
 [tool.coverage.xml]
 output = "coverage.xml"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+pretty = true
