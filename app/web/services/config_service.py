@@ -713,6 +713,48 @@ def modify_faculty_service(**kwargs):
     modify_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
+def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    cfg = _get_cgf()
+
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+    day = day.upper()
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            faculty.setdefault("times", {})
+            faculty["times"].setdefault(day, [])
+
+            faculty["times"][day].append({
+                "start_time": start_time,
+                "end_time": end_time
+            })
+
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' does not exist")
+
+def remove_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    cfg = _get_cgf()
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            slots = faculty.get("times", {}).get(day, [])
+
+            faculty["times"][day] = [
+                s for s in slots
+                if not (
+                    s.get("start_time") == start_time and
+                    s.get("end_time") == end_time
+                )
+            ]
+
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' not found")
+
 
 def set_faculty_day_unavailable_service(name: str, day: str):
     """

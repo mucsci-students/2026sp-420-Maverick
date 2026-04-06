@@ -46,6 +46,9 @@ from app.web.services.config_service import (
     add_faculty_service,
     remove_faculty_service,
     modify_faculty_service,
+    set_faculty_time_service, 
+    remove_faculty_time_service,
+
     # Rooms
     add_room_service,
     remove_room_service,
@@ -287,6 +290,24 @@ def modify_faculty():
     try:
         modify_faculty_service(**request.form.to_dict())
         flash("Faculty modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/faculty/set_time")
+def faculty_set_time():
+    try:
+        set_faculty_time_service(**request.form.to_dict())
+        flash("Faculty availability updated.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/faculty/remove_time")
+def faculty_remove_time():
+    try:
+        remove_faculty_time_service(**request.form.to_dict())
+        flash("Faculty availability removed.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
