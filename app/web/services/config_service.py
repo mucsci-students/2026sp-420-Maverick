@@ -319,27 +319,45 @@ def _commit_change(cfg):
 
 
 def apply_timeslot_defaults(cfg):
+    """
+    Ensure the working config contains the canonical scheduler time_slot_config
+    structure expected by the upstream scheduler and used by our config JSONs.
+    """
     if "time_slot_config" not in cfg:
         cfg["time_slot_config"] = {
-            "days": ["MON", "TUE", "WED", "THU", "FRI"],
-            "start_time": "08:00",
-            "end_time": "17:00",
-            "slot_length": 60,
+            "times": {
+                "MON": [],
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+            "classes": [],
         }
     return cfg
 
 
 def _ensure_time_slot_defaults(cfg):
+    """
+    Normalize time_slot_config to the canonical structure:
+
+    time_slot_config:
+      times:
+        DAY: [{start, spacing, end}]
+      classes:
+        [{credits, meetings, start_time?, disabled?}]
+    """
     cfg = apply_timeslot_defaults(cfg)
     tsc = cfg.setdefault("time_slot_config", {})
 
-    if "time_slots" not in tsc:
-        tsc["time_slots"] = {
-            day: [] for day in tsc.get("days", ["MON", "TUE", "WED", "THU", "FRI"])
-        }
+    if "times" not in tsc or not isinstance(tsc["times"], dict):
+        tsc["times"] = {}
 
-    if "patterns" not in tsc:
-        tsc["patterns"] = []
+    for day in ["MON", "TUE", "WED", "THU", "FRI"]:
+        tsc["times"].setdefault(day, [])
+
+    if "classes" not in tsc or not isinstance(tsc["classes"], list):
+        tsc["classes"] = []
 
     return cfg
 
@@ -878,42 +896,64 @@ def modify_conflict_service(**kwargs):
 # ==============================================================
 
 
-def add_time_slot_service(day, start_time, end_time):
+# ==============================================================
+# Time Slot Management
+# ==============================================================
+def add_time_slot_service(day, start, spacing, end):
     cfg = _get_cgf()
-
     _ensure_time_slot_defaults(cfg)
 
-    slots = cfg["time_slot_config"]["time_slots"].setdefault(day, [])
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
 
-    slots.append({"start_time": start_time, "end_time": end_time})
+    slot = {
+        "start": str(start).strip(),
+        "spacing": int(spacing),
+        "end": str(end).strip(),
+    }
 
+    cfg["time_slot_config"]["times"].setdefault(day, []).append(slot)
     _commit_change(cfg)
 
 
-def remove_time_slot_service(day, start_time, end_time):
+def remove_time_slot_service(day, index):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
-    slots = cfg["time_slot_config"]["time_slots"].get(day, [])
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
 
-    cfg["time_slot_config"]["time_slots"][day] = [
-        s
-        for s in slots
-        if not (s.get("start_time") == start_time and s.get("end_time") == end_time)
-    ]
+    index = int(index)
+    slots = cfg["time_slot_config"]["times"].get(day, [])
 
+    if not (0 <= index < len(slots)):
+        raise ValueError(f"Invalid slot index {index} for {day}")
+
+    slots.pop(index)
     _commit_change(cfg)
 
 
-def modify_time_slot_service(day, index, start_time, end_time):
+def modify_time_slot_service(day, index, start, spacing, end):
     cfg = _get_cgf()
-
     _ensure_time_slot_defaults(cfg)
 
-    slots = cfg["time_slot_config"]["time_slots"].get(day, [])
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
 
-    if 0 <= index < len(slots):
-        slots[index] = {"start_time": start_time, "end_time": end_time}
+    index = int(index)
+    slots = cfg["time_slot_config"]["times"].get(day, [])
+
+    if not (0 <= index < len(slots)):
+        raise ValueError(f"Invalid slot index {index} for {day}")
+
+    slots[index] = {
+        "start": str(start).strip(),
+        "spacing": int(spacing),
+        "end": str(end).strip(),
+    }
 
     _commit_change(cfg)
 
@@ -923,70 +963,128 @@ def modify_time_slot_service(day, index, start_time, end_time):
 # ================================================================
 
 
-def add_pattern_service(
-    pattern_id,
-    credits,
-    days,
-    duration,
-    is_lab=False,
-    fixed_start_time=None,
-    enabled=True,
-):
+# ================================================================
+# Meeting Pattern Management
+# ================================================================
+def _parse_meetings(days: str, duration: str, is_lab=False):
+    """
+    Convert a comma-separated day string into canonical meeting objects.
+    Example:
+        days="MON,WED,FRI", duration="50", is_lab=False
+        -> [
+            {"day": "MON", "duration": 50},
+            {"day": "WED", "duration": 50},
+            {"day": "FRI", "duration": 50},
+        ]
+    """
+    duration = int(duration)
+    is_lab = str(is_lab).lower() in ["true", "on", "1"]
 
+    meetings = []
+    for day in str(days).split(","):
+        clean_day = day.strip().upper()
+        if not clean_day:
+            continue
+        meeting = {
+            "day": clean_day,
+            "duration": duration,
+        }
+        if is_lab:
+            meeting["lab"] = True
+        meetings.append(meeting)
+
+    if not meetings:
+        raise ValueError("At least one meeting day is required.")
+
+    return meetings
+
+
+def add_pattern_service(credits, days, duration, is_lab=False, fixed_start_time=None, enabled=True, **kwargs):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
-    is_lab = str(is_lab).lower() == "true"
-
+    enabled = str(enabled).lower() in ["true", "on", "1"]
     pattern = {
-        "pattern_id": pattern_id,
         "credits": int(credits),
-        "days": days,
-        "duration": int(duration),
-        "is_lab": is_lab,
-        "fixed_start_time": fixed_start_time,
-        "enabled": enabled,
+        "meetings": _parse_meetings(days, duration, is_lab),
     }
 
-    cfg["time_slot_config"]["patterns"].append(pattern)
+    fixed_start_time = (fixed_start_time or "").strip()
+    if fixed_start_time:
+        pattern["start_time"] = fixed_start_time
+
+    if not enabled:
+        pattern["disabled"] = True
+
+    cfg["time_slot_config"]["classes"].append(pattern)
+    _commit_change(cfg)
+
+
+def remove_pattern_service(index):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
+
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
+
+    patterns.pop(index)
+    _commit_change(cfg)
+
+
+def modify_pattern_service(index, **updates):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
+
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
+
+    pattern = patterns[index]
+
+    if updates.get("credits"):
+        pattern["credits"] = int(updates["credits"])
+
+    days = updates.get("days")
+    duration = updates.get("duration")
+    if days and duration:
+        pattern["meetings"] = _parse_meetings(
+            days,
+            duration,
+            updates.get("is_lab", False),
+        )
+
+    fixed_start_time = updates.get("fixed_start_time")
+    if fixed_start_time is not None:
+        fixed_start_time = fixed_start_time.strip()
+        if fixed_start_time:
+            pattern["start_time"] = fixed_start_time
+        else:
+            pattern.pop("start_time", None)
 
     _commit_change(cfg)
 
 
-def remove_pattern_service(pattern_id):
+def toggle_pattern_service(index, enabled):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
-    patterns = cfg["time_slot_config"]["patterns"]
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
 
-    cfg["time_slot_config"]["patterns"] = [
-        p for p in patterns if p.get("pattern_id") != pattern_id
-    ]
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
 
-    _commit_change(cfg)
+    enabled = str(enabled).lower() in ["true", "on", "1"]
 
-
-def modify_pattern_service(pattern_id, **updates):
-    cfg = _get_cgf()
-    _ensure_time_slot_defaults(cfg)
-
-    for p in cfg["time_slot_config"]["patterns"]:
-        if p.get("pattern_id") == pattern_id:
-            p.update(updates)
-
-    _commit_change(cfg)
-
-
-def toggle_pattern_service(pattern_id, enabled):
-    cfg = _get_cgf()
-    _ensure_time_slot_defaults(cfg)
-
-    if isinstance(enabled, str):
-        enabled = str(enabled).lower() in ["true", "on", "1"]
-
-    for p in cfg["time_slot_config"]["patterns"]:
-        if p.get("pattern_id") == pattern_id:
-            p["enabled"] = enabled
+    if enabled:
+        patterns[index].pop("disabled", None)
+    else:
+        patterns[index]["disabled"] = True
 
     _commit_change(cfg)
 
