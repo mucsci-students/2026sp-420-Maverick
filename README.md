@@ -553,7 +553,7 @@ Run ty:
 uv run ty check app tests
 ```
 
-### What to run locally after you make the changes
+### What to run locally after you make changes
 
 From the repo root:
 
