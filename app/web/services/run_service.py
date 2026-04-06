@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-04-05
+# Date: 2026-03-02
 """
 Schedule Execution Service
 
@@ -28,7 +28,7 @@ from flask import session                     # Session storage for per-user sta
 from copy import deepcopy                     # Prevent mutation of loaded config
 from datetime import datetime                 # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
-from app.web.services.config_service import SESSION_CONFIG_KEY, has_time_blocks
+from app.web.services.config_service import SESSION_CONFIG_KEY
 from scheduler_core.main import generate_schedules  # Core solver engine
 from app.web.services.progress_store import generation_progress, progress_lock, is_running
 
@@ -149,6 +149,7 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
 
     run_cfg = deepcopy(cfg)
 
+
     # ----------------------------------------
     # 3. Apply Per-Run Overrides (Generator UI)
     # ----------------------------------------
@@ -196,11 +197,6 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # --------------------------------
     # 4. Invoke Core Scheduler Engine
     # --------------------------------
-
-    if has_time_blocks(run_cfg):
-        run_cfg["time_slot_config"]["mode"] = "blocks"
-    else:
-        run_cfg["time_slot_config"]["mode"] = "continuous"
 
     # --- REAL SCHEDULER CALL ---
     # The scheduler returns a flat list of assignment rows.

@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow
-# Date: 2026-04-05
+# Date: 2026-03-08
 """
 Configuration Routes
 
@@ -38,8 +38,6 @@ from app.web.services.config_service import (
     add_faculty_service,
     remove_faculty_service,
     modify_faculty_service,
-    set_faculty_time_service,
-    remove_faculty_time_service,
 
     # Rooms
     add_room_service,
@@ -60,17 +58,6 @@ from app.web.services.config_service import (
     add_conflict_service,
     remove_conflict_service,
     modify_conflict_service,
-
-    # Time Slots
-    add_time_slot_service,
-    remove_time_slot_service,
-    modify_time_slot_service,
-
-    # Meeting Patterns
-    add_pattern_service,
-    remove_pattern_service,
-    modify_pattern_service,
-    toggle_pattern_service,
 )
 
 bp = Blueprint("config", __name__, url_prefix="/config")
@@ -276,24 +263,6 @@ def faculty_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
-@bp.post("/faculty/set_time")
-def faculty_set_time():
-    try:
-        set_faculty_time_service(**request.form.to_dict())
-        flash("Faculty availability updated.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/faculty/remove_time")
-def faculty_remove_time():
-    try:
-        remove_faculty_time_service(**request.form.to_dict())
-        flash("Faculty availability removed.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
 # Tells user that a faculty was removed
 @bp.post("/faculty/remove")
 def faculty_remove():
@@ -434,72 +403,6 @@ def conflict_modify():
     try:
         modify_conflict_service(**request.form.to_dict())
         flash("Conflict modified successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-
-# Time Slot Routes
-@bp.post("/timeslot/add")
-def timeslot_add():
-    try:
-        add_time_slot_service(**request.form.to_dict())
-        flash("Time slot added successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/timeslot/remove")
-def timeslot_remove():
-    try:
-        remove_time_slot_service(**request.form.to_dict())
-        flash("Time slot removed successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/timeslot/modify")
-def timeslot_modify():
-    try:
-        modify_time_slot_service(**request.form.to_dict())
-        flash("Time slot modified successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-# Pattern Routes
-@bp.post("/pattern/add")
-def pattern_add():
-    try:
-        add_pattern_service(**request.form.to_dict())
-        flash("Pattern added successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/pattern/remove")
-def pattern_remove():
-    try:
-        remove_pattern_service(**request.form.to_dict())
-        flash("Meeting pattern removed successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/pattern/modify")
-def pattern_modify():
-    try:
-        modify_pattern_service(**request.form.to_dict())
-        flash("Meeting pattern modified successfully.", "success")
-    except Exception as e:
-        flash(str(e), "error")
-    return redirect(url_for("config.editor"))
-
-@bp.post("/pattern/toggle")
-def pattern_toggle():
-    try:
-        toggle_pattern_service(**request.form.to_dict())
-        flash("Meeting pattern toggled successfully.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
