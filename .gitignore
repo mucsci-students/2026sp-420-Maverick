@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # Virtual environment (VERY important)
 .venv/

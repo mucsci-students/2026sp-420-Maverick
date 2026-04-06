@@ -19,10 +19,11 @@ from typing import Any, Dict, List, Optional
 # JSON config gets loaded in a Python dict via (cfg).
 # The courses are found at/live at: cfg["config"]["courses"]
 #
-# This helper function ensures that the path exists and returns the list of course dicts. 
+# This helper function ensures that the path exists and returns the list of course dicts.
 def get_course_list(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     # .setdefault ensures it exists or creates it
     return cfg.setdefault("config", {}).setdefault("courses", [])
+
 
 # The config indentifies courses by "course_id" (ex. "CS101").
 # Prevent duplicates and supports modify/delete
@@ -39,13 +40,16 @@ def find_course_index(courses: List[Dict[str, Any]], course_id: str) -> int:
     # -1 means "not found"
     return -1
 
+
 # Ensures rooms list exists and returns it.
 def _get_rooms(cfg: Dict[str, Any]) -> List[str]:
     return cfg.setdefault("config", {}).setdefault("rooms", [])
 
+
 # Ensures labs list exists and returns it.
 def _get_labs(cfg: Dict[str, Any]) -> List[str]:
     return cfg.setdefault("config", {}).setdefault("labs", [])
+
 
 # Faculty list is a list of dicts. This extracts the "name" values.
 def _get_faculty_names(cfg: Dict[str, Any]) -> List[str]:
@@ -54,7 +58,7 @@ def _get_faculty_names(cfg: Dict[str, Any]) -> List[str]:
 
 
 # -----------------------------
-# Course Add 
+# Course Add
 # -----------------------------
 # Current schema expects these keys on every course:
 #
@@ -66,6 +70,7 @@ def _get_faculty_names(cfg: Dict[str, Any]) -> List[str]:
 #   faculty: list[str]     <-- can be empty
 #
 # This function adds a new course dict into cfg["config"]["courses"].
+
 
 def add_course(
     cfg: Dict[str, Any],
@@ -106,7 +111,7 @@ def add_course(
     room = room.strip()
     if not room:
         raise ValueError("room cannot be empty")
-        
+
     # -----------------------------
     # Duplicate prevention
     # -----------------------------
@@ -177,11 +182,9 @@ def add_course(
     entry: Dict[str, Any] = {
         "course_id": course_id,
         "credits": int(credits),
-
         # IMPORTANT: schema expects list[str] for room and lab
         "room": [room],
         "lab": labs_list,
-
         # Defaults expected by scheduler configs
         "conflicts": [],
         "faculty": faculty_list,
@@ -200,6 +203,8 @@ Returns    :
            Nothing.
            if course does not exist in course_list, returns ValueError
 """
+
+
 def remove_course(cfg: Dict[str, Any], course: str) -> None:
     course_list = get_course_list(cfg)
 
@@ -213,6 +218,7 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
             course_list[:] = [c for c in course_list if c["course_id"] != course]
             remove_course_helper(cfg, course)
 
+
 """
 Description: remove_course_helper removes the course from faculty -> 'course_preferences'.
 Parameters :
@@ -221,6 +227,8 @@ Parameters :
 Returns    :
            Nothing.
 """
+
+
 def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
     config = cfg.get("config", {})
     course_list = config.get("courses", [])
@@ -242,6 +250,7 @@ def remove_course_helper(cfg: Dict[str, Any], course: str) -> None:
             if v.lower() == course_lower:
                 del prefs[v]
 
+
 """
 Description: find_conflict_index checks if a course exists in a conflict list or not.
 Parameters :
@@ -251,6 +260,8 @@ Returns    :
            If the conflict exists in the list, returns the index.
            Otherwise, returns -1.
 """
+
+
 def find_conflict_index(conflict_list: List[str], conflict_name: str) -> int:
     name_lower = str(conflict_name or "").strip().lower()
 
@@ -300,6 +311,8 @@ Returns   :
           If the course does not exist in courses, returns ValueError.
           If the conflict does not exist in conflict_list, returns ValueError.
 """
+
+
 def add_conflict(
     cfg: Dict[str, Any],
     course_id: str,
@@ -331,7 +344,9 @@ def add_conflict(
 
     # already present?
     if find_conflict_index(conflicts, conflict_course_id) != -1:
-        raise ValueError(f"Conflict '{conflict_course_id}' already exists in course '{course_id}'.")
+        raise ValueError(
+            f"Conflict '{conflict_course_id}' already exists in course '{course_id}'."
+        )
 
     conflicts.append(conflict_course_id)
 
@@ -372,7 +387,9 @@ def remove_conflict(
 
     idx = find_conflict_index(conflicts, conflict_course_id)
     if idx == -1:
-        raise ValueError(f"Conflict '{conflict_course_id}' does not exist in course '{course_id}'.")
+        raise ValueError(
+            f"Conflict '{conflict_course_id}' does not exist in course '{course_id}'."
+        )
 
     conflicts.pop(idx)
 
@@ -408,9 +425,13 @@ def modify_conflict(
     new_conflict_course_id = _norm_course_id(new_conflict_course_id)
 
     if not course_id or not old_conflict_course_id or not new_conflict_course_id:
-        raise ValueError("course_id, old_conflict_course_id, new_conflict_course_id cannot be empty")
+        raise ValueError(
+            "course_id, old_conflict_course_id, new_conflict_course_id cannot be empty"
+        )
 
-    if _norm_course_id_lower(course_id) == _norm_course_id_lower(new_conflict_course_id):
+    if _norm_course_id_lower(course_id) == _norm_course_id_lower(
+        new_conflict_course_id
+    ):
         raise ValueError("A course cannot conflict with itself")
 
     # Require the new conflict course exists (prevents typos / dangling conflicts)
@@ -451,7 +472,8 @@ def modify_conflict(
             new_other = get_course_list(cfg)[new_other_idx]
             new_other_conflicts = _ensure_conflicts_list(new_other)
             if find_conflict_index(new_other_conflicts, course_id) == -1:
-                new_other_conflicts.append(course_id)  
+                new_other_conflicts.append(course_id)
+
 
 def modify_course(
     cfg: Dict[str, Any],

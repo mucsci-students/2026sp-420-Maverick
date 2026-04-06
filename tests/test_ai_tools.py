@@ -39,7 +39,7 @@ from app.web.services.ai_tools import (
     remove_course_tool,
     add_conflict_tool,
     remove_conflict_tool,
-    modify_conflict_tool
+    modify_conflict_tool,
 )
 
 
@@ -72,7 +72,6 @@ def test_get_tool_definitions_contains_expected_tools():
     assert "add_conflict" in names
     assert "remove_conflict" in names
     assert "modify_conflict" in names
-
 
 
 def test_add_course_tool_definition_requires_expected_fields():
@@ -334,6 +333,7 @@ def test_execute_tool_catches_tool_exception(monkeypatch):
     """
     Ensures execute_tool safely catches tool-layer exceptions.
     """
+
     def boom(args):
         raise RuntimeError("tool exploded")
 
@@ -361,9 +361,7 @@ def test_add_course_tool_calls_service_wrapper(monkeypatch):
         fake_add_course_service,
     )
 
-    result = add_course_tool(
-        {"course_id": "CS102", "credits": 3, "room": "Roddy 140"}
-    )
+    result = add_course_tool({"course_id": "CS102", "credits": 3, "room": "Roddy 140"})
 
     assert captured == {
         "course_id": "CS102",
@@ -401,7 +399,7 @@ def test_remove_course_lab_tool_calls_service_wrapper(monkeypatch):
     assert result["success"] is True
     assert result["changes_applied"] is True
     assert "Removed lab from course CS199" in result["message"]
-    
+
 
 def test_rename_course_tool_calls_service_wrapper(monkeypatch):
     """
@@ -418,9 +416,7 @@ def test_rename_course_tool_calls_service_wrapper(monkeypatch):
         fake_modify_course_service,
     )
 
-    result = rename_course_tool(
-        {"course_id": "CS163", "new_course_id": "CS370"}
-    )
+    result = rename_course_tool({"course_id": "CS163", "new_course_id": "CS370"})
 
     assert captured == {
         "course_id": "CS163",
@@ -445,9 +441,7 @@ def test_modify_course_credits_tool_calls_service_wrapper(monkeypatch):
         fake_modify_course_service,
     )
 
-    result = modify_course_credits_tool(
-        {"course_id": "CS102", "credits": 4}
-    )
+    result = modify_course_credits_tool({"course_id": "CS102", "credits": 4})
 
     assert captured == {
         "course_id": "CS102",
@@ -472,9 +466,7 @@ def test_modify_course_room_tool_calls_service_wrapper(monkeypatch):
         fake_modify_course_service,
     )
 
-    result = modify_course_room_tool(
-        {"course_id": "CS102", "room": "Roddy 147"}
-    )
+    result = modify_course_room_tool({"course_id": "CS102", "room": "Roddy 147"})
 
     assert captured == {
         "course_id": "CS102",
@@ -499,9 +491,7 @@ def test_modify_course_lab_tool_calls_service_wrapper(monkeypatch):
         fake_modify_course_service,
     )
 
-    result = modify_course_lab_tool(
-        {"course_id": "CS102", "lab": "Linux"}
-    )
+    result = modify_course_lab_tool({"course_id": "CS102", "lab": "Linux"})
 
     assert captured == {
         "course_id": "CS102",
@@ -589,6 +579,7 @@ def test_remove_room_tool_calls_service_wrapper(monkeypatch):
     assert result["changes_applied"] is True
     assert "Removed room Roddy 147" in result["message"]
 
+
 def test_room_tool_add(monkeypatch):
     """
     Ensures add_room_tool delegates to add_room_service.
@@ -634,6 +625,7 @@ def test_room_tool_modify(monkeypatch):
     assert result["changes_applied"] is True
     assert "Renamed room Roddy 147 to Roddy 001" in result["message"]
 
+
 def test_lab_tool_remove(monkeypatch):
     """
     Ensures remove_lab_tool delegates to remove_lab_service.
@@ -677,6 +669,7 @@ def test_lab_tool_add(monkeypatch):
     assert result["changes_applied"] is True
     assert "Added lab Window" in result["message"]
 
+
 def test_lab_tool_modify(monkeypatch):
     """
     Ensures modify_lab_tool delegates to modify_lab_service.
@@ -700,6 +693,7 @@ def test_lab_tool_modify(monkeypatch):
     assert result["changes_applied"] is True
     assert "Renamed lab Linux to Glerp" in result["message"]
 
+
 def test_course_tool_remove(monkeypatch):
     """
     Ensures remove_course_tool delegates to remove_course_service.
@@ -721,6 +715,7 @@ def test_course_tool_remove(monkeypatch):
     assert result["changes_applied"] is True
     assert "Removed course CS102" in result["message"]
 
+
 def test_conflict_tool_add(monkeypatch):
     """
     Ensures add_conflict_tool delegates to add_conflict_service.
@@ -735,9 +730,7 @@ def test_conflict_tool_add(monkeypatch):
         fake_add_conflict_service,
     )
 
-    result = add_conflict_tool(
-        {"course_id": "CS102", "conflict_course_id": "CS771"}
-    )
+    result = add_conflict_tool({"course_id": "CS102", "conflict_course_id": "CS771"})
 
     assert captured["course_id"] == "CS102"
     assert captured["conflict_course_id"] == "CS771"
@@ -761,9 +754,7 @@ def test_conflict_too_remove(monkeypatch):
         fake_remove_conflict_service,
     )
 
-    result = remove_conflict_tool(
-        {"course_id": "CS102", "conflict_course_id": "CS888"}
-    )
+    result = remove_conflict_tool({"course_id": "CS102", "conflict_course_id": "CS888"})
 
     assert captured["course_id"] == "CS102"
     assert captured["conflict_course_id"] == "CS888"
@@ -771,6 +762,7 @@ def test_conflict_too_remove(monkeypatch):
     assert result["success"] is True
     assert result["changes_applied"] is True
     assert "Removed conflict between CS102 and CS888" in result["message"]
+
 
 def test_modify_conflict_tool(monkeypatch):
     """
@@ -802,6 +794,7 @@ def test_modify_conflict_tool(monkeypatch):
     assert result["changes_applied"] is True
     assert "Modified conflict for CS102" in result["message"]
 
+
 def test_faculty_tool_add(monkeypatch):
     """
     Ensures add_faculty_tool delegates to add_faculty_service.
@@ -816,15 +809,14 @@ def test_faculty_tool_add(monkeypatch):
         fake_add_faculty_service,
     )
 
-    result = add_faculty_tool(
-        {"name": "MR BIGG", "appointment_type": "Full-time"}
-    )
+    result = add_faculty_tool({"name": "MR BIGG", "appointment_type": "Full-time"})
 
     assert captured["name"] == "MR BIGG"
     assert captured["appointment_type"] == "Full-time"
     assert result["success"] is True
     assert result["changes_applied"] is True
     assert "Added faculty MR BIGG" in result["message"]
+
 
 def test_faculty_tool_remove(monkeypatch):
     """
@@ -862,9 +854,7 @@ def test_faculty_tool_modify(monkeypatch):
         fake_modify_faculty_service,
     )
 
-    result = modify_faculty_tool(
-        {"name": "France", "appointment_type": "Full-time"}
-    )
+    result = modify_faculty_tool({"name": "France", "appointment_type": "Full-time"})
 
     assert captured["name"] == "France"
     assert captured["appointment_type"] == "Full-time"

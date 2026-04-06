@@ -169,11 +169,11 @@
 #     if args.command == "faculty" and args.fac_cmd is None:
 #         parser.parse_args(["faculty", "-h"])
 #         return
-    
+
 #     if args.command == "room" and args.room_cmd is None:
 #         parser.parse_args(["room", "-h"])
-#         return 
-    
+#         return
+
 #     if args.command == "lab" and args.lab_cmd is None:
 #         parser.parse_args(["lab", "-h"])
 #         return
@@ -224,7 +224,7 @@
 #         save_config(args.path, cfg)
 #         print(f"Removed faculty {args.name}")
 #         return
-    
+
 #     # Faculty Modify
 #     if args.command == "faculty" and args.fac_cmd == "modify":
 #         cfg = load_config(args.path)
@@ -295,9 +295,9 @@
 #     # Course add
 #     if args.command == "course" and args.course_cmd == "add":
 #         cfg = load_config(args.path)
-#         add_course(cfg, 
-#                    args.id, 
-#                    args.credits, 
+#         add_course(cfg,
+#                    args.id,
+#                    args.credits,
 #                    args.room,
 #                    lab = args.lab,
 #                    faculty = args.faculty
@@ -314,23 +314,23 @@
 #         print(f"Removed course {args.id}")
 #         return
 
-#     # Course modify 
+#     # Course modify
 #     if args.command == "course" and args.course_cmd == "modify":
 #         cfg = load_config(args.path)
 #         modify_course (
-#             cfg, 
-#             args.id, 
-#             new_course_id = args.new_id, 
-#             credits = args.credits, 
-#             room = args.room, 
-#             lab = args.lab, 
-#             faculty = args.faculty, 
-#             conflicts = args.conflicts, 
+#             cfg,
+#             args.id,
+#             new_course_id = args.new_id,
+#             credits = args.credits,
+#             room = args.room,
+#             lab = args.lab,
+#             faculty = args.faculty,
+#             conflicts = args.conflicts,
 #         )
 #         save_config(args.path, cfg)
 #         print(f"Modified course {args.id}")
 #         return
-    
+
 #     # Course conflict add
 #     if args.command == "course" and args.course_cmd == "conflict-add":
 #         cfg = load_config(args.path)

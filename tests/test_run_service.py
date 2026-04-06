@@ -117,9 +117,12 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
             "days": ["MON", "TUE", "WED", "THU", "FRI"],
             "time_slots": {
                 "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                "TUE": [], "WED": [], "THU": [], "FRI": []
-            }
-        }
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+        },
     }
 
     fake_generated_rows = [
@@ -250,7 +253,9 @@ def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeyp
         is_running.pop(session.sid, None)
 
 
-def test_generate_schedules_into_session_uses_config_flags_when_none_passed(monkeypatch):
+def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
+    monkeypatch,
+):
     """
     Ensures config-defined optimizer flags are used when UI does not override them.
     """

@@ -138,7 +138,7 @@ def test_viewer_route_updates_schedules_when_flagged_from_config(monkeypatch):
         calls["updated"] = True
 
     def fake_set_schedules_updated(value):
-        calls["reset_flag"] = (value is False)
+        calls["reset_flag"] = value is False
 
     monkeypatch.setattr(
         "app.web.routes.viewer_routes.update_schedules",
@@ -363,7 +363,7 @@ def test_import_file_success(monkeypatch):
     client = app.test_client()
     response = client.post(
         "/viewer/import_file",
-        data={"schedule_file": (BytesIO(b'[]'), "sched.json")},
+        data={"schedule_file": (BytesIO(b"[]"), "sched.json")},
         content_type="multipart/form-data",
     )
 

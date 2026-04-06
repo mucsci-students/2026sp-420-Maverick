@@ -27,6 +27,8 @@ Returns    :
             A list of labs.
             If it is missing from the config file, returns an empty list.
 """
+
+
 def get_lab_list(cfg: Dict[str, Any]) -> List[str]:
     return cfg.setdefault("config", {}).setdefault("labs", [])
 
@@ -40,6 +42,8 @@ Returns    :
            If the lab is found, returns the index.
            If the lab was not found, -1.
 """
+
+
 def find_lab_index(lab_list: List[str], lab_name: str) -> int:
     name_lower = lab_name.lower()
 
@@ -50,6 +54,7 @@ def find_lab_index(lab_list: List[str], lab_name: str) -> int:
 
     return -1
 
+
 """
 Description: remove_lab_helper removes the given lab from faculty and courses
 Parameters :
@@ -58,37 +63,35 @@ Parameters :
 Returns    :
            Nothing.
 """
+
+
 def remove_lab_helper(cfg: Dict[str, Any], lab: str) -> None:
 
-    config = cfg.get('config', {})
+    config = cfg.get("config", {})
 
-    course_list = config.get('courses',[])
+    course_list = config.get("courses", [])
 
-    faculty_list =  config.get('faculty', [])
+    faculty_list = config.get("faculty", [])
 
     lab_lower = lab.lower()
 
     # Removes any instance(s) of lab in courses -> 'lab' if it exists.
     for course in course_list:
-
-        labs = course.get('lab', [])
+        labs = course.get("lab", [])
 
         for l in range(len(labs)):
             if labs[l].lower() == lab_lower:
                 labs.pop(l)
                 break
 
-
     # Removes any instance(s) of lab in faculty -> 'lab_preferences' if it exists.
     for faculty in faculty_list:
+        lab_prefs = faculty.get("lab_preferences", {})
 
-        lab_prefs = faculty.get('lab_preferences', {})
-        
         for l in list(lab_prefs):
             if l.lower() == lab_lower:
                 lab_prefs.pop(l, None)
                 break
-
 
 
 # -----------------------------
@@ -103,18 +106,21 @@ Returns    :
            Nothing.
            If a lab already exists in lab_list, returns ValueError.
 """
+
+
 def add_lab(cfg: Dict[str, Any], lab: str) -> None:
-    
+
     lab_list = get_lab_list(cfg)
 
     index = find_lab_index(lab_list, lab)
 
     match index:
         case -1:
-           lab_list.append(lab)
+            lab_list.append(lab)
 
         case _:
             raise ValueError(f"Lab '{lab}' already exists.")
+
 
 """
 Description: remove_lab removes a given lab from the config file.
@@ -126,26 +132,24 @@ Returns    :
            If lab does not exist in lab_list, returns ValueError.
              
 """
+
+
 def remove_lab(cfg: Dict[str, Any], lab: str) -> None:
 
     lab_list = get_lab_list(cfg)
-    
+
     index = find_lab_index(lab_list, lab)
 
     match index:
-        
         case -1:
             raise ValueError(f"Lab '{lab}' does not exist.")
-        
+
         case _:
             lab_list.pop(index)
             remove_lab_helper(cfg, lab)
 
-def modify_lab(
-    cfg: Dict[str, Any], 
-    lab: str, 
-    new_name: str
-) -> None:
+
+def modify_lab(cfg: Dict[str, Any], lab: str, new_name: str) -> None:
 
     lab_list = get_lab_list(cfg)
 

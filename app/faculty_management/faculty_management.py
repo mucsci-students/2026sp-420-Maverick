@@ -37,8 +37,8 @@ def faculty_defaults(appointment_type: str) -> Tuple[int, int, int]:
 
     # Full-time defaults
     if t in {"full_time", "full-time", "fulltime"}:
-        return (12, 6, 2) 
-    
+        return (12, 6, 2)
+
     # Adjunct defaults
     if t == "adjunct":
         return (4, 0, 1)
@@ -91,7 +91,7 @@ def build_times(day: Optional[str], time_range: Optional[str]) -> Dict[str, List
     # Partial override is invalid because it’s ambiguous
     if day is None or time_range is None:
         raise ValueError("If specifying day, you must also specify time range")
-    
+
     # Normalize day and validate it
     day = day.upper()
     if day not in DAYS:
@@ -122,7 +122,7 @@ def parse_prefs(pref_args: Optional[List[str]]) -> List[Dict[str, Any]]:
           {"course_id": "CS101", "weight": 8},
           {"course_id": "CS201", "weight": 5}
         ]
-    
+
     Notes:
     - Preferences do not require the course to exist yet.
     - Weight is stored as an integer.
@@ -143,10 +143,9 @@ def parse_prefs(pref_args: Optional[List[str]]) -> List[Dict[str, Any]]:
         course_id, weight_str = raw.split(":", 1)
 
         # Store standardized keys expected by config design
-        prefs.append({
-            "course_id": course_id.strip(),
-            "weight": int(weight_str.strip())
-        })
+        prefs.append(
+            {"course_id": course_id.strip(), "weight": int(weight_str.strip())}
+        )
 
     return prefs
 
@@ -179,6 +178,7 @@ def find_faculty_index(faculty_list: List[Dict[str, Any]], name: str) -> int:
 
     return -1
 
+
 # -----------------------------
 # Course cleanup helper(s)
 # -----------------------------
@@ -191,20 +191,22 @@ Parameters:
 Returns:
     Nothing.
 """
+
+
 def remove_faculty_helper(cfg: Dict[str, Any], name: str) -> None:
-    
-    config = cfg.get('config', {})
+
+    config = cfg.get("config", {})
 
     # Get courses list (default to empty list if missing)
-    course_list = config.get('courses',[])
+    course_list = config.get("courses", [])
 
     # Normalizes the faculty name for case-insensitive comparison
-    faculty_lower = name.lower()    
-    
+    faculty_lower = name.lower()
+
     # For each course, remove the deleted faculty from its faculty list
     for course in course_list:
         # IMPORTANT: this should default to [] not None, otherwise len(faculty) can crash
-        faculty = course.get('faculty', [])
+        faculty = course.get("faculty", [])
 
         # Iterate by index and remove the first match
         for r in range(len(faculty)):
@@ -242,7 +244,7 @@ def add_faculty(
 
     # Determine limits based on faculty type
     max_c, min_c, unique_limit = faculty_defaults(appointment_type)
-    
+
     # Build times dictionary (defaults or day override)
     times = build_times(day, time_range)
 
@@ -276,44 +278,43 @@ Returns    :
            Nothing
            If name does not exist in config file, returns ValueError.
 """
+
+
 def remove_faculty(cfg: Dict[str, Any], name: str) -> None:
-    
+
     faculty_list = get_faculty_list(cfg)
 
     index = find_faculty_index(faculty_list, name)
 
-
     match index:
-
-
         case -1:
             raise ValueError(f"Faculty {name} does not exist.")
-        
+
         case _:
             faculty_list.pop(index)
             remove_faculty_helper(cfg, name)
 
 
 def modify_faculty(
-        cfg: Dict[str, Any],
-        name: str, 
-        appointment_type: Optional[str] = None,
-        day: Optional[str] = None,             
-        time_range: Optional[str] = None, 
-        prefs: Optional[List[Dict[str, Any]]] = None, 
-        maximum_credits: Optional[int] = None, 
-        minimum_credits: Optional[int] = None,
-        unique_course_limit: Optional[int] = None,
-) -> None: 
+    cfg: Dict[str, Any],
+    name: str,
+    appointment_type: Optional[str] = None,
+    day: Optional[str] = None,
+    time_range: Optional[str] = None,
+    prefs: Optional[List[Dict[str, Any]]] = None,
+    maximum_credits: Optional[int] = None,
+    minimum_credits: Optional[int] = None,
+    unique_course_limit: Optional[int] = None,
+) -> None:
     # Modify an existing faculty member
     #
     # Only fields explicitly provided will be updated.
     # All others will remain unchanged.
     #
-    # Raises: 
+    # Raises:
     #   ValueError if faculty does not exist
     faculty_list = get_faculty_list(cfg)
-    index = find_faculty_index (faculty_list, name)
+    index = find_faculty_index(faculty_list, name)
 
     if index == -1:
         raise ValueError(f"Faculty '{name}' does not exist")
@@ -322,7 +323,9 @@ def modify_faculty(
 
     # ========== Update Appointment Type ==========
     if appointment_type:
-        maximum_credits, minimum_credits, unique_course_limit = faculty_defaults(appointment_type)
+        maximum_credits, minimum_credits, unique_course_limit = faculty_defaults(
+            appointment_type
+        )
         faculty["maximum_credits"] = maximum_credits
         faculty["minimum_credits"] = minimum_credits
         faculty["unique_course_limit"] = unique_course_limit

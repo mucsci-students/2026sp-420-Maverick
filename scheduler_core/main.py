@@ -40,9 +40,8 @@ FIELDNAMES = [
 ]
 
 # Matches: "MON 10:40-11:30"
-_MEETING_RE = re.compile(
-    r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})(\^?)$"
-)
+_MEETING_RE = re.compile(r"^(MON|TUE|WED|THU|FRI)\s+(\d{2}:\d{2})-(\d{2}:\d{2})(\^?)$")
+
 
 def _csv_split(line: str) -> List[str]:
     """
@@ -109,6 +108,7 @@ def _room_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
                 return rooms
     return ""
 
+
 def _lab_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
     """
     Returns first lab assigned to a course from config.
@@ -127,9 +127,11 @@ def _lab_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
 
     return ""
 
+
 def _base_course_id(course_id: str) -> str:
     # Solver gives CS101.01; config stores CS101
     return course_id.split(".")[0] if course_id else ""
+
 
 def _credits_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
     base = _base_course_id(course_id)
@@ -172,8 +174,9 @@ def _duration_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
     return ""
 
 
-
-def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _parse_course_line_to_flat_rows(
+    schedule_id: int, course_obj: Any, cfg: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     line = _safe_as_csv(course_obj)
 
     try:
@@ -213,37 +216,46 @@ def _parse_course_line_to_flat_rows(schedule_id: int, course_obj: Any, cfg: Dict
 
     rows: List[Dict[str, Any]] = []
 
-    for idx, (day, start, end, duration, is_lab_meeting) in enumerate(meetings, start=1):
-        rows.append({
-            "schedule_id": schedule_id,
-            "course_id": course_id,
-            "day": day,
-            "start": start,
-            "room": room,
-            "faculty": faculty,
-            "lab": course_lab if is_lab_meeting else "",
-            "duration": duration,
-            "credits": credits,
-            "meeting_index": idx,
-        })
+    for idx, (day, start, end, duration, is_lab_meeting) in enumerate(
+        meetings, start=1
+    ):
+        rows.append(
+            {
+                "schedule_id": schedule_id,
+                "course_id": course_id,
+                "day": day,
+                "start": start,
+                "room": room,
+                "faculty": faculty,
+                "lab": course_lab if is_lab_meeting else "",
+                "duration": duration,
+                "credits": credits,
+                "meeting_index": idx,
+            }
+        )
 
     if not rows:
-        rows.append({
-            "schedule_id": schedule_id,
-            "course_id": course_id,
-            "day": "",
-            "start": "",
-            "room": room,
-            "faculty": faculty,
-            "lab": "",
-            "duration": "",
-            "credits": credits,
-            "meeting_index": 1,
-        })
+        rows.append(
+            {
+                "schedule_id": schedule_id,
+                "course_id": course_id,
+                "day": "",
+                "start": "",
+                "room": room,
+                "faculty": faculty,
+                "lab": "",
+                "duration": "",
+                "credits": credits,
+                "meeting_index": 1,
+            }
+        )
 
     return rows
 
-def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> Iterator[List[Dict[str, Any]]]:
+
+def generate_schedules(
+    cfg: Dict[str, Any], limit: int, optimize: bool
+) -> Iterator[List[Dict[str, Any]]]:
     """
     Runs the scheduler and returns flat meeting-level rows.
 
@@ -263,11 +275,17 @@ def generate_schedules(cfg: Dict[str, Any], limit: int, optimize: bool) -> Itera
 
         schedule_rows: List[Dict[str, Any]] = []
         for course in course_models:
-            schedule_rows.extend(_parse_course_line_to_flat_rows(schedule_id, course, cfg))
+            schedule_rows.extend(
+                _parse_course_line_to_flat_rows(schedule_id, course, cfg)
+            )
 
-        print(f"\n================ PROCESSED OUTPUT (Schedule {schedule_id}) ================")
+        print(
+            f"\n================ PROCESSED OUTPUT (Schedule {schedule_id}) ================"
+        )
         for row in schedule_rows:
-            print(f"{row['course_id']} | {row['day']} {row['start']} | room={row['room']}")
+            print(
+                f"{row['course_id']} | {row['day']} {row['start']} | room={row['room']}"
+            )
 
         yield schedule_rows
 

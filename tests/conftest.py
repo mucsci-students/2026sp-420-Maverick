@@ -28,15 +28,16 @@ Architectural Context:
 # --------------------------------------------------
 
 from pathlib import Path  # Filesystem path resolution (cross-platform safe)
-import json               # JSON file parsing
-import copy               # Deep copy to isolate test state
-import pytest             # Pytest framework for fixtures
+import json  # JSON file parsing
+import copy  # Deep copy to isolate test state
+import pytest  # Pytest framework for fixtures
 from flask import Flask
 
 
 # ==================================================
 # Fixture: Repository Root
 # ==================================================
+
 
 @pytest.fixture
 def repo_root() -> Path:
@@ -61,6 +62,7 @@ def repo_root() -> Path:
 # ==================================================
 # Fixture: Test Configuration Loader
 # ==================================================
+
 
 @pytest.fixture
 def config_test(repo_root):
@@ -91,6 +93,7 @@ def config_test(repo_root):
 # Fixture: Isolated Example Config
 # ==================================================
 
+
 @pytest.fixture
 def example(config_test):
     """
@@ -114,6 +117,7 @@ def example(config_test):
 
     return copy.deepcopy(config_test)
 
+
 # ==================================================
 # Fixture: Create flask application
 # ==================================================
@@ -123,13 +127,15 @@ def app():
     creates and configures a flask application for testing
     """
     app = Flask(__name__)
-    app.config['TESTING'] = True
-    app.config['SECRET_KEY'] = 'test-secret-key'
+    app.config["TESTING"] = True
+    app.config["SECRET_KEY"] = "test-secret-key"
     return app
+
 
 # ==================================================
 # Fixture: Create flask application context
 # ==================================================
+
 
 @pytest.fixture
 def app_context(app):
