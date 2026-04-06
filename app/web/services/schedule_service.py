@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Ian Swartz, Tanner Ness
-# Date: 2026-03-07
+# Date: 2026-03-26
 """
 Schedule Viewing Service
 
@@ -19,7 +19,7 @@ High-Level Responsibilities:
     1. Maintain navigation state (current schedule index).
     2. Provide access to session-backed schedule data.
     3. Transform assignment rows into grouped table structures.
-    4. Support JSON import/export for portability.    
+    4. Support JSON import/export for portability.
 
 Design Notes:
     - Schedules are stored in session under SESSION_SCHEDULES_KEY as a list.
@@ -36,8 +36,8 @@ Design Notes:
 # Imports
 # ------------------------------
 
-import json                    # Serialize/deserialize schedules to/from JSON
-from flask import session      # Per-user session storage (viewer state + schedules)
+import json  # Serialize/deserialize schedules to/from JSON
+from flask import session  # Per-user session storage (viewer state + schedules)
 from typing import List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, ValidationError
 
@@ -59,6 +59,7 @@ SESSION_USER_SELECTED_KEY = "viewer_user_selected"
 # ------------------------------
 # Session Access Helpers
 # ------------------------------
+
 
 def _get_schedules():
     """
@@ -82,6 +83,7 @@ def _get_index():
     # The `or 0` guards against None/""
     return int(session.get(SESSION_SELECTED_INDEX_KEY, 0) or 0)
 
+
 def _get_user_selected() -> bool:
     """Returns True if user has made an explicit dropdown selection."""
     return bool(session.get(SESSION_USER_SELECTED_KEY, False))
@@ -90,6 +92,7 @@ def _get_user_selected() -> bool:
 # ------------------------------
 # Navigation Operations
 # ------------------------------
+
 
 def next_schedule():
     """
@@ -125,7 +128,7 @@ def prev_schedule():
         - Updates SESSION_SELECTED_INDEX_KEY in session.
     """
     schedules = _get_schedules()
-    
+
     if not schedules:
         # Nothing to navigate - safely exit
         return
@@ -138,6 +141,7 @@ def prev_schedule():
 # ------------------------------
 # Direct Selection Operation
 # ------------------------------
+
 
 def select_schedule(index: int) -> None:
     """
@@ -173,6 +177,7 @@ def select_schedule(index: int) -> None:
 # Import / Export Operations (Just initial/temp/placeholder code for now )
 # -------------------------------------------------------------------------
 
+
 def export_schedules_to_file(path: str):
     """
     Exports the schedules currently stored in session to a JSON file.
@@ -191,13 +196,13 @@ def export_schedules_to_file(path: str):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(schedules, f, indent=2)
 
+
 # Old import_schedules_from_file commented out
 # def import_schedules_from_file(path: str):
 # Disables the 'Export Schedules' button if there are no schedules to export.
 def is_export_enabled() -> bool:
     count = len(_get_schedules())
     return count != 0
-
 
 
 def import_schedules_from_file(path: str):
@@ -239,12 +244,14 @@ def import_schedules_from_file(path: str):
     session[SESSION_SELECTED_INDEX_KEY] = 0
     """
 
+
 # New import_schedules_from_file:
 # app/web/services/schedule_service.py
 
+
 def import_schedules_from_file(source):
     """
-    Imports schedules from a JSON source and APPENDS them to the existing 
+    Imports schedules from a JSON source and APPENDS them to the existing
     session list. Returns a tuple of (number_added, new_total_count).
     """
     try:
@@ -254,17 +261,16 @@ def import_schedules_from_file(source):
                 new_data = json.load(f)
         else:
             # Handle files from System Upload with potential Notepad BOM
-            raw_data = source.read().decode('utf-8-sig')
+            raw_data = source.read().decode("utf-8-sig")
             new_data = json.loads(raw_data)
 
         # 2. Structural Validation: Ensure we have a list
         if not isinstance(new_data, list):
             # If the user uploaded a single schedule (dict), wrap it in a list
             new_data = [new_data]
-        
+
         # Checks if the schedules are correctly formatted
         is_valid_file(new_data)
-
 
         added_count = len(new_data)
 
@@ -277,10 +283,10 @@ def import_schedules_from_file(source):
         # 5. Save and Update Navigation
         session[SESSION_SCHEDULES_KEY] = current_list
         new_total = len(current_list)
-        
+
         # Set the viewer index to the last schedule added
         session[SESSION_SELECTED_INDEX_KEY] = new_total - 1
-        
+
         # Mark session as modified so Flask saves the cookie
         session.modified = True
 
@@ -292,7 +298,8 @@ def import_schedules_from_file(source):
         raise e
 
     # show placeholder initially
-    session[SESSION_USER_SELECTED_KEY] = False 
+    session[SESSION_USER_SELECTED_KEY] = False
+
 
 # function for exporting a schedule(s) to a file
 def get_schedules_for_export():
@@ -301,9 +308,11 @@ def get_schedules_for_export():
     """
     return _get_schedules()
 
+
 # function for exporting the schedule(s) to a csv file
 import csv
 import io
+
 
 def export_schedules_to_csv(indices: List[int]) -> str:
     """
@@ -312,23 +321,25 @@ def export_schedules_to_csv(indices: List[int]) -> str:
     schedules = _get_schedules()
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Header row
     writer.writerow(["Schedule #", "Course ID", "Faculty", "Room", "Lab", "Time"])
-    
+
     for idx in indices:
         if 0 <= idx < len(schedules):
             assignments = schedules[idx].get("assignments", [])
             for a in assignments:
-                writer.writerow([
-                    idx + 1,
-                    a.get("course_id", ""),
-                    a.get("faculty", ""),
-                    a.get("room", ""),
-                    a.get("lab", ""),
-                    a.get("time", "")
-                ])
-    
+                writer.writerow(
+                    [
+                        idx + 1,
+                        a.get("course_id", ""),
+                        a.get("faculty", ""),
+                        a.get("room", ""),
+                        a.get("lab", ""),
+                        a.get("time", ""),
+                    ]
+                )
+
     return output.getvalue()
 
 
@@ -336,12 +347,13 @@ def export_schedules_to_csv(indices: List[int]) -> str:
 def is_valid_file(data: List) -> None:
     Scheduleschema = Schema()
     try:
-        # checks if data's schema matches 
+        # checks if data's schema matches
         for d in data:
             Scheduleschema.model_validate(d)
-        
+
     except ValidationError as e:
-        raise ValueError(f"Invalid file: {json.dumps(e.errors(), indent = 2)}")
+        raise ValueError(f"Invalid file: {json.dumps(e.errors(), indent=2)}")
+
 
 # returns the schema of a configured json file
 def Schema():
@@ -358,61 +370,79 @@ def Schema():
         schedule_id: int
         start: str
         time: str
-    
+
     class Meta(BaseModel):
         generated_at: str
-        optimizer_flags:  Optional[List[str]] = None
+        optimizer_flags: Optional[List[str]] = None
         row_count: int
         schedule_id: int
 
     class ScheduleSchema(BaseModel):
         assignments: List[Assignments]
         meta: Meta
-        
+
     return ScheduleSchema
 
 
-# Helper function that makes it so that only schedules without time conflicts 
+# Helper function that makes it so that only schedules without time conflicts
 # can be made into visual schedules
 def _check_for_conflicts(assignments: List[Dict]) -> bool:
     """Checks if any assignments in the list overlap in time and tags them."""
     has_any_conflict = False
-    
+
     # Initialize all to False first
     for a in assignments:
-        a['is_conflict'] = False
+        a["is_conflict"] = False
 
     for i, a in enumerate(assignments):
         try:
-            h, m = map(int, a['start'].split(':'))
+            h, m = map(int, a["start"].split(":"))
             a_start = h * 60 + m
             # Use 'duration' from the assignment to find the end time
-            a_end = a_start + int(a['duration'])
+            a_end = a_start + int(a["duration"])
         except (ValueError, KeyError, TypeError):
             continue
 
         for j, other in enumerate(assignments):
-            if i == j: continue
-            if a['day'].strip().upper() != other['day'].strip().upper():
+            if i == j:
                 continue
-            
+            if a["day"].strip().upper() != other["day"].strip().upper():
+                continue
+
             try:
-                oh, om = map(int, other['start'].split(':'))
+                oh, om = map(int, other["start"].split(":"))
                 o_start = oh * 60 + om
-                o_end = o_start + int(other['duration'])
-                
+                o_end = o_start + int(other["duration"])
+
                 # Standard overlap formula: (StartA < EndB) and (EndA > StartB)
                 if a_start < o_end and a_end > o_start:
-                    a['is_conflict'] = True
+                    a["is_conflict"] = True
                     has_any_conflict = True
             except (ValueError, KeyError, TypeError):
                 continue
-                
+
     return has_any_conflict
+
 
 # ------------------------------
 # Viewer Grouping Helpers
 # ------------------------------
+
+"""
+GROUPING LOGIC (USED BY VIEWER FILTER TABLES)
+
+This function determines how assignments are grouped for:
+- Master tables (by room, lab, faculty)
+- Filtered tables (dropdown-based filtering in viewer.html)
+
+IMPORTANT:
+- Empty values are ignored
+- Lab grouping excludes "None" values
+- Any change here directly impacts viewer filtering behavior
+
+If filtering UI behaves incorrectly, start debugging here.
+"""
+
 
 def _group_by(assignments, key):
     """
@@ -434,18 +464,51 @@ def _group_by(assignments, key):
             - Faculty
 
     Notes:
-        - Missing keys are grouped under 'Unknown' to keep the UI stable & to prevent template errors.
+        - lab grouping ignores empyt/none Values
     """
     grouped = {}
     for a in assignments:
-        k = a.get(key, "Unknown")
-        grouped.setdefault(k, []).append(a)
+        value = a.get(key, "")
+
+        if value is None:
+            value = ""
+
+        value = str(value).strip()
+
+        if not value:
+            continue
+
+        if key == "lab" and value.lower() == "none":
+            continue
+
+        grouped.setdefault(value, []).append(a)
+
     return grouped
 
 
 # ------------------------------
 # Core Viewer Data Function
 # ------------------------------
+
+"""
+VIEW DATA AGGREGATION FOR SCHEDULE VIEWER
+
+This function prepares all data used by:
+- viewer.html (tables + dropdowns)
+- app.js (client-side filtering)
+
+Includes:
+- grouped data (by_room, by_lab, by_faculty)
+- dropdown options (via routes)
+- conflict flags
+- navigation state
+
+If UI tables or filters are missing/broken, check:
+1. grouping output here
+2. route injection
+3. template rendering
+"""
+
 
 def get_view_data():
     """
@@ -516,17 +579,15 @@ def get_view_data():
         "index": index,
         "current_meta": (current or {}).get("meta", {}),
         "assignments": assignments,
-
         # Tabular groupings for the Viewer: Rooms/Labs and Faculty
         "by_room": _group_by(assignments, "room"),
         "by_lab": _group_by(assignments, "lab"),
         "by_faculty": _group_by(assignments, "faculty"),
-
         # Navigation state for disabling Prev/Next in the template
         "has_schedules": has_schedules,
         "is_first": is_first,
         "is_last": is_last,
-
+        "user_selected": user_selected,
         # Created for the visual view export
-        "has_conflicts": _check_for_conflicts(assignments)
+        "has_conflicts": _check_for_conflicts(assignments),
     }

@@ -45,15 +45,20 @@ High-Level Flow:
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask import session  # Session access for checking loaded config defaults
-
 from app.web.services.run_service import (
     generate_schedules_into_session,
     KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
     SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
     SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
 )
-from app.web.services.config_service import SESSION_CONFIG_KEY  # Where the loaded config is stored
-
+from app.web.services.config_service import (
+    SESSION_CONFIG_KEY,
+)  # Where the loaded config is stored
+from app.web.services.progress_store import (
+    generation_progress,
+    progress_lock,
+    is_running,
+)
 
 # ==================================================
 # Blueprint Setup
@@ -69,6 +74,7 @@ bp = Blueprint("run", __name__, url_prefix="/run")
 # ==================================================
 # Route: Generator Page (GET)
 # ==================================================
+
 
 @bp.get("/")
 def generator():
@@ -99,13 +105,15 @@ def generator():
     # ----------------------------------------
     # These values drive the Generator template defaults.
 
-    config_loaded = bool(cfg)                 # Used to disable/enable Generate UI
+    config_loaded = bool(cfg)  # Used to disable/enable Generate UI
 
     # Fallback defaults (used if config missing limit)
-    default_limit = 5                         
-    selected_flags = [] 
+    default_limit = 5
+    selected_flags = []
 
-    available_flags = KNOWN_OPTIMIZER_FLAGS   # Full supported list for checkbox rendering
+    available_flags = (
+        KNOWN_OPTIMIZER_FLAGS  # Full supported list for checkbox rendering
+    )
 
     if cfg:
         # JSON defaults
@@ -113,8 +121,12 @@ def generator():
         json_selected_flags = cfg.get("optimizer_flags", []) or []
 
         # Apply session overrides if present
-        default_limit = int(session.get(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, json_default_limit))
-        selected_flags = session.get(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, json_selected_flags) or []
+        default_limit = int(
+            session.get(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, json_default_limit)
+        )
+        selected_flags = (
+            session.get(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, json_selected_flags) or []
+        )
 
         # Optional: If config contains a flag not listed in KNOWN_OPTIMIZER_FLAGS,
         # include it to avoid hiding/losing that config state in the UI.
@@ -179,29 +191,36 @@ def generate():
     # 2. Generate Schedules via Service Layer
     # ----------------------------------------
 
+    session_id = session.sid
+
     try:
         # Persist Generator overrides so the UI stays consistent after generating
         session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
         session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
 
         count = generate_schedules_into_session(
-            limit=limit,
-            optimizer_flags=optimizer_flags
+            limit=limit, optimizer_flags=optimizer_flags
         )
 
         flash(f"Generated {count} schedule(s).", "success")
 
-        # Redirect to Viewer upon success
-        return redirect(url_for("viewer.viewer"))
+        # lets the js handle the redirect
+        return ("", 204)
 
     except Exception as e:
-        # Catch-all so UI doesn’t crash on user-facing errors
+        # Catch-all so UI doesn't crash on user-facing errors
+        with progress_lock:
+            generation_progress[session_id] = 0
+            is_running[session_id] = False
+
         flash(f"Generate failed: {e}", "error")
         return redirect(url_for("run.generator"))
+
 
 # ==================================================
 # Route: POST /run/reset
 # ==================================================
+
 
 @bp.post("/reset")
 def reset():
@@ -221,5 +240,26 @@ def reset():
     session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
     session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
 
+    # clears the session progress
+    with progress_lock:
+        generation_progress[session.sid] = 0
+        is_running[session.sid] = False
+
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
+
+
+# ==================================================
+# Route: Generation Progress (GET)
+# ==================================================
+@bp.get("/progress")
+def get_progress():
+    """
+    Returns the current generation progress (from 0 -> 100)
+    """
+    session_id = session.sid
+
+    with progress_lock:
+        progress = generation_progress.get(session_id, 0)
+
+    return {"progress": progress}

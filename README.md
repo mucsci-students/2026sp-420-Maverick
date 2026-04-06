@@ -236,6 +236,43 @@ The Schedule Viewer allows users to:
 
 ---
 
+## Local AI and Flask Configuration
+
+To run the AI Chat Tool locally with your own settings, create a local settings file:
+
+```bash
+cp app/local_settings.example.py app/local_settings.py
+```
+
+Then open `app/local_settings.py` and fill in your own values:
+
+```
+OPENAI_API_KEY = "your-openai-api-key"
+FLASK_SECRET_KEY = "your-flask-secret-key"
+MAVERICK_OPENAI_MODEL = "gpt-5-mini"
+```
+
+### Notes
+- `app/local_settings.py` is ignored by Git and should not be committed
+- Environment variables are still supported as a fallback
+- `gpt-5-mini` is the default model if no model is provided
+
+---
+
+## 🤖 AI Chat Tool (Natural Language Configuration)
+
+The Maverick Scheduler includes an AI-powered assistant that allows users to modify configurations using natural language.
+
+### Example Commands
+- Add course CS102 with 3 credits in Roddy 140  
+- Change the credits of CS199 to 4  
+- Rename course CS163 to CS370  
+- Add faculty Dr. Jones with appointment type full-time  
+
+👉 Full command reference: [AI Command Guide](docs/ai-commands.md)
+
+---
+
 ## Running Tests
 
 The project uses **pytest**.
@@ -271,6 +308,30 @@ uv run pytest
 or 
 
 uv run pytest tests/[filename] -q
+
+---
+
+## Running Tests with Coverage
+
+To run all tests with coverage locally:
+
+```bash
+uv run pytest --cov=app --cov-branch --cov-report=term-missing --cov-report=xml
+```
+
+---
+
+## Configuration Files
+
+Example configurations are included in:
+
+```
+configs/config_dev.json
+configs/config_test.json
+configs/config_base.json
+```
+
+These can be loaded directly through the GUI.
 
 ---
 
@@ -331,6 +392,7 @@ Responsible for:
 ### Service Layer
 
 Located in:
+
 ```
 app/web/services/
 ```
@@ -338,29 +400,105 @@ Services connect Flask routes to the scheduling logic.
 
 ---
 
-## Configuration Files
+## Design Pattern: Command
 
-Example configurations are included in:
+1. Command (Behavioral Pattern)
 
-```
-configs/config_dev.json
-configs/config_test.json
-configs/config_base.json
-```
+Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
 
-These can be loaded directly through the GUI.
+### Problem
+
+The AI chat tool allows users to modify the scheduler configuration using natural language (e.g., “Add course CS102” or “Remove Room A”). This creates the challenge of safely handling many different types of requests without hardcoding logic for each case or allowing unrestricted direct access to the configuration.
+
+### Pattern
+
+The **Command pattern** encapsulates a request as an object, allowing it to be parameterized and executed independently. This aligns with the definition from the course slides: encapsulating a command request as an object.
+
+### Implementation
+
+In our system, each user request is interpreted by the AI and mapped to a specific backend tool function:
+
+- `add_course`
+- `remove_room`
+- `rename_course`
+- `modify_course_credits`
+
+Each of these operations represents a **command**, consisting of:
+
+- a command name (tool name)
+- arguments (parameters for the action)
+- execution logic (handled by backend functions)
+
+The `execute_tool(tool_name, args)` function acts as a dispatcher, routing each request to the correct command implementation.
+
+### How It Solves the Problem
+
+By encapsulating user actions as commands:
+
+- The system can safely control which operations are allowed
+- New commands can be added without modifying existing logic
+- The AI does not directly manipulate the configuration, improving security and maintainability
+
+This approach makes the system more modular, and extensible.
 
 ---
 
-### Service Layer
+## Design Pattern: Observer
 
-Located in:
-
+2. Observer (Behavioral Pattern)
+Located in 
 ```
-app/web/services/
+app/web/templates/visual_schedule.html
 ```
+Details:
+- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
+- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
 
-Services connect Flask routes to the scheduling logic.
+- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
+
+- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
+- A new function is called when the state changes. 
+- If a top category is changed then the sub-filters are reset.
+
+- Observer 1 is used to update the main view sections.
+(All, Faculty, Rooms, Labs)
+- State also controls the visibility of the sub-filtering.
+(e.g.: Show-Faculty, Filter - Hobbs)
+
+- Observer 2 is used to update the calendar container visibility (sub-filtering).
+
+- Observer 3 is used to update the day grid layout.
+
+- Event handlers are used to update the UI button styles, and update the state.
+
+---
+
+### Design Pattern: State
+
+3. State (Behavoiral Pattern)
+
+Located in 
+```
+app/web/routes/run_routes.py
+app/web/static/app.js
+app/web/templates/generator.html
+```
+Details:
+
+- The progress bar's behavior changes based on on how many schedules have currently been generated (app.js)
+
+- Uses lots of conditionals to determine how it behaves (app.js)
+
+- UI behavior tied to internal state (run_routes.py pinging for updates)
+
+states:
+- Initially, the progress bar is at 0% when no running/initially started.
+
+- When running, the progress bar updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+
+- Completed at 100%, redirects the user automatically to the viewer page.
+
+- When it encounters and error, show an error message instead of progressing. Allows for retrying.
 
 ---
 
@@ -403,9 +541,45 @@ Make sure you:
 
 ---
 
-### Visual view is blocked
+## Running Linting, Formatting, and Type Checks
 
-The viewer disables the visual schedule view when time conflicts are detected in the current schedule.
+After installing dependencies with:
+
+```bash
+uv sync --dev
+```
+
+Run the linter:
+```
+uv run ruff check .
+```
+
+Run the formatter:
+```
+uv run ruff format .
+```
+
+Check formatting without changing files:
+```
+uv run ruff format . --check
+```
+
+Run ty:
+```
+uv run ty check app tests
+```
+
+### What to run locally after you make changes
+
+From the repo root:
+
+```bash
+uv sync --dev
+uv run ruff check .
+uv run ruff format .
+uv run ty check app tests
+uv run pytest --cov=app --cov-branch --cov-report=xml
+```
 
 ---
 

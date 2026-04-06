@@ -8,6 +8,11 @@ Purpose:
   The visual schedule file that is created when exporting a schedule(s)
 -->
 
+<!-- 
+BACKUP FOR THE "visual_schedule.html" file.
+Best working version.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -162,13 +167,6 @@ Purpose:
     </div>
     {% endmacro %}
 
-    <div id="view-faculty" class="filter-section">
-        <h2 class="section-title">Faculty Master Schedules</h2>
-        <div class="schedules-grid">
-            {% for faculty, items in data.by_faculty.items() %}{{ render_calendar(faculty, items, faculty) }}{% endfor %}
-        </div>
-    </div>
-
     <div id="view-room" class="filter-section">
         <h2 class="section-title">Room Master Schedules</h2>
         <div class="schedules-grid">
@@ -176,7 +174,14 @@ Purpose:
         </div>
     </div>
 
-    <div id="view-lab" class="filter-section">
+    <div id="view-faculty" class="filter-section">
+        <h2 class="section-title">Faculty Master Schedules</h2>
+        <div class="schedules-grid">
+            {% for faculty, items in data.by_faculty.items() %}{{ render_calendar(faculty, items, faculty) }}{% endfor %}
+        </div>
+    </div>
+
+    <div id="view-lab" class="filter-section" style="display:none;">
         <h2 class="section-title">Lab Resource Schedules</h2>
         <div class="schedules-grid">
             {% set lab_types = [] %}
@@ -190,6 +195,11 @@ Purpose:
     </div>
 
     <script>
+        /**
+         * OBSERVER PATTERN: The Subject (CalendarState)
+         * This object holds the "State" of the application. When a value changes,
+         * it notifies all "subscribed" functions to update themselves.
+         */
         const CalendarState = {
             state: {
                 category: 'all',
@@ -198,13 +208,17 @@ Purpose:
             },
             observers: [],
 
+            // Register a new function to be called when state changes
             subscribe(fn) {
                 this.observers.push(fn);
             },
 
+            // Change a state value and trigger notifications
             set(key, value) {
                 this.state[key] = value;
+                // If we change the top category, we must reset the sub-filter
                 if (key === 'category') this.state.subFilter = 'all';
+                
                 this.notify();
             },
 
@@ -218,9 +232,9 @@ Purpose:
             document.querySelectorAll('.filter-section').forEach(section => {
                 const isAll = state.category === 'all';
                 const isMatch = section.id === 'view-' + state.category;
-                
+                // Show if 'all' (except labs) OR if section matches category
                 if (isAll) {
-                    section.style.display = 'block';
+                    section.style.display = (section.id === 'view-lab') ? 'none' : 'block';
                 } else {
                     section.style.display = isMatch ? 'block' : 'none';
                 }
@@ -231,7 +245,7 @@ Purpose:
             subRow.style.display = (state.category === 'all') ? 'none' : 'flex';
         });
 
-        // --- OBSERVER 2: Update Calendar Container Visibility ---
+        // --- OBSERVER 2: Update Calendar Container Visibility (Sub-filtering) ---
         CalendarState.subscribe((state) => {
             const containers = document.querySelectorAll('.calendar-container');
             containers.forEach(container => {
@@ -244,14 +258,16 @@ Purpose:
         // --- OBSERVER 3: Update Day Grid Layout ---
         CalendarState.subscribe((state) => {
             document.querySelectorAll('.calendar-wrapper').forEach(wrapper => {
-                wrapper.className = 'calendar-wrapper'; 
+                wrapper.className = 'calendar-wrapper'; // Reset
                 if (state.day !== 'all') {
                     wrapper.classList.add('filter-day-' + state.day);
                 }
             });
         });
 
-        // Data Preparation
+        /**
+         * DATA PREPARATION
+         */
         const filterData = {
             faculty: {{ data.by_faculty.keys()|list|tojson }},
             room: {{ data.by_room.keys()|list|tojson }},
@@ -265,8 +281,8 @@ Purpose:
         };
 
         /**
-         * Event Handlers
-         * These functions now only two things:
+         * EVENT HANDLERS
+         * These functions now only do two things: 
          * 1. Update UI button styles.
          * 2. Update the State (The Subject).
          */
@@ -303,6 +319,7 @@ Purpose:
             document.querySelectorAll(`${containerId} .nav-btn`).forEach(b => b.classList.remove('active'));
             activeBtn.classList.add('active');
         }
+
     </script>
 </body>
 </html>

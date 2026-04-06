@@ -86,6 +86,30 @@ function initViewerTables() {
   const filterMenu = document.getElementById("filter_menu");
   const clearBtn = document.getElementById("clear_filters");
 
+
+  // ===============================
+  // Schedule Viewer Filtering Logic
+  // ===============================
+  
+  /**
+   * CLIENT-SIDE FILTERING LOGIC
+   *
+   * Controls visibility of grouped tables based on dropdown selection.
+   *
+   * Depends on:
+   * - viewer.html structure (IDs + data-entity attributes)
+   * - backend grouping keys from schedule_service.py
+   *
+   * Flow:
+   * 1. User selects value from dropdown
+   * 2. Matching group (data-entity) is shown
+   * 3. All others are hidden
+   *
+   * If filtering breaks:
+   * - Check HTML IDs
+   * - Check data-entity values
+   * - Check backend grouping output
+   */
   // Room filter controls
   const roomFilterSelect = document.getElementById("room_filter_select");
   const roomGroups = document.querySelectorAll(".room-filter-group");
@@ -634,4 +658,127 @@ function initConfigExport() {
       showMessage(error.message || "Save failed.", true);
     }
   });
+}
+
+// starts the generation process
+async function startGenerationProgress() {
+
+    const form = document.getElementById("generate")
+    const bar_object = document.getElementById("is-progress-bar-hidden");
+    const progress_bar = document.getElementById("progress-bar");
+
+    // Displays the progress bar
+    bar_object.style.display = "block";
+    // Resets the progress bar value
+    progress_bar.value = 0;
+
+    // resets the progress 
+    await fetch("/run/reset", {method: "POST"});
+
+    // begins checking for updates to send to the progress bar object
+    checkGenerationProgress();
+
+    // starts the generation process
+    const res = await fetch("/run/generate", {
+      method: "POST",
+      body: new FormData(form)
+    });
+
+    // if generation fails
+    if (!res.ok) {
+      console.error("Generation failed");
+    }
+}
+
+// keeps track of the current progress of the progress bar
+let progress_bar_current_progress = 0;
+
+// Continuously checks for updates to the progress bar
+async function checkGenerationProgress() {
+
+    try {
+        // Gets the current progress from the session
+        const res = await fetch("/run/progress");
+        const data = await res.json();
+
+        // console.log("data received:", data)
+
+        // if the generation is still in progress or the progress bar has to catch up
+        if (data.progress < 100 || progress_bar_current_progress < 100) {
+          
+            // Periodically checks for schedule progress updates
+            incrementProgressBar(data.progress)
+
+            // determines how often to check for updates/speed of the progress bar
+            setTimeout(() => checkGenerationProgress(data.progress), 250);
+        } else {
+              incrementProgressBar(100)
+
+              progress_bar_current_progress = 0;
+
+              // Redirects the user to the viewer page after a very short period
+              setTimeout(() => (window.location.href = "/viewer"), 1200);
+        }
+    // Catches any error thay may be thrown
+    } catch (err) {
+        console.error("Generation failed:", err);
+    }
+}
+
+// increments the progress bar by a given % until it reaches the current progress
+function incrementProgressBar(progress) {
+    let distance = progress - progress_bar_current_progress
+    let progress_speed_default = 1;
+  
+
+    // changes the speed of the progress bar based on how far away it is from the current progress
+    if (distance <= 10) {
+      progress_speed_default = 1;
+
+    } else if (distance <= 20) {
+      progress_speed_default = 2;
+
+    } else if (distance <= 30) {
+      progress_speed_default = 3
+    }
+
+
+    if (progress_bar_current_progress < progress) {
+      progress_bar_current_progress += progress_speed_default;
+      updateProgressUI(progress_bar_current_progress)
+    }
+
+}
+
+// updates the progress bar and percent loaded with the given value
+function updateProgressUI(current_progress) {
+  const progress_bar = document.getElementById("progress-bar");
+  const percentage_loaded = document.getElementById("percentage-loaded");
+
+  progress_bar.value = progress_bar_current_progress;
+  percentage_loaded.innerHTML = current_progress + "%";
+
+  progress_bar_flavor_text(current_progress);
+}
+
+// changes the flavor-text to show the appropriate message based on percentage loaded
+function progress_bar_flavor_text(progress) {
+    const flavor_text = document.getElementById("flavor-text"); 
+
+      if (progress == 0){
+          flavor_text.innerHTML = "Please wait";
+
+      } else if (progress == 25) {
+          flavor_text.innerHTML = "About a quarter of the way there"
+
+      } else if (progress == 50) {
+          flavor_text.innerHTML = "Halfway there"
+
+      } else if (progress == 75) {
+          flavor_text.innerHTML = "Nearly there"
+
+      } else if (progress == 100) {
+          flavor_text.innerHTML = "Generation completed. Redirecting to viewer..."
+      }
+
 }

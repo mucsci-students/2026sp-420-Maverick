@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Ian Swartz, Tanner Ness
-Date: 2026-03-08
+Date: 2026-04-04
 
 Schedule Viewer Template
 
@@ -42,10 +42,8 @@ Extends:
   - base.html
 -->
 
-{% extends "base.html" %}
-
-{% set title = "Schedule Viewer" %}
-{% block content %}
+{% extends "base.html" %} {% set title = "Schedule Viewer" %} {% block content
+%}
 
 <h1>Schedule Viewer</h1>
 
@@ -73,51 +71,77 @@ Extends:
       - Left side: Prev / current count / Next / direct select
       - Right side: reset/clear viewer action
   -->
-  <div class="row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-  
-  <div style="display: flex; gap: 15px; align-items: center;">
-  <div class="row">
-
-    <!--
-      Prev Button:
+  <div
+    class="row"
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    "
+  >
+    <div style="display: flex; gap: 15px; align-items: center">
+      <div class="row">
+        <!--
+        Prev Button:
         - POST /viewer/prev
         - Disabled when:
             * no schedules are loaded, OR
             * current schedule is the first schedule
-    -->
-    <form method="post" action="/viewer/prev">
-      <button type="submit"
-              {% if not data.has_schedules or data.is_first %}disabled{% endif %}>
-        Prev
-      </button>
-    </form>
+        -->
+        <form method="post" action="/viewer/prev">
+          <button
+            type="submit"
+            {%
+            if
+            not
+            data.has_schedules
+            or
+            data.is_first
+            %}disabled{%
+            endif
+            %}
+          >
+            Prev
+          </button>
+        </form>
 
-    <!--
-      Schedule Counter:
+        <!--
+        Schedule Counter:
         - Shows current schedule position (1-based for user readability)
         - If no schedules exist, shows 0 / 0
-    -->
-    <div>
-      <strong>Schedule:</strong>
-      {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
-    </div>
+        -->
+        <div>
+          <strong>Schedule:</strong>
+          {{ data.index + 1 if data.has_schedules else 0 }} / {{ data.count }}
+        </div>
 
-    <!--
-      Next Button:
+        <!--
+        Next Button:
         - POST /viewer/next
         - Disabled when:
             * no schedules are loaded, OR
             * current schedule is the last schedule
-    -->
-    <form method="post" action="/viewer/next">
-      <button type="submit"
-              {% if not data.has_schedules or data.is_last %}disabled{% endif %}>
-        Next
-      </button>
-    </form>
+        -->
+        <form method="post" action="/viewer/next">
+          <button
+            type="submit"
+            {%
+            if
+            not
+            data.has_schedules
+            or
+            data.is_last
+            %}disabled{%
+            endif
+            %}
+          >
+            Next
+          </button>
+        </form>
 
-    <!-- 
-      Direct Schedule Selection Dropdown 
+        <!-- 
+        Direct Schedule Selection Dropdown 
         - POST /viewer/select
         - Submits a 0-based index (value="{{ idx }}")
         - Displays user-friendly 1-based labels (Schedule 1, Schedule 2, ...)
@@ -126,38 +150,54 @@ Extends:
             * Once user selects a schedule, the selection stays in sync with
               the currently active schedule (via data.user_selected + data.index)
         - Disabled when no schedules exist
-    -->
-    <form method="post"
+        -->
+        <form
+          method="post"
           action="/viewer/select"
           class="row"
-          style="gap: 8px; align-items: center; margin-left: auto;">
+          style="gap: 8px; align-items: center; margin-left: auto"
+        >
+          <select
+            id="schedule_index"
+            name="index"
+            {%
+            if
+            not
+            data.has_schedules
+            %}disabled{%
+            endif
+            %}
+            onchange="if (this.value !== '') this.form.submit();"
+          >
+            <!-- Placeholder shows initially until user selects something -->
+            <option
+              value=""
+              disabled
+              {%
+              if
+              not
+              data.user_selected
+              %}selected{%
+              endif
+              %}
+            >
+              Select Schedule
+            </option>
 
-      <select id="schedule_index"
-              name="index"
-              {% if not data.has_schedules %}disabled{% endif %}
-              onchange="if(this.value !== '') this.form.submit()">
+            <!-- Real schedule options (0-based values, 1-based labels) -->
+            {% for idx in range(data.count) %}
+            <option
+              value="{{ idx }}"
+              {% if data.user_selected and idx == data.index %}selected{% endif %}
+            >
+              Schedule {{ idx + 1 }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
 
-        <!-- Placeholder shows initially until user selects something -->
-        <option value=""
-                disabled
-                {% if not data.user_selected %}selected{% endif %}>
-          Select Schedule
-        </option>
-
-        <!-- Real schedule options (0-based values, 1-based labels) -->
-        {% for idx in range(data.count) %}
-          <option value="{{ idx }}"
-                  {% if data.user_selected and idx == data.index %}selected{% endif %}>
-            Schedule {{ idx + 1 }}
-          </option>
-        {% endfor %}
-
-      </select>
-    </form>
-
-  </div>
-
-  <!--
+      <!--
     Reset / Clear Viewer:
       POST /viewer/reset
 
@@ -168,35 +208,40 @@ Extends:
     UX:
       - uses confirm() to prevent accidental destructive action
   -->
-  <form method="post" action="/viewer/reset">
-    <button type="submit" class="button-outline" 
-            style="background-color: #ff4444; color: white; border: none;"
-            onclick="return confirm('Are you sure you want to clear all schedules?')">
-      Reset/Clear Schedule Viewer
-    </button>
-  </form>
-</div>
-
-<!--
-  ============================================================
-  IMPORT / EXPORT / ALTERNATE VIEW CONTROLS
-  ============================================================
-
-  This area supports:
-    - importing schedule JSON files from the user's system
-    - exporting one or more loaded schedules to JSON or CSV
-    - opening alternate representations of the current schedule
-        * Grid View
-        * Visual View (only when no conflicts exist)
-
-  Notes:
-    - Multi-file import is enabled on the file input.
-    - Export options are only shown when schedules are loaded.
-    - Visual View is blocked for schedules with time conflicts.
--->
-<div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;"> 
+      <form method="post" action="/viewer/reset">
+        <button
+          type="submit"
+          class="button-outline"
+          style="background-color: #ff4444; color: white; border: none"
+          onclick="
+            return confirm('Are you sure you want to clear all schedules?');
+          "
+        >
+          Reset/Clear Schedule Viewer
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!--
+    ============================================================
+    IMPORT / EXPORT / ALTERNATE VIEW CONTROLS
+    ============================================================
+
+    This area supports:
+      - importing schedule JSON files from the user's system
+      - exporting one or more loaded schedules to JSON or CSV
+      - opening alternate representations of the current schedule
+          * Grid View
+          * Visual View (only when no conflicts exist)
+
+    Notes:
+      - Multi-file import is enabled on the file input.
+      - Export options are only shown when schedules are loaded.
+      - Visual View is blocked for schedules with time conflicts.
+  -->
+  <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0">
+    <!--
     Upload / Import from local system:
       POST /viewer/import_file
 
@@ -205,16 +250,31 @@ Extends:
       - requires at least one file
       - allows multiple file selection
   -->
-  <form method="post" action="/viewer/import_file" enctype="multipart/form-data" class="row" style="margin: 0; display: flex; align-items: center;">
-    <label style="min-width: 200px;">Upload/Import from System</label>
-    <div style="display: flex; gap: 10px; width: 60%;">
-      <input type="file" name="schedule_file" accept=".json" required style="flex-grow: 1;" multiple>
-      <button type="submit" style="white-space: nowrap;">Upload/Import Files</button>
-    </div>
-  </form>
+    <form
+      method="post"
+      action="/viewer/import_file"
+      enctype="multipart/form-data"
+      class="row"
+      style="margin: 0; display: flex; align-items: center"
+    >
+      <label style="min-width: 200px">Upload/Import from System</label>
+      <div style="display: flex; gap: 10px; width: 60%">
+        <input
+          type="file"
+          name="schedule_file"
+          accept=".json"
+          required
+          style="flex-grow: 1"
+          multiple
+        />
+        <button type="submit" style="white-space: nowrap">
+          Upload/Import Files
+        </button>
+      </div>
+    </form>
 
-  {% if data.has_schedules %}
-      <!--
+    {% if data.has_schedules %}
+    <!--
         Export Controls:
           Visible only when schedules are present in the viewer.
 
@@ -223,109 +283,213 @@ Extends:
           - export selected schedules to JSON or CSV
           - quick links to alternate rendered views of current schedule
       -->
-      <form method="post" class="row" style="margin: 0; display: flex; align-items: flex-start;">
-          <label style="min-width: 200px; margin-top: 8px;">Export to System</label>
-          
-          <div style="display: flex; flex-direction: column; gap: 10px; width: 60%;">
-              
-              <!--
+    <form
+      method="post"
+      class="row"
+      style="margin: 0; display: flex; align-items: flex-start"
+    >
+      <label style="min-width: 200px; margin-top: 8px">Export to System</label>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 60%">
+        <!--
                 Export schedule picker:
                   - "All Schedules" checkbox toggles all schedule checkboxes
                   - each checkbox value uses the 0-based schedule index
-              -->              
-              <details style="border: 1px solid #ccc; border-radius: 4px; background: white; width: 100%; max-width: 350px;">
-                  <summary style="padding: 8px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;">
-                      <span>Select Schedules... (for JSON/CSV)</span>
-                      <span style="font-size: 0.7em; color: #666;">▼</span>
-                  </summary>
+              -->
+        <details
+          style="
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            width: 100%;
+            max-width: 350px;
+          "
+        >
+          <summary
+            style="
+              padding: 8px 12px;
+              cursor: pointer;
+              list-style: none;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              outline: none;
+            "
+          >
+            <span>Select Schedules... (for JSON/CSV)</span>
+            <span style="font-size: 0.7em; color: #666">▼</span>
+          </summary>
 
-                  <div style="padding: 10px 12px; border-top: 1px solid #eee; max-height: 150px; overflow-y: auto;">
-                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-                          <input type="checkbox" id="export_all" onchange="toggleAllSchedules(this)" style="margin: 0; margin-left: -120px;">
-                          <span style="font-weight: bold; font-size: 0.9em;">All Schedules</span>
-                      </label>
+          <div
+            style="
+              padding: 10px 12px;
+              border-top: 1px solid #eee;
+              max-height: 150px;
+              overflow-y: auto;
+            "
+          >
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 8px;
+              "
+            >
+              <input
+                type="checkbox"
+                id="export_all"
+                onchange="toggleAllSchedules(this)"
+                style="margin: 0; margin-left: -120px"
+              />
+              <span style="font-weight: bold; font-size: 0.9em"
+                >All Schedules</span
+              >
+            </label>
 
-                      {% for idx in range(data.count) %}
-                      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 4px;">
-                          <input type="checkbox" name="schedule_indices" value="{{ idx }}" class="schedule-checkbox" style="margin: 0;  margin-left: -120px;">
-                          <span style="font-size: 0.9em;">Schedule {{ idx + 1 }}</span>
-                      </label>
-                      {% endfor %}
-                  </div>
-              </details>
+            {% for idx in range(data.count) %}
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                margin-bottom: 4px;
+              "
+            >
+              <input
+                type="checkbox"
+                name="schedule_indices"
+                value="{{ idx }}"
+                class="schedule-checkbox"
+                style="margin: 0; margin-left: -120px"
+              />
+              <span style="font-size: 0.9em">Schedule {{ idx + 1 }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </details>
 
-              <!--
+        <!--
                 Export / view action row:
                   - Export JSON submits to viewer.export_file
                   - Export CSV submits to viewer.export_csv
                   - Grid View opens current schedule in a new tab
                   - Visual View opens only when current schedule has no conflicts
-              -->              
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                  
-                  <button type="submit" formaction="{{ url_for('viewer.export_file') }}" style="white-space: nowrap; padding: 7px 15px;">
-                      Export JSON
-                  </button>
+              -->
+        <div
+          style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center"
+        >
+          <button
+            type="submit"
+            formaction="{{ url_for('viewer.export_file') }}"
+            style="white-space: nowrap; padding: 7px 15px"
+          >
+            Export JSON
+          </button>
 
-                  <button type="submit" formaction="{{ url_for('viewer.export_csv') }}" 
-                          style="white-space: nowrap; padding: 7px 15px;">
-                      Export CSV
-                  </button>
+          <button
+            type="submit"
+            formaction="{{ url_for('viewer.export_csv') }}"
+            style="white-space: nowrap; padding: 7px 15px"
+          >
+            Export CSV
+          </button>
 
-                  <!--
+          <!--
+                    CURRENTLY NOT NEEDED (kept just in case)
                     Grid View:
                       - opens the current schedule in a separate tab/window
                       - useful for time-grid based validation
-                  -->                  
-                  <a href="{{ url_for('viewer.grid_view') }}" 
-                    target="_blank" 
-                    class="button" 
-                    style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid #4CAF50; border-radius: 8px; text-decoration: none; font-size: 13.33px; line-height: normal; white-space: nowrap; transition: background 0.15s ease;"
-                    onmouseover="this.style.backgroundColor='var(--accent-hover)';"
-                    onmouseout="this.style.backgroundColor='var(--accent)';"
-                  >
-                      Class Grid View (Current)
-                  </a>
+                  -->
+          <!-- <a
+            href="{{ url_for('viewer.grid_view') }}"
+            target="_blank"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: var(--accent);
+              color: white;
+              padding: 8px 12px;
+              border: 1px solid #4caf50;
+              border-radius: 8px;
+              text-decoration: none;
+              font-size: 13.33px;
+              line-height: normal;
+              white-space: nowrap;
+              transition: background 0.15s ease;
+            "
+            onmouseover="this.style.backgroundColor = 'var(--accent-hover)'"
+            onmouseout="this.style.backgroundColor = 'var(--accent)'"
+          >
+            Class Grid View (Current)
+          </a> -->
 
-                  <!--
+          <!--
+                    CURRENTLY NOT NEEDED (kept just in case)
                     Visual View:
                       - only available when the selected schedule has no conflicts
                       - blocked schedules show an explanatory disabled button instead
                   -->
-                  {% if not data.has_conflicts %}
-                      <a href="{{ url_for('viewer.visual_view') }}" 
-                        target="_blank" 
-                        class="button" 
-                        style="display: inline-block; background-color: var(--accent); color: white; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; text-decoration: none; font-size: 13.33px; line-height: normal; white-space: nowrap; transition: background 0.15s ease;"
-                        onmouseover="this.style.backgroundColor='var(--accent-hover)';"
-                        onmouseout="this.style.backgroundColor='var(--accent)';"
-                      >
-                          Visual View (Current)
-                      </a>
-                  {% else %}
-                      <button type="button" 
-                              onclick="alert('Cannot create visual schedule: Time conflicts (overlapping classes) were detected in this schedule. Please resolve the conflicts to enable this view.')"
-                              style="background-color: #6c757d; color: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid #6c757d; font-size: 13.33px; cursor: help; white-space: nowrap;">
-                          Visual View (Blocked)
-                      </button>
-                  {% endif %}
-
-              </div>
-          </div>
-      </form>
-
-      <script>
-          function toggleAllSchedules(source) {
-              const checkboxes = document.getElementsByClassName('schedule-checkbox');
-              for(let i = 0; i < checkboxes.length; i++) {
-                  checkboxes[i].checked = source.checked;
-              }
-          }
-      </script>
-  {% endif %}
+          <!-- <a
+            href="{{ url_for('viewer.visual_BACKUP') }}"
+            target="_blank"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: var(--accent);
+              color: white;
+              padding: 8px 12px;
+              border: 1px solid var(--accent);
+              border-radius: 8px;
+              text-decoration: none;
+              font-size: 13.33px;
+              white-space: nowrap;
+            "
+          >
+            Visual View (OLD)
+          </a> -->
 
 
-  <!--
+          <!-- 
+          Calendar View:
+            - A weekly calendar view (MON-FRI), showing all the master schedules to a given schedule.
+            - Key includes the colors of lecture vs. lab classes.
+            - Print PDF button for the ability to print schedules. 
+            - Sorting for if you want to view/show All, Faculty, Room, or Lab schedules.
+            (Show: 'All', 'Faculty', 'Rooms', 'Labs')
+
+            - If you sort by 'Faculty', 'Rooms', or 'Labs' there is further filtering options 
+            populated by whatever is within your schedule. All filtering also includes a button to show all (default).
+            (Examples:
+             'Show: Faculty' 'Filter: Hobbs'
+             'Show: Rooms' 'Filter: Roddy 140'
+             'Show: Labs' 'Filter: Mac')   
+
+            - Day filtering (works with both sorting by category, and filtering by varibales within schedule).
+            (Day Filter: 'Full Week', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+          -->
+          <a href="{{ url_for('viewer.visual_view') }}" target="_blank" class="button">
+            Calendar View
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <script>
+      function toggleAllSchedules(source) {
+        const checkboxes = document.getElementsByClassName("schedule-checkbox");
+        for (let i = 0; i < checkboxes.length; i++) {
+          checkboxes[i].checked = source.checked;
+        }
+      }
+    </script>
+    {% endif %}
+
+    <!--
     Legacy path-based import/export controls.
     Kept for development/testing convenience and backward compatibility.
   -->
@@ -338,24 +502,44 @@ Extends:
       </div>
     </form> -->
 
+    <div class="row">
+      <form
+        method="post"
+        action="/viewer/import"
+        class="row"
+        onsubmit="return confirm('Import file?');"
+      >
+        <label>Import path</label>
+        <input name="path" value="schedules.json" />
+        <button type="submit">Import</button>
+      </form>
+      {% if is_export_enabled %}
+      <form
+        method="post"
+        action="/viewer/export"
+        class="row"
+        onsubmit="return confirm('Export file?');"
+      >
+        <label>Export path</label>
+        <input name="path" value="schedules.json" />
+        <button type="submit">Export</button>
+      </form>
+      {% else %} {% endif %}
+    </div>
 
-  <div class="row">
-    <form method="post" action="/viewer/import" class="row" onsubmit="return confirm('Import file?');">
-      <label>Import path</label>
-      <input name="path" value="schedules.json">
-      <button type="submit">Import</button>
-    </form>
-    {% if is_export_enabled %}
-    <form method="post" action="/viewer/export" class="row" onsubmit="return confirm('Export file?');">
-      <label>Export path</label>
-      <input name="path" value="schedules.json">
-      <button type="submit">Export</button>
-    </form>
-    {% else %}
-    {% endif %}
-  </div>
 
-  <!--
+    <!--  Notes for users regarding the need to save schedules due to the generator
+          clearing the viewer of schedules when new schedules generate. -->
+
+    <section class = "card" style = "margin-bottom:-10px">
+      <div class="row">
+
+        <p>*Note: When generating schedules, the viewer will be cleared of it's current schedules, so make sure to save the schedule you want to keep (you can then import the saved schedules).</p>
+
+      </div>
+    </section>
+
+    <!--
     ============================================================
     METADATA / DEBUG SECTION
     ============================================================
@@ -374,358 +558,329 @@ Extends:
       - verifying imported/exported schedule identity
       - confirming which schedule is currently active
   -->
-  <h2>Meta</h2>
-  <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
-
+    <h2>Meta</h2>
+    <pre>{{ data.current_meta | tojson(indent=2) }}</pre>
+  </div>
 </section>
-
-
 
 <section class="card">
+  <div
+    class="row"
+    style="
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+    "
+  >
+    <h2 style="margin: 0">Schedule Display</h2>
 
-  <!--
-    ============================================================
-    SCHEDULE TABLES SECTION
-    ============================================================
-
-    This section lets the user view the current schedule in multiple table formats.
-
-    UI Design:
-      - Two dropdown menus are used to reduce clutter:
-          1) Master Schedule
-          2) Filtered Schedule
-      - Only one panel should be visible at a time.
-      - JavaScript in app.js is responsible for:
-          * hiding all .tab-panel sections by default
-          * showing the selected panel
-          * resetting the opposite dropdown when switching modes
-          * applying entity-specific filter dropdown behavior
-  -->
-  <div class="row" style="align-items: center; gap: 10px;">
-    <h2 style="margin: 0;">Schedule Tables</h2>
-
-    <!-- Menus aligned right inside the header row -->
-    <div class="row" style="gap: 10px; align-items: center; margin-left: auto;">
-
-      <!--
-        Clear / Reset table view state:
-          - handled by JavaScript
-          - used to clear active table mode and filtered entity selection
-      -->
-      <button type="button" id="clear_filters" class="button-outline" style="padding: 5px 10px; font-size: 12px;">
-        Show Schedule/Clear
-      </button>
-
-      <!--
-        Master Schedule Dropdown:
-          Values map directly to panel IDs using this convention:
-            value="master-faculty-table" -> id="tab-master-faculty-table"
-            value="master-room-table"    -> id="tab-master-room-table"
-            value="master-lab-table"     -> id="tab-master-lab-table"
-      -->
-      <select id="master_menu" class="mode-select" data-group="master">
-        <option value="" selected disabled>Select Master Schedule</option>
-        <option value="master-faculty-table">Faculty Master Schedule</option>
-        <option value="master-room-table">Room Master Schedule</option>
-        <option value="master-lab-table">Lab Master Schedule</option>
+    <div
+      style="display: flex; gap: 10px; align-items: center; margin-left: auto"
+    >
+      <label for="view_type_select"><strong>View Mode:</strong></label>
+      <select id="view_type_select" onchange="toggleViewMode(this.value)">
+        <option value="tabular-view" selected>Tabular View</option>
+        <option value="calendar-view">Weekly Calendar View</option>
       </select>
-
-      <!--
-        Filter By Dropdown:
-          Values map directly to entity-filter panel IDs:
-            value="filter-by-faculty-table" -> id="tab-filter-by-faculty-table"
-            value="filter-by-room-table"    -> id="tab-filter-by-room-table"
-            value="filter-by-lab-table"     -> id="tab-filter-by-lab-table"
-      -->
-      <select id="filter_menu" class="mode-select" data-group="filter">
-        <option value="" selected disabled>Select Filtered Schedule</option>
-        <option value="filter-by-faculty-table">Filter By Faculty</option>
-        <option value="filter-by-room-table">Filter By Room</option>
-        <option value="filter-by-lab-table">Filter By Lab</option>
-      </select>
-
     </div>
   </div>
-  
-  <!-- =========================================================
-       MASTER SCHEDULE PANELS
-       ========================================================= -->
 
-  <!--
-    Faculty Master Panel:
-      - groups current schedule assignments by faculty
-      - useful for validating faculty load, placement, and conflicts
-      - renders all faculty groups in the current schedule
-  -->
-  <div class="tab-panel" id="tab-master-faculty-table" style="display:none;">
-    <h3>Master Table: By Faculty</h3>
+  <div id="calendar-view-panel" class="view-panel" style="display: none">
+    <iframe
+      src="{{ url_for('viewer.visual_view') }}"
+      style="width: 100%; height: 800px; border: none; border-radius: 8px"
+      id="calendar-frame"
+    >
+    </iframe>
+  </div>
 
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
+  <div id="tabular-view-panel" class="view-panel">
+    <div
+      class="row"
+      style="align-items: center; gap: 10px; margin-bottom: 20px"
+    >
+      <h3 style="margin: 0">Tabular Filters</h3>
+
+      <div
+        class="row"
+        style="gap: 10px; align-items: center; margin-left: auto"
+      >
+        <button
+          type="button"
+          id="clear_filters"
+          class="button-outline"
+          style="padding: 5px 10px; font-size: 12px"
+        >
+          Clear Tabular Table
+        </button>
+
+        <select id="master_menu" class="mode-select" data-group="master">
+          <option value="" selected disabled>Select Master Schedule</option>
+          <option value="master-faculty-table">Faculty Master Schedule</option>
+          <option value="master-room-table">Room Master Schedule</option>
+          <option value="master-lab-table">Lab Master Schedule</option>
+        </select>
+
+        <select id="filter_menu" class="mode-select" data-group="filter">
+          <option value="" selected disabled>Select Filtered Schedule</option>
+          <option value="filter-by-faculty-table">Filter By Faculty</option>
+          <option value="filter-by-room-table">Filter By Room</option>
+          <option value="filter-by-lab-table">Filter By Lab</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-master-faculty-table" style="display: none">
+      <h3>Master Table: By Faculty</h3>
       {% for fac, rows in data.by_faculty.items() %}
-        <h4>{{ fac }}</h4>
-        <table>
-          <thead>
-            <tr><th>Course</th><th>Room</th><th>Start Time</th></tr>
-          </thead>
-          <tbody>
-            {% for r in rows %}
-              <tr>
-                <td>{{ r.course_id }}</td>
-                <td>{{ r.room }}</td>
-                <td>{{ r.time }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h4>{{ fac }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Room</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.room }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endfor %}
-    {% endif %}
-  </div>
+    </div>
 
-  <!--
-    Panel: Room Master Schedule
-      - Groups assignments by room (data.by_room)
-      - Use case: validate room usage + conflicts
-  -->
-  <div class="tab-panel" id="tab-master-room-table" style="display:none;">
-    <h3>Master Table: By Room</h3>
-
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
+    <div class="tab-panel" id="tab-master-room-table" style="display: none">
+      <h3>Master Table: By Room</h3>
       {% for room, rows in data.by_room.items() %}
-        <h4>{{ room }}</h4>
-        <table>
-          <thead>
-            <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
-          </thead>
-          <tbody>
-            {% for r in rows %}
-              <tr>
-                <td>{{ r.course_id }}</td>
-                <td>{{ r.faculty }}</td>
-                <td>{{ r.time }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h4>{{ room }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Faculty</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.faculty }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endfor %}
-    {% endif %}
-  </div>
+    </div>
 
-  <!--
-    Panel: Lab Master Schedule
-      - Groups assignments by lab (data.by_lab)
-      - Labs are optional:
-          * Some assignments may have lab == "" (empty)
-          * Those rows are displayed under "No Labs Assigned"
-      - Rendering strategy:
-          1) Display real lab names first
-          2) Display empty-lab group last as "No Labs Assigned"
-  -->
-  <div class="tab-panel" id="tab-master-lab-table" style="display:none;">
-    <h3>Master Table: By Lab</h3>
-
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
-
-      {# 1) Real labs first #}
-      {% for lab, rows in data.by_lab.items() %}
-        {% if lab %}
-          <h4>{{ lab }}</h4>
-          <table>
-            <thead>
-              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
-            </thead>
-            <tbody>
-              {% for r in rows %}
-                <tr>
-                  <td>{{ r.course_id }}</td>
-                  <td>{{ r.faculty }}</td>
-                  <td>{{ r.time }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% endif %}
-      {% endfor %}
-
-      {# 2) Empty lab group last #}
-      {% if "" in data.by_lab %}
-        <h4>No Labs Assigned</h4>
-        <table>
-          <thead>
-            <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
-          </thead>
-          <tbody>
-            {% for r in data.by_lab[""] %}
-              <tr>
-                <td>{{ r.course_id }}</td>
-                <td>{{ r.faculty }}</td>
-                <td>{{ r.time }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="tab-panel" id="tab-master-lab-table" style="display: none">
+      <h3>Master Table: By Lab</h3>
+      {% if data.by_lab %} {% for lab, rows in data.by_lab.items() %}
+      <h4>{{ lab }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Faculty</th>
+            <th>Room</th>
+            <th>Start Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.course_id }}</td>
+            <td>{{ r.faculty }}</td>
+            <td>{{ r.room }}</td>
+            <td>{{ r.time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endfor %} {% else %}
+      <p>No lab assignments found for this schedule.</p>
       {% endif %}
+    </div>
 
-    {% endif %}
-  </div>
 
-  <!-- =========================================================
-       FILTERED PANELS
-       ========================================================= -->
+    <!--
+    FILTER TABLE UI STRUCTURE
 
-  <!--
-    Faculty Filter Panel:
-      - shows a faculty dropdown directly under the panel heading
-      - JavaScript reveals only the group matching the selected faculty
-      - if the chosen faculty has no rows in the current schedule,
-        the empty-state message is shown
-  -->
-  <div class="tab-panel" id="tab-filter-by-faculty-table" style="display:none;">
-    <h3>Filtered Table: By Faculty</h3>
+    This template defines:
+    - Master tables (all data grouped)
+    - Filter tables (dropdown-driven visibility)
 
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
-      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
-        <label for="faculty_filter_select"><strong>Filter Table by</strong></label>
-        <select id="faculty_filter_select" style="min-width: 220px;">
-          <option value="" selected disabled>Select Faculty</option>
-          {% for fac in faculty_options %}
-            <option value="{{ fac }}">{{ fac }}</option>
-          {% endfor %}
-        </select>
-      </div>
+    CRITICAL:
+    - Element IDs must match app.js selectors:
+        room_filter_select
+        lab_filter_select
+        faculty_filter_select
 
-      <p id="faculty_filter_empty" class="hint" style="display:none;">
-        No assignments found for the selected faculty in this schedule.
+    - Group containers must use:
+        class="entity-filter-group"
+        data-entity="{{ value }}"
+
+    If filtering stops working:
+    1. Check IDs match app.js
+    2. Check data-entity values match backend grouping keys
+    -->
+    <div
+      class="tab-panel"
+      id="tab-filter-by-faculty-table"
+      style="display: none"
+    >
+      <h3>Filtered Table: By Faculty</h3>
+      <select id="faculty_filter_select" style="margin-bottom: 10px">
+        <option value="" selected disabled>Select Faculty</option>
+        {% for fac in faculty_options %}
+        <option value="{{ fac }}">{{ fac }}</option>
+        {% endfor %}
+      </select>
+
+      <p id="faculty_filter_empty" style="display: none">
+        No assignments found for the selected faculty.
       </p>
 
       {% for fac, rows in data.by_faculty.items() %}
-        <div class="entity-filter-group faculty-filter-group" data-entity="{{ fac }}" style="display:none;">
-          <h4>{{ fac }}</h4>
-          <table>
-            <thead>
-              <tr><th>Course</th><th>Room</th><th>Start Time</th></tr>
-            </thead>
-            <tbody>
-              {% for r in rows %}
-                <tr>
-                  <td>{{ r.course_id }}</td>
-                  <td>{{ r.room }}</td>
-                  <td>{{ r.time }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endfor %}
-    {% endif %}
-  </div>
-
-  <!--
-    Room Filter Panel:
-      - shows a room dropdown directly under the panel heading
-      - JavaScript reveals only the group matching the selected room
-      - empty-state message appears when the selected room has no rows
-        in the current schedule
-  -->
-  <div class="tab-panel" id="tab-filter-by-room-table" style="display:none;">
-    <h3>Filtered Table: By Room</h3>
-
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
-      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
-        <label for="room_filter_select"><strong>Filter Table by</strong></label>
-        <select id="room_filter_select" style="min-width: 220px;">
-          <option value="" selected disabled>Select Room</option>
-          {% for room in room_options %}
-            <option value="{{ room }}">{{ room }}</option>
-          {% endfor %}
-        </select>
+      <div
+        class="entity-filter-group faculty-filter-group"
+        data-entity="{{ fac }}"
+        style="display: none"
+      >
+        <table>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% endfor %}
+    </div>
 
-      <p id="room_filter_empty" class="hint" style="display:none;">
-        No assignments found for the selected room in this schedule.
+    <div class="tab-panel" id="tab-filter-by-room-table" style="display: none">
+      <h3>Filtered Table: By Room</h3>
+      <select id="room_filter_select" style="margin-bottom: 10px">
+        <option value="" selected disabled>Select Room</option>
+        {% for room in room_options %}
+        <option value="{{ room }}">{{ room }}</option>
+        {% endfor %}
+      </select>
+
+      <p id="room_filter_empty" style="display: none">
+        No assignments found for the selected room.
       </p>
 
       {% for room, rows in data.by_room.items() %}
-        <div class="entity-filter-group room-filter-group" data-entity="{{ room }}" style="display:none;">
-          <h4>{{ room }}</h4>
-          <table>
-            <thead>
-              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
-            </thead>
-            <tbody>
-              {% for r in rows %}
-                <tr>
-                  <td>{{ r.course_id }}</td>
-                  <td>{{ r.faculty }}</td>
-                  <td>{{ r.time }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endfor %}
-    {% endif %}
-  </div>
-
-  <!--
-    Lab Filter Panel:
-      - shows a lab dropdown directly under the panel heading
-      - JavaScript reveals only the group matching the selected lab
-      - uses the same grouped rendering pattern as the other filters
-      - empty-state message appears when the selected lab has no rows
-        in the current schedule
-  -->
-  <div class="tab-panel" id="tab-filter-by-lab-table" style="display:none;">
-    <h3>Filtered Table: By Lab</h3>
-
-    {% if data.count == 0 %}
-      <p class="hint">No schedules loaded. Generate or import schedules.</p>
-    {% else %}
-      <div class="row" style="align-items: center; gap: 10px; margin-bottom: 12px;">
-        <label for="lab_filter_select"><strong>Filter Table by</strong></label>
-        <select id="lab_filter_select" style="min-width: 220px;">
-          <option value="" selected disabled>Select Lab</option>
-          {% for lab in lab_options %}
-            <option value="{{ lab }}">{{ lab }}</option>
-          {% endfor %}
-        </select>
+      <div
+        class="entity-filter-group room-filter-group"
+        data-entity="{{ room }}"
+        style="display: none"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Faculty</th>
+              <th>Lab</th>
+              <th>Start Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.faculty }}</td>
+              <td>{{ r.lab }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% endfor %}
+    </div>
 
-      <p id="lab_filter_empty" class="hint" style="display:none;">
-        No assignments found for the selected lab in this schedule.
+    <div class="tab-panel" id="tab-filter-by-lab-table" style="display: none">
+      <h3>Filtered Table: By Lab</h3>
+      <select id="lab_filter_select" style="margin-bottom: 10px">
+        <option value="" selected disabled>Select Lab</option>
+        {% for lab in lab_options %}
+        <option value="{{ lab }}">{{ lab }}</option>
+        {% endfor %}
+      </select>
+
+      <p id="lab_filter_empty" style="display: none">
+        No assignments found for the selected lab.
       </p>
 
       {% for lab, rows in data.by_lab.items() %}
-        <div class="entity-filter-group lab-filter-group" data-entity="{{ lab }}" style="display:none;">
-          <h4>{{ lab }}</h4>
-          <table>
-            <thead>
-              <tr><th>Course</th><th>Faculty</th><th>Start Time</th></tr>
-            </thead>
-            <tbody>
-              {% for r in rows %}
-                <tr>
-                  <td>{{ r.course_id }}</td>
-                  <td>{{ r.faculty }}</td>
-                  <td>{{ r.time }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <div
+        class="entity-filter-group lab-filter-group"
+        data-entity="{{ lab }}"
+        style="display: none"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Faculty</th>
+              <th>Room</th>
+              <th>Start Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ r.course_id }}</td>
+              <td>{{ r.faculty }}</td>
+              <td>{{ r.room }}</td>
+              <td>{{ r.time }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% endfor %}
-    {% endif %}
+    </div>
   </div>
-
 </section>
+
+<script>
+  /**
+   * Toggles between Tabular and Calendar views
+   */
+  function toggleViewMode(viewId) {
+    // Hide all panels
+    document.querySelectorAll(".view-panel").forEach((panel) => {
+      panel.style.display = "none";
+    });
+
+    // Show selected panel
+    const activePanel = document.getElementById(viewId + "-panel");
+    if (activePanel) {
+      activePanel.style.display = "block";
+    }
+
+    // Refresh iframe if switching to calendar to ensure layout is correct
+    if (viewId === "calendar-view") {
+      const frame = document.getElementById("calendar-frame");
+      frame.src = frame.src;
+    }
+  }
+</script>
 
 {% endblock %}

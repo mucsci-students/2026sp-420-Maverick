@@ -39,10 +39,13 @@ Notes:
 import json
 import os
 import copy
+import re
 
 # Flask session stores the user's active working configuration,
 # editor state, and related UI flags.
 from flask import session
+
+from os import PathLike
 
 # Faculty management operations from the domain/application layer.
 from app.faculty_management.faculty_management import (
@@ -81,9 +84,7 @@ from app.lab_management.lab_management import (
 
 # Resolve the absolute path to the project root so config files can be
 # accessed consistently regardless of where the app is launched from.
-PROJECT_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../")
-)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 
 # The configs directory contains baseline, dev, test, and working configs.
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, "configs")
@@ -117,6 +118,7 @@ SESSION_CONFLICTS_KEY = "config_conflicts"
 # Helper Functions
 # ================================================================
 
+
 def _ensure_configs_folder():
     if not os.path.exists(CONFIGS_DIR):
         os.makedirs(CONFIGS_DIR)
@@ -134,7 +136,7 @@ def _empty_config():
             - empty optimizer flags
             - default time slot configuration
     """
-    cfg =  {
+    cfg = {
         "config": {
             "faculty": [],
             "courses": [],
@@ -184,6 +186,7 @@ def get_schedules_updated():
 # Conflict Helpers
 # ================================================================
 
+
 def set_conflicts(conflicts):
     session[SESSION_CONFLICTS_KEY] = conflicts
 
@@ -199,6 +202,7 @@ def has_conflicts():
 # ================================================================
 # Conflict Detection
 # ================================================================
+
 
 def detect_conflicts(cfg):
 
@@ -246,7 +250,6 @@ def detect_conflicts(cfg):
         lab_names.add(name)
 
     for c in config.get("courses", []):
-
         cid = c.get("course_id")
 
         if not cid:
@@ -255,13 +258,14 @@ def detect_conflicts(cfg):
 
         # Duplicate course_id values are allowed because they represent
         # multiple sections of the same course in scheduler input JSON.
-        
+
     return conflicts
 
 
 # ================================================================
 # Working Config
 # ================================================================
+
 
 def _get_working_config():
     """
@@ -280,7 +284,7 @@ def _get_working_config():
     # If nothing has been loaded yet, do NOT auto-create one
     if cfg is None:
         cfg = _empty_config()
-    
+
     session[SESSION_CONFIG_KEY] = cfg
 
     # Keep the disk mirror in sync with session state.
@@ -314,14 +318,48 @@ def _commit_change(cfg):
 # Timeslot Defaults
 # ================================================================
 
+
 def apply_timeslot_defaults(cfg):
+    """
+    Ensure the working config contains the canonical scheduler time_slot_config
+    structure expected by the upstream scheduler and used by our config JSONs.
+    """
     if "time_slot_config" not in cfg:
         cfg["time_slot_config"] = {
-            "days": ["MON", "TUE", "WED", "THU", "FRI"],
-            "start_time": "08:00",
-            "end_time": "17:00",
-            "slot_length": 60
+            "times": {
+                "MON": [],
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+            "classes": [],
         }
+    return cfg
+
+
+def _ensure_time_slot_defaults(cfg):
+    """
+    Normalize time_slot_config to the canonical structure:
+
+    time_slot_config:
+      times:
+        DAY: [{start, spacing, end}]
+      classes:
+        [{credits, meetings, start_time?, disabled?}]
+    """
+    cfg = apply_timeslot_defaults(cfg)
+    tsc = cfg.setdefault("time_slot_config", {})
+
+    if "times" not in tsc or not isinstance(tsc["times"], dict):
+        tsc["times"] = {}
+
+    for day in ["MON", "TUE", "WED", "THU", "FRI"]:
+        tsc["times"].setdefault(day, [])
+
+    if "classes" not in tsc or not isinstance(tsc["classes"], list):
+        tsc["classes"] = []
+
     return cfg
 
 
@@ -329,43 +367,63 @@ def apply_timeslot_defaults(cfg):
 # Load / Save
 # ================================================================
 
+
 def load_config_into_session(source):
     """
     Load a scheduler configuration into session.
 
     Supported Sources:
-        - A repo/disk path string pointing to a JSON config file
+        - A filesystem path (str or Path-like object) pointing to a JSON config file
         - An uploaded browser file object from request.files
 
     Workflow:
-        - Read and parse the JSON source
+        - Detect whether the source is a path or uploaded file
+        - Read and parse JSON content
         - Apply missing time slot defaults
-        - Store the loaded config and source path/filename in session
-        - Refresh working_config.json on disk
-        - Reset unsaved + schedules_updated flags
-        - Detect and store conflicts for immediate UI feedback
+        - Store config + metadata in session
+        - Refresh working_config.json
+        - Reset unsaved and schedules_updated flags
+        - Detect and store conflicts
 
     Args:
         source:
-            Either a filesystem path (str) or an uploaded file object.
+            Either:
+                - A filesystem path (str or pathlib.Path)
+                - An uploaded file object (from Flask request.files)
 
     Raises:
         json.JSONDecodeError:
             If the source content is not valid JSON.
         OSError:
             If a provided path cannot be opened.
+        AttributeError:
+            If the source is neither a valid path nor file-like object.
     """
-    if isinstance(source, str):
-        # Load config from a filesystem path, typically from inside the repo.
+
+    # -------------------------------------------------------------
+    # Case 1: Source is a filesystem path (string or Path-like object)
+    # -------------------------------------------------------------
+    if isinstance(source, (str, PathLike)):
         with open(source, "r", encoding="utf-8") as f:
             loaded_config = json.load(f)
-        loaded_path = source
-    else:
-        # Load config from an uploaded browser file.
-        raw_data = source.read().decode("utf-8-sig")
-        loaded_config = json.loads(raw_data)
-        loaded_path = source.filename or "uploaded_config.json"
+        loaded_path = str(source)
 
+    # -------------------------------------------------------------
+    # Case 2: Source is an uploaded file (Flask request.files)
+    # -------------------------------------------------------------
+    else:
+        # Read raw bytes from uploaded file and decode (handle BOM if present)
+        raw_data = source.read().decode("utf-8-sig")
+
+        # Parse JSON content from uploaded file
+        loaded_config = json.loads(raw_data)
+
+        # Use filename for tracking instead of a filesystem path
+        loaded_path = getattr(source, "filename", None)
+
+    # ------------------------------------------------------------------------------------------------------
+    # Continue with existing logic (Apply defaults, store in session, write working_config.json, etc.)
+    # ------------------------------------------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
     working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
@@ -422,6 +480,7 @@ def save_config_from_session(path: str):
 # Clear / Reset
 # ================================================================
 
+
 def clear_config():
     """
     Clear the loaded configuration from session.
@@ -434,7 +493,7 @@ def clear_config():
     Notes:
         This does not delete real config files from the repo or user's system.
         It only clears the current web-session working state.
-    """    
+    """
     blank = _empty_config()
 
     session.pop(SESSION_CONFIG_KEY, None)
@@ -449,6 +508,7 @@ def clear_config():
 # ================================================================
 # Export Config File (Input JSON)
 # ================================================================
+
 
 def get_default_export_filename() -> str:
     """
@@ -480,7 +540,7 @@ def sanitize_export_filename(name: str | None) -> str:
         - Reduce to basename only
         - Fall back to default name if empty
         - Append .json if the extension is missing
-    
+
     Returns:
         str: Safe filename suitable for download.
     """
@@ -496,14 +556,15 @@ def sanitize_export_filename(name: str | None) -> str:
 
     return safe
 
+
 def export_config_bytes(filename: str | None = None):
     """
     Build the current working configuration as downloadable JSON bytes.
 
     Purpose:
         Prepares the in-session working configuration for export through
-        the web interface.    
-    
+        the web interface.
+
     Behavior:
         - Retrieves the current working configuration from session storage
         - Validates the configuration before export
@@ -548,6 +609,97 @@ def export_config_bytes(filename: str | None = None):
 # Validation
 # ================================================================
 
+TIME_RE = re.compile(r"^\d{2}:\d{2}$")
+VALID_DAYS = {"MON", "TUE", "WED", "THU", "FRI"}
+
+
+def _minutes_from_hhmm(value: str) -> int:
+    if not TIME_RE.match(value):
+        raise ValueError(f"Invalid time format '{value}'. Use HH:MM.")
+    hour, minute = map(int, value.split(":"))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"Invalid time value '{value}'.")
+    return hour * 60 + minute
+
+
+def _validate_time_slot_config(cfg):
+    tsc = cfg.get("time_slot_config", {})
+
+    times = tsc.get("times", {})
+    classes = tsc.get("classes", [])
+
+    if not isinstance(times, dict):
+        raise ValueError("time_slot_config.times must be a dictionary.")
+
+    if not isinstance(classes, list):
+        raise ValueError("time_slot_config.classes must be a list.")
+
+    # Validate day blocks
+    for day, slots in times.items():
+        if day not in VALID_DAYS:
+            raise ValueError(f"Invalid time-slot day '{day}'.")
+
+        if not isinstance(slots, list):
+            raise ValueError(f"time_slot_config.times['{day}'] must be a list.")
+
+        for slot in slots:
+            if not isinstance(slot, dict):
+                raise ValueError(f"Invalid slot in {day}; expected an object.")
+
+            start = slot.get("start")
+            end = slot.get("end")
+            spacing = slot.get("spacing")
+
+            if start is None or end is None or spacing is None:
+                raise ValueError(f"Each time slot in {day} must include start, spacing, and end.")
+
+            start_mins = _minutes_from_hhmm(str(start))
+            end_mins = _minutes_from_hhmm(str(end))
+
+            if end_mins <= start_mins:
+                raise ValueError(f"Time slot end must be after start in {day}: {start} - {end}")
+
+            if not isinstance(spacing, int) or spacing <= 0:
+                raise ValueError(f"Invalid spacing in {day}: {spacing}")
+
+    # Validate class patterns
+    for idx, klass in enumerate(classes):
+        if not isinstance(klass, dict):
+            raise ValueError(f"Pattern at index {idx} must be an object.")
+
+        credits = klass.get("credits")
+        meetings = klass.get("meetings")
+
+        if not isinstance(credits, int) or credits <= 0:
+            raise ValueError(f"Pattern {idx} has invalid credits: {credits}")
+
+        if not isinstance(meetings, list) or not meetings:
+            raise ValueError(f"Pattern {idx} must have at least one meeting.")
+
+        for meeting in meetings:
+            if not isinstance(meeting, dict):
+                raise ValueError(f"Pattern {idx} contains an invalid meeting object.")
+
+            day = meeting.get("day")
+            duration = meeting.get("duration")
+
+            if day not in VALID_DAYS:
+                raise ValueError(f"Pattern {idx} contains invalid day: {day}")
+
+            if not isinstance(duration, int) or duration <= 0:
+                raise ValueError(f"Pattern {idx} contains invalid duration: {duration}")
+
+            # Meeting day must have at least one time range configured
+            if day not in times or not times.get(day):
+                raise ValueError(
+                    f"Pattern {idx} uses {day}, but no time slots are configured for {day}."
+                )
+
+        start_time = klass.get("start_time")
+        if start_time is not None:
+            _minutes_from_hhmm(str(start_time))
+
+
 def validate_config(cfg):
     """
     Validate the scheduler configuration.
@@ -569,18 +721,11 @@ def validate_config(cfg):
 
     faculty_names = {f.get("name") for f in faculty_list if isinstance(f, dict)}
 
-    room_names = [
-        r if isinstance(r, str) else r.get("name")
-        for r in rooms
-    ]
+    room_names = [r if isinstance(r, str) else r.get("name") for r in rooms]
 
-    lab_names = [
-        l if isinstance(l, str) else l.get("name")
-        for l in labs
-    ]
+    lab_names = [l if isinstance(l, str) else l.get("name") for l in labs]
 
     for course in courses:
-
         cid = course.get("course_id")
 
         if not cid:
@@ -607,10 +752,13 @@ def validate_config(cfg):
             if conflict not in [c.get("course_id") for c in courses]:
                 raise ValueError(f"Invalid conflict '{conflict}' in course {cid}")
 
+    _validate_time_slot_config(cfg)
+    
 
 # ================================================================
 # Status
 # ================================================================
+
 
 def get_config_status():
     """
@@ -632,11 +780,7 @@ def get_config_status():
     path = session.get(SESSION_CONFIG_PATH_KEY)
 
     if not cfg:
-        return {
-            "loaded": False,
-            "path": None,
-            "counts": {}
-        }
+        return {"loaded": False, "path": None, "counts": {}}
 
     counts = {}
     if loaded and isinstance(cfg, dict):
@@ -662,6 +806,7 @@ def get_config_status():
 # Faculty Management
 # ================================================================
 
+
 def add_faculty_service(**kwargs):
     cfg = _get_cgf()
     add_faculty(cfg, **kwargs)
@@ -680,9 +825,73 @@ def modify_faculty_service(**kwargs):
     _commit_change(cfg)
 
 
+def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    cfg = _get_cgf()
+
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+    day = day.upper()
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            faculty.setdefault("times", {})
+            faculty["times"].setdefault(day, [])
+
+            faculty["times"][day].append(
+                {"start_time": start_time, "end_time": end_time}
+            )
+
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' does not exist")
+
+
+def remove_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    cfg = _get_cgf()
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            slots = faculty.get("times", {}).get(day, [])
+
+            faculty["times"][day] = [
+                s
+                for s in slots
+                if not (
+                    s.get("start_time") == start_time and s.get("end_time") == end_time
+                )
+            ]
+
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' not found")
+
+
+def set_faculty_day_unavailable_service(name: str, day: str):
+    """
+    Mark a faculty member unavailable on a specific day by setting that
+    day's time list to an empty list.
+    """
+    cfg = _get_cgf()
+    faculty_list = cfg.get("config", {}).get("faculty", [])
+
+    day = day.upper()
+
+    for faculty in faculty_list:
+        if faculty.get("name") == name:
+            faculty.setdefault("times", {})
+            faculty["times"][day] = []
+            _commit_change(cfg)
+            return
+
+    raise ValueError(f"Faculty '{name}' does not exist")
+
+
 # ================================================================
 # Room Management
 # ================================================================
+
 
 def add_room_service(room):
     cfg = _get_cgf()
@@ -706,6 +915,7 @@ def modify_room_service(room, new_name):
 # Lab Management
 # ================================================================
 
+
 def add_lab_service(**kwargs):
     cfg = _get_cgf()
     add_lab(cfg, **kwargs)
@@ -727,6 +937,7 @@ def modify_lab_service(**kwargs):
 # ================================================================
 # Course Management
 # ================================================================
+
 
 def add_course_service(**kwargs):
     cfg = _get_cgf()
@@ -754,6 +965,7 @@ def modify_course_service(**kwargs):
 # Conflict Management
 # ================================================================
 
+
 def add_conflict_service(**kwargs):
     cfg = _get_cgf()
     add_conflict(cfg, **kwargs)
@@ -772,9 +984,208 @@ def modify_conflict_service(**kwargs):
     _commit_change(cfg)
 
 
+# ==============================================================
+# Time Slot Management
+# ==============================================================
+
+
+# ==============================================================
+# Time Slot Management
+# ==============================================================
+def add_time_slot_service(day, start, spacing, end):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
+
+    slot = {
+        "start": str(start).strip(),
+        "spacing": int(spacing),
+        "end": str(end).strip(),
+    }
+
+    cfg["time_slot_config"]["times"].setdefault(day, []).append(slot)
+    _commit_change(cfg)
+
+
+def remove_time_slot_service(day, index):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
+
+    index = int(index)
+    slots = cfg["time_slot_config"]["times"].get(day, [])
+
+    if not (0 <= index < len(slots)):
+        raise ValueError(f"Invalid slot index {index} for {day}")
+
+    slots.pop(index)
+    _commit_change(cfg)
+
+
+def modify_time_slot_service(day, index, start, spacing, end):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    day = str(day).upper().strip()
+    if day not in ["MON", "TUE", "WED", "THU", "FRI"]:
+        raise ValueError(f"Invalid day: {day}")
+
+    index = int(index)
+    slots = cfg["time_slot_config"]["times"].get(day, [])
+
+    if not (0 <= index < len(slots)):
+        raise ValueError(f"Invalid slot index {index} for {day}")
+
+    slots[index] = {
+        "start": str(start).strip(),
+        "spacing": int(spacing),
+        "end": str(end).strip(),
+    }
+
+    _commit_change(cfg)
+
+
+# ================================================================
+# Meeting Pattern Management
+# ================================================================
+
+
+# ================================================================
+# Meeting Pattern Management
+# ================================================================
+def _parse_meetings(days: str, duration: str, is_lab=False):
+    """
+    Convert a comma-separated day string into canonical meeting objects.
+    Example:
+        days="MON,WED,FRI", duration="50", is_lab=False
+        -> [
+            {"day": "MON", "duration": 50},
+            {"day": "WED", "duration": 50},
+            {"day": "FRI", "duration": 50},
+        ]
+    """
+    duration = int(duration)
+    is_lab = str(is_lab).lower() in ["true", "on", "1"]
+
+    meetings = []
+    for day in str(days).split(","):
+        clean_day = day.strip().upper()
+        if not clean_day:
+            continue
+        meeting = {
+            "day": clean_day,
+            "duration": duration,
+        }
+        if is_lab:
+            meeting["lab"] = True
+        meetings.append(meeting)
+
+    if not meetings:
+        raise ValueError("At least one meeting day is required.")
+
+    return meetings
+
+
+def add_pattern_service(credits, days, duration, is_lab=False, fixed_start_time=None, enabled=True, **kwargs):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    enabled = str(enabled).lower() in ["true", "on", "1"]
+    pattern = {
+        "credits": int(credits),
+        "meetings": _parse_meetings(days, duration, is_lab),
+    }
+
+    fixed_start_time = (fixed_start_time or "").strip()
+    if fixed_start_time:
+        pattern["start_time"] = fixed_start_time
+
+    if not enabled:
+        pattern["disabled"] = True
+
+    cfg["time_slot_config"]["classes"].append(pattern)
+    _commit_change(cfg)
+
+
+def remove_pattern_service(index):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
+
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
+
+    patterns.pop(index)
+    _commit_change(cfg)
+
+
+def modify_pattern_service(index, **updates):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
+
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
+
+    pattern = patterns[index]
+
+    if updates.get("credits"):
+        pattern["credits"] = int(updates["credits"])
+
+    days = updates.get("days")
+    duration = updates.get("duration")
+    if days and duration:
+        pattern["meetings"] = _parse_meetings(
+            days,
+            duration,
+            updates.get("is_lab", False),
+        )
+
+    fixed_start_time = updates.get("fixed_start_time")
+    if fixed_start_time is not None:
+        fixed_start_time = fixed_start_time.strip()
+        if fixed_start_time:
+            pattern["start_time"] = fixed_start_time
+        else:
+            pattern.pop("start_time", None)
+
+    _commit_change(cfg)
+
+
+def toggle_pattern_service(index, enabled):
+    cfg = _get_cgf()
+    _ensure_time_slot_defaults(cfg)
+
+    index = int(index)
+    patterns = cfg["time_slot_config"]["classes"]
+
+    if not (0 <= index < len(patterns)):
+        raise ValueError(f"Invalid pattern index: {index}")
+
+    enabled = str(enabled).lower() in ["true", "on", "1"]
+
+    if enabled:
+        patterns[index].pop("disabled", None)
+    else:
+        patterns[index]["disabled"] = True
+
+    _commit_change(cfg)
+
+
 # ================================================================
 # Schedule Generation
 # ================================================================
+
 
 def update_schedules(cfg):
 
