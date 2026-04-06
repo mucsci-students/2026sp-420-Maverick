@@ -1,4 +1,4 @@
-# Author: Antonio Corona, Jacob Karasow, Tanner Ness
+# Author: Antonio Corona & Jacob Karasow & Tanner Ness
 # Date: 2026-04-05
 
 """
