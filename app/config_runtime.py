@@ -36,11 +36,7 @@ def get_flask_secret_key() -> str:
 
     Falls back to a development key if nothing is provided.
     """
-    return (
-        FLASK_SECRET_KEY
-        or os.environ.get("FLASK_SECRET_KEY")
-        or "dev-secret-key"
-    )
+    return FLASK_SECRET_KEY or os.environ.get("FLASK_SECRET_KEY") or "dev-secret-key"
 
 
 def get_openai_model() -> str:
@@ -48,7 +44,5 @@ def get_openai_model() -> str:
     Return the configured OpenAI model name.
     """
     return (
-        MAVERICK_OPENAI_MODEL
-        or os.environ.get("MAVERICK_OPENAI_MODEL")
-        or "gpt-5-mini"
+        MAVERICK_OPENAI_MODEL or os.environ.get("MAVERICK_OPENAI_MODEL") or "gpt-5-mini"
     )

@@ -1,4 +1,4 @@
-name: Tests and Coverage
+name: Tests and Quality Checks
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  test:
+  test-and-quality:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version-file: ".python-version"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -27,6 +27,18 @@ jobs:
 
       - name: Run tests with coverage
         run: uv run pytest --cov=app --cov-branch --cov-report=xml
+
+      - name: Run Ruff linter
+        run: uv run ruff check . --output-format=github
+
+      - name: Run Ruff formatter check
+        run: uv run ruff format . --check
+
+      - name: Run mypy
+        run: uv run mypy app tests
+
+      - name: Run ty
+        run: uv run ty check app tests --output-format=github
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

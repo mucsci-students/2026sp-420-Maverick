@@ -14,6 +14,7 @@ Web-based schedule rendering uses:
 
 Safe to refactor or remove if CLI support is deprecated.
 """
+
 """
 schedule_viewing.py
 
@@ -36,15 +37,15 @@ Related User Stories:
 #     if not schedule_data:
 #         print("No schedule data available to display.")
 #         return
-    
+
 #     headers = schedule_data[0].keys()
 
 #     # Use csv.DictWriter function so that it's formatted correctly, and prints to terminal.
 #     writer = csv.DictWriter(sys.stdout, fieldnames=headers)
-    
+
 #     # Print the header row (e.g., course_id, room, time).
 #     writer.writeheader()
-    
+
 #     for row in schedule_data:
 #         writer.writerow(row)
 
@@ -54,7 +55,7 @@ Related User Stories:
 #     try:
 #         if not schedule_data:
 #             raise ValueError("No data to save.")
-            
+
 #         headers = schedule_data[0].keys()
 
 #         with open(filename, mode='w', newline='') as f:
@@ -65,4 +66,3 @@ Related User Stories:
 
 #     except Exception as e:
 #         print(f"Error exporting to CSV: {e}")
-

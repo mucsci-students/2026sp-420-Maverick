@@ -31,13 +31,14 @@ from app.web.services.config_service import (
     modify_faculty_service,
 )
 
+
 def test_load_existing_configuration(app_context, repo_root):
     """Ensures a config can be loaded."""
 
-    path = repo_root / "configs" /"config_test.json"
+    path = repo_root / "configs" / "config_test.json"
 
     load_config_into_session(path)
-     
+
     status = get_config_status()
     assert status["loaded"] is True
 
@@ -59,7 +60,7 @@ def test_detect_duplicate_faculty():
         "config": {
             "faculty": [{"name": "Dr. Smith"}, {"name": "Dr. Smith"}],
             "rooms": [],
-            "labs": []
+            "labs": [],
         }
     }
     conflicts = detect_conflicts(cfg)
@@ -68,13 +69,7 @@ def test_detect_duplicate_faculty():
 
 
 def test_detect_missing_names():
-    cfg = {
-        "config": {
-            "faculty": [{"name": ""}],
-            "rooms": [],
-            "labs": []
-        }
-    }
+    cfg = {"config": {"faculty": [{"name": ""}], "rooms": [], "labs": []}}
     conflicts = detect_conflicts(cfg)
     assert "Faculty member with missing name." in conflicts
 
@@ -85,20 +80,25 @@ def test_validate_config_invalid_room():
             "faculty": [{"name": "Smith"}],
             "rooms": [{"name": "Room A"}],
             "labs": [],
-            "courses": [{
-                "course_id": "CS101",
-                "credits": 3,
-                "room": ["Room Z"],
-                "faculty": ["Smith"]
-            }]
+            "courses": [
+                {
+                    "course_id": "CS101",
+                    "credits": 3,
+                    "room": ["Room Z"],
+                    "faculty": ["Smith"],
+                }
+            ],
         },
         "time_slot_config": {
             "days": ["MON", "TUE", "WED", "THU", "FRI"],
             "time_slots": {
                 "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                "TUE": [], "WED": [], "THU": [], "FRI": []
-            }
-        }
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+        },
     }
     with pytest.raises(ValueError, match="Invalid room 'Room Z'"):
         validate_config(cfg)
@@ -107,20 +107,22 @@ def test_validate_config_invalid_room():
 def test_faculty_service_updates_session(app_context):
     with app_context.test_request_context():
         session["working_config"] = {"config": {"faculty": []}, "limit": 3}
-        
+
         add_faculty_service(name="New Faculty", appointment_type="Full-Time")
-        
+
         assert get_unsaved() is True
         assert len(session["working_config"]["config"]["faculty"]) == 1
-        assert session["working_config"]["config"]["faculty"][0]["name"] == "New Faculty"
+        assert (
+            session["working_config"]["config"]["faculty"][0]["name"] == "New Faculty"
+        )
 
 
 def test_clear_config(app_context):
     with app_context.test_request_context():
         session[SESSION_CONFIG_KEY] = {"some": "data"}
-        
+
         clear_config()
-        
+
         assert SESSION_CONFIG_KEY not in session
         status = get_config_status()
         assert status["loaded"] is False
@@ -129,17 +131,19 @@ def test_clear_config(app_context):
 def test_export_config_bytes(app_context):
     with app_context.test_request_context():
         cfg = {
-            "config": {
-                "faculty": []}, 
-                "limit": 3, 
-                "time_slot_config": {
-                    "days": ["MON", "TUE", "WED", "THU", "FRI"],
-                    "time_slots": {
-                        "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                        "TUE": [], "WED": [], "THU": [], "FRI": []
-                    }
-                }
-            }
+            "config": {"faculty": []},
+            "limit": 3,
+            "time_slot_config": {
+                "days": ["MON", "TUE", "WED", "THU", "FRI"],
+                "time_slots": {
+                    "MON": [{"start_time": "08:00", "end_time": "09:00"}],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": [],
+                },
+            },
+        }
         session[SESSION_CONFIG_KEY] = cfg
 
         payload, filename = export_config_bytes("my_export")
@@ -166,16 +170,21 @@ def test_detect_room_lab_conflicts():
 def test_validate_config_invalid_credits():
     cfg = {
         "config": {
-            "faculty": [], "rooms": [], "labs": [],
-            "courses": [{"course_id": "CS101", "credits": 0}]
-        }, 
+            "faculty": [],
+            "rooms": [],
+            "labs": [],
+            "courses": [{"course_id": "CS101", "credits": 0}],
+        },
         "time_slot_config": {
             "days": ["MON", "TUE", "WED", "THU", "FRI"],
             "time_slots": {
                 "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                "TUE": [], "WED": [], "THU": [], "FRI": []
-            }
-        }
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+        },
     }
     with pytest.raises(ValueError, match="Invalid credits for course CS101"):
         validate_config(cfg)
@@ -183,17 +192,17 @@ def test_validate_config_invalid_credits():
 
 def test_validate_config_missing_id():
     cfg = {
-        "config": {
-            "faculty": [], "rooms": [], "labs": [],
-            "courses": [{"credits": 3}]
-        }, 
+        "config": {"faculty": [], "rooms": [], "labs": [], "courses": [{"credits": 3}]},
         "time_slot_config": {
             "days": ["MON", "TUE", "WED", "THU", "FRI"],
             "time_slots": {
                 "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                "TUE": [], "WED": [], "THU": [], "FRI": []
-            }
-        }
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+        },
     }
     with pytest.raises(ValueError, match="Course with missing course_id."):
         validate_config(cfg)
@@ -228,19 +237,9 @@ def test_lab_service_updates(app_context):
 
 def test_course_service_casts_credits(app_context):
     with app_context.test_request_context():
-        session[SESSION_CONFIG_KEY] = {
-            "config": {
-                "courses": [],
-                "rooms": ["Room A"]
-            }
-        }
+        session[SESSION_CONFIG_KEY] = {"config": {"courses": [], "rooms": ["Room A"]}}
 
-        add_course_service(
-            course_id="CS102", 
-            credits="4", 
-            room="Room A", 
-            faculty=[]
-        )
+        add_course_service(course_id="CS102", credits="4", room="Room A", faculty=[])
 
         course = session[SESSION_CONFIG_KEY]["config"]["courses"][0]
         assert course["credits"] == 4
@@ -256,12 +255,15 @@ def test_save_config_fails_validation(app_context, tmp_path):
                 "days": ["MON", "TUE", "WED", "THU", "FRI"],
                 "time_slots": {
                     "MON": [{"start_time": "08:00", "end_time": "09:00"}],
-                    "TUE": [], "WED": [], "THU": [], "FRI": []
-                }
-            }
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": [],
+                },
+            },
         }
         save_path = tmp_path / "fail.json"
-        
+
         with pytest.raises(ValueError, match="Course with missing course_id."):
             save_config_from_session(str(save_path))
 
@@ -271,8 +273,11 @@ def test_update_schedules_fails_on_conflicts(app_context):
         cfg = {"config": {"faculty": [{"name": "Smith"}, {"name": "Smith"}]}}
         session[SESSION_CONFIG_KEY] = cfg
         session["config_conflicts"] = ["Duplicate faculty name: Smith"]
-        
-        with pytest.raises(ValueError, match="Schedules cannot be generated until configuration conflicts are resolved."):
+
+        with pytest.raises(
+            ValueError,
+            match="Schedules cannot be generated until configuration conflicts are resolved.",
+        ):
             update_schedules(cfg)
 
 
@@ -290,14 +295,14 @@ def test_remove_services(app_context):
             "config": {
                 "faculty": [{"name": "Smith"}],
                 "rooms": ["101"],
-                "courses": [{"course_id": "CS101"}]
+                "courses": [{"course_id": "CS101"}],
             }
         }
-        
+
         remove_faculty_service(name="Smith")
         remove_room_service(room="101")
         remove_course_service(course_id="CS101")
-        
+
         cfg = session[SESSION_CONFIG_KEY]["config"]
         assert len(cfg["faculty"]) == 0
         assert len(cfg["rooms"]) == 0
@@ -315,7 +320,7 @@ def test_get_config_status_no_config(app_context):
     with app_context.test_request_context():
         if SESSION_CONFIG_KEY in session:
             del session[SESSION_CONFIG_KEY]
-            
+
         status = get_config_status()
         assert status["loaded"] is False
         assert status["counts"] == {}
@@ -326,7 +331,7 @@ def test_remove_course_and_modify_room(app_context):
         session[SESSION_CONFIG_KEY] = {
             "config": {
                 "courses": [{"course_id": "CS101", "room": "101"}],
-                "rooms": ["101"]
+                "rooms": ["101"],
             }
         }
 
@@ -340,12 +345,7 @@ def test_remove_course_and_modify_room(app_context):
 def test_config_service_error_branches(app_context):
     with app_context.test_request_context():
         session[SESSION_CONFIG_KEY] = {
-            "config": {
-                "faculty": [],
-                "rooms": [],
-                "courses": [],
-                "labs": []
-            }
+            "config": {"faculty": [], "rooms": [], "courses": [], "labs": []}
         }
         session.modified = True
 
@@ -361,7 +361,7 @@ def test_config_service_error_branches(app_context):
         add_room_service("101")
         with pytest.raises(ValueError, match="Room '101' already exists."):
             add_room_service("101")
-            
+
         add_faculty_service(name="Jones", appointment_type="Adjunct")
         with pytest.raises(ValueError, match="Faculty 'Jones' already exists"):
             add_faculty_service(name="Jones", appointment_type="Adjunct")

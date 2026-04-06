@@ -23,6 +23,7 @@ from flask_session import Session
 
 from app.config_runtime import get_flask_secret_key, get_openai_api_key
 
+
 def create_app():
     """
     Application factory for the Maverick Scheduler Flask app.
@@ -59,7 +60,6 @@ def create_app():
             "Warning: OpenAI API key not found. "
             "Set OPENAI_API_KEY in app/local_settings.py or your environment "
             "to use the AI Chat Tool."
-            
             "Missing OpenAI API key. Set it in app/local_settings.py "
             "or as an environment variable."
         )
