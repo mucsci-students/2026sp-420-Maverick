@@ -1,5 +1,5 @@
 # Author: Antonio Corona
-# Date: 2026-04-05
+# Date: 2026-03-02
 """
 Schedule Execution Service
 
@@ -148,6 +148,7 @@ def generate_schedules_into_session(limit: int, optimizer_flags: Optional[List[s
     # the saved configuration stored in session.
 
     run_cfg = deepcopy(cfg)
+
 
     # ----------------------------------------
     # 3. Apply Per-Run Overrides (Generator UI)

@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow, Tanner Ness
-# Date: 2026-04-05
+# Date: 2026-03-08
 
 """
 config_service.py
@@ -181,22 +181,6 @@ def set_schedules_updated(value: bool):
 def get_schedules_updated():
     return session.get(SESSION_SCHEDULES_UPDATED_KEY, False)
 
-def normalize_time_entry(entry):
-    if isinstance(entry, str):
-        start, end = entry.split("-")
-        return {
-            "start_time": start.strip(), 
-            "end_time": end.strip()
-        }
-    
-    return {
-        "start_time": entry.get("start_time", "").strip(),
-        "end_time": entry.get("end_time", "").strip()
-    }
-
-def clean_time(s: str) -> str:
-    return s.strip()
-
 
 # ================================================================
 # Conflict Helpers
@@ -228,7 +212,7 @@ def detect_conflicts(cfg):
     lab_names = set()
 
     for f in config.get("faculty", []):
-        name = f if isinstance(f, str) else f.get("name") if isinstance(f, dict) else None
+        name = f if isinstance(f, str) else f.get("name")
 
         if not name:
             conflicts.append("Faculty member with missing name.")
@@ -316,8 +300,6 @@ def _get_cgf():
 
 
 def _commit_change(cfg):
-
-    cfg = _get_cgf()
 
     session[SESSION_CONFIG_KEY] = cfg
 
@@ -663,6 +645,7 @@ def validate_config(cfg):
 # ================================================================
 # Status
 # ================================================================
+
 def get_config_status():
     """
     Build a summary of the current configuration/editor state for the UI.
@@ -690,15 +673,8 @@ def get_config_status():
         }
 
     counts = {}
-    time_slot_summary = {}
-
     if loaded and isinstance(cfg, dict):
         c = cfg.get("config", {}) if isinstance(cfg.get("config", {}), dict) else {}
-        tsc = cfg.get("time_slot_config", {})
-
-        time_slots = tsc.get("time_slots", {})
-        patterns = tsc.get("patterns", []) or []
-
         counts = {
             "Faculty": len(c.get("faculty", []) or []),
             "Courses": len(c.get("courses", []) or []),
@@ -706,33 +682,14 @@ def get_config_status():
             "Labs": len(c.get("labs", []) or []),
         }
 
-        total_slots = sum(len(slots) for slots in time_slots.values())
-
-        enabled_patterns = len([
-            p for p in patterns if p.get("enabled", True)
-        ])
-
-        time_slot_summary = {
-            "total_slots": total_slots,
-            "patterns": len(patterns), 
-            "Enabled Patterns": enabled_patterns
-        }
-
     return {
         "loaded": loaded,
         "path": path,
         "counts": counts,
-        "time_slot_summary": time_slot_summary,
-
-        "time_slot_summary_raw": time_slots,
-        "patterns_raw": patterns,
-
         "unsaved_changes": get_unsaved(),
         "schedules_updated": get_schedules_updated(),
         "default_filename": get_default_export_filename(),
-        "conflicts": get_conflicts(),
     }
-
 
 
 # ================================================================
@@ -756,27 +713,6 @@ def modify_faculty_service(**kwargs):
     modify_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
-def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
-    cfg = _get_cgf()
-
-    faculty_list = cfg.get("config", {}).get("faculty", [])
-    day = day.upper()
-
-    for faculty in faculty_list:
-        if faculty.get("name") == name:
-            faculty.setdefault("times", {})
-            faculty["times"].setdefault(day, [])
-
-            faculty["times"][day].append({
-                "start_time": start_time,
-                "end_time": end_time
-            })
-
-            _commit_change(cfg)
-            return
-
-    raise ValueError(f"Faculty '{name}' does not exist")
-
 def set_faculty_day_unavailable_service(name: str, day: str):
     """
     Mark a faculty member unavailable on a specific day by setting that
@@ -796,26 +732,6 @@ def set_faculty_day_unavailable_service(name: str, day: str):
 
     raise ValueError(f"Faculty '{name}' does not exist")
 
-def remove_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
-    cfg = _get_cgf()
-    faculty_list = cfg.get("config", {}).get("faculty", [])
-
-    for faculty in faculty_list:
-        if faculty.get("name") == name:
-            slots = faculty.get("times", {}).get(day, [])
-
-            faculty["times"][day] = [
-                s for s in slots
-                if not (
-                    s.get("start_time") == start_time and
-                    s.get("end_time") == end_time
-                )
-            ]
-
-            _commit_change(cfg)
-            return
-
-    raise ValueError(f"Faculty '{name}' not found")
 
 # ================================================================
 # Room Management
@@ -869,13 +785,6 @@ def add_course_service(**kwargs):
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
-    if"faculty" in kwargs and kwargs["faculty"]:
-        kwargs["faculty"] = [
-            f.strip() for f in kwargs["faculty"].split(",") if f.strip()
-        ]
-    else:
-        kwargs["faculty"] = []
-    
     add_course(cfg, **kwargs)
     _commit_change(cfg)
 
@@ -890,12 +799,6 @@ def modify_course_service(**kwargs):
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
-    if "faculty" in kwargs and kwargs["faculty"]:
-        kwargs["faculty"] = [
-            f.strip() for f in kwargs["faculty"].split(",") if f.strip()
-        ]
-    else:
-        kwargs["faculty"] = []
     modify_course(cfg, **kwargs)
     _commit_change(cfg)
 
@@ -1043,7 +946,7 @@ def update_schedules(cfg):
 
     from app.web.services.run_service import generate_schedules_into_session
 
-    cfg = _ensure_time_slot_defaults(cfg)
+    cfg = apply_timeslot_defaults(cfg)
 
     conflicts = get_conflicts()
 
@@ -1052,9 +955,6 @@ def update_schedules(cfg):
             "Schedules cannot be generated until configuration conflicts are resolved."
         )
 
-    generate_schedules_into_session(
-        cfg.get("limit", 3),
-        cfg.get("optimizer_flags", []),
-    )
+    generate_schedules_into_session(cfg)
 
     return session.get("schedules", [])
