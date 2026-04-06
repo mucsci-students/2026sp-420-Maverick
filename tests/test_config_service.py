@@ -370,7 +370,7 @@ def test_config_service_error_branches(app_context):
         status = get_config_status()
         assert status["loaded"] is False
         assert status["counts"] == {}
-        
+
 
 def test_apply_timeslot_defaults_adds_missing_block():
     """
@@ -392,12 +392,7 @@ def test_ensure_time_slot_defaults_adds_time_slots_and_patterns():
     Ensures _ensure_time_slot_defaults creates both time_slots and patterns
     when they are missing from an existing time_slot_config.
     """
-    cfg = {
-        "config": {},
-        "time_slot_config": {
-            "days": ["MON", "WED"]
-        }
-    }
+    cfg = {"config": {}, "time_slot_config": {"days": ["MON", "WED"]}}
 
     result = config_service._ensure_time_slot_defaults(cfg)
 
@@ -413,6 +408,7 @@ def test_load_config_into_session_from_uploaded_file(app_context, monkeypatch):
     Ensures load_config_into_session supports uploaded browser files
     instead of only filesystem paths.
     """
+
     class FakeUpload:
         filename = "uploaded_config.json"
 
@@ -443,7 +439,9 @@ def test_load_config_into_session_from_uploaded_file(app_context, monkeypatch):
         assert written["cfg"]["config"]["faculty"] == []
 
 
-def test_save_config_from_session_updates_path_and_flags(app_context, tmp_path, monkeypatch):
+def test_save_config_from_session_updates_path_and_flags(
+    app_context, tmp_path, monkeypatch
+):
     """
     Ensures save_config_from_session writes the config, updates the stored
     save path, and marks schedules as updated.
@@ -495,13 +493,15 @@ def test_validate_config_invalid_lab_reference():
             "faculty": [{"name": "Smith"}],
             "rooms": ["Room A"],
             "labs": ["Lab A"],
-            "courses": [{
-                "course_id": "CS101",
-                "credits": 3,
-                "room": ["Room A"],
-                "lab": ["Missing Lab"],
-                "faculty": ["Smith"],
-            }],
+            "courses": [
+                {
+                    "course_id": "CS101",
+                    "credits": 3,
+                    "room": ["Room A"],
+                    "lab": ["Missing Lab"],
+                    "faculty": ["Smith"],
+                }
+            ],
         }
     }
 
@@ -519,12 +519,14 @@ def test_validate_config_invalid_faculty_reference():
             "faculty": [{"name": "Smith"}],
             "rooms": ["Room A"],
             "labs": [],
-            "courses": [{
-                "course_id": "CS101",
-                "credits": 3,
-                "room": ["Room A"],
-                "faculty": ["Jones"],
-            }],
+            "courses": [
+                {
+                    "course_id": "CS101",
+                    "credits": 3,
+                    "room": ["Room A"],
+                    "faculty": ["Jones"],
+                }
+            ],
         }
     }
 
@@ -542,11 +544,13 @@ def test_validate_config_invalid_conflict_reference():
             "faculty": [],
             "rooms": [],
             "labs": [],
-            "courses": [{
-                "course_id": "CS101",
-                "credits": 3,
-                "conflicts": ["CS999"],
-            }],
+            "courses": [
+                {
+                    "course_id": "CS101",
+                    "credits": 3,
+                    "conflicts": ["CS999"],
+                }
+            ],
         }
     }
 
@@ -587,18 +591,12 @@ def test_set_faculty_time_service_adds_time_slot(app_context):
     uppercases the day, and appends the new availability slot.
     """
     with app_context.test_request_context():
-        session[SESSION_CONFIG_KEY] = {
-            "config": {
-                "faculty": [{"name": "Smith"}]
-            }
-        }
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": [{"name": "Smith"}]}}
 
         config_service.set_faculty_time_service("Smith", "mon", "09:00", "10:00")
 
         faculty = session[SESSION_CONFIG_KEY]["config"]["faculty"][0]
-        assert faculty["times"]["MON"] == [
-            {"start_time": "09:00", "end_time": "10:00"}
-        ]
+        assert faculty["times"]["MON"] == [{"start_time": "09:00", "end_time": "10:00"}]
         assert session[config_service.SESSION_UNSAVED_KEY] is True
 
 
@@ -622,15 +620,17 @@ def test_remove_faculty_time_service_removes_matching_slot(app_context):
     with app_context.test_request_context():
         session[SESSION_CONFIG_KEY] = {
             "config": {
-                "faculty": [{
-                    "name": "Smith",
-                    "times": {
-                        "MON": [
-                            {"start_time": "09:00", "end_time": "10:00"},
-                            {"start_time": "10:00", "end_time": "11:00"},
-                        ]
-                    },
-                }]
+                "faculty": [
+                    {
+                        "name": "Smith",
+                        "times": {
+                            "MON": [
+                                {"start_time": "09:00", "end_time": "10:00"},
+                                {"start_time": "10:00", "end_time": "11:00"},
+                            ]
+                        },
+                    }
+                ]
             }
         }
 
@@ -745,8 +745,12 @@ def test_conflict_services_call_dependencies(app_context, monkeypatch):
     with app_context.test_request_context():
         session[SESSION_CONFIG_KEY] = {"config": {"courses": []}}
 
-        config_service.add_conflict_service(course_id="CS101", conflict_course_id="CS102")
-        config_service.remove_conflict_service(course_id="CS101", conflict_course_id="CS102")
+        config_service.add_conflict_service(
+            course_id="CS101", conflict_course_id="CS102"
+        )
+        config_service.remove_conflict_service(
+            course_id="CS101", conflict_course_id="CS102"
+        )
         config_service.modify_conflict_service(
             course_id="CS101",
             old_conflict="CS102",
@@ -783,7 +787,9 @@ def test_time_slot_services_cover_add_modify_remove(app_context):
         ]
 
         config_service.remove_time_slot_service("MON", "08:30", "09:30")
-        assert session[SESSION_CONFIG_KEY]["time_slot_config"]["time_slots"]["MON"] == []
+        assert (
+            session[SESSION_CONFIG_KEY]["time_slot_config"]["time_slots"]["MON"] == []
+        )
 
 
 def test_modify_time_slot_service_out_of_range_still_commits(app_context, monkeypatch):
@@ -847,7 +853,10 @@ def test_pattern_services_cover_add_modify_toggle_remove(app_context):
         assert pattern["duration"] == 75
 
         config_service.toggle_pattern_service("MWF-50", "on")
-        assert session[SESSION_CONFIG_KEY]["time_slot_config"]["patterns"][0]["enabled"] is True
+        assert (
+            session[SESSION_CONFIG_KEY]["time_slot_config"]["patterns"][0]["enabled"]
+            is True
+        )
 
         config_service.remove_pattern_service("MWF-50")
         assert session[SESSION_CONFIG_KEY]["time_slot_config"]["patterns"] == []
@@ -870,7 +879,10 @@ def test_toggle_pattern_service_accepts_boolean_false(app_context):
 
         config_service.toggle_pattern_service("A", False)
 
-        assert session[SESSION_CONFIG_KEY]["time_slot_config"]["patterns"][0]["enabled"] is False
+        assert (
+            session[SESSION_CONFIG_KEY]["time_slot_config"]["patterns"][0]["enabled"]
+            is False
+        )
 
 
 def test_update_schedules_success_returns_session_schedules(app_context, monkeypatch):
@@ -892,14 +904,16 @@ def test_update_schedules_success_returns_session_schedules(app_context, monkeyp
     monkeypatch.setattr(config_service, "get_conflicts", lambda: [])
 
     with app_context.test_request_context():
-        result = update_schedules({
-            "config": {
-                "faculty": [],
-                "courses": [],
-                "rooms": [],
-                "labs": [],
+        result = update_schedules(
+            {
+                "config": {
+                    "faculty": [],
+                    "courses": [],
+                    "rooms": [],
+                    "labs": [],
+                }
             }
-        })
+        )
 
         assert result == [{"schedule_id": 1}]
         assert seen["cfg"]["time_slot_config"]["start_time"] == "08:00"

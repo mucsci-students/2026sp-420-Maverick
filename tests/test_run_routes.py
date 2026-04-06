@@ -57,7 +57,9 @@ def test_generator_uses_fallback_defaults_when_no_config(monkeypatch):
         captured["context"] = context
         return "rendered-generator"
 
-    monkeypatch.setattr("app.web.routes.run_routes.render_template", fake_render_template)
+    monkeypatch.setattr(
+        "app.web.routes.run_routes.render_template", fake_render_template
+    )
 
     app = create_app()
     client = app.test_client()
@@ -92,7 +94,9 @@ def test_generator_uses_config_defaults_and_session_overrides(monkeypatch):
         captured["context"] = context
         return "rendered-generator"
 
-    monkeypatch.setattr("app.web.routes.run_routes.render_template", fake_render_template)
+    monkeypatch.setattr(
+        "app.web.routes.run_routes.render_template", fake_render_template
+    )
 
     app = create_app()
     client = app.test_client()
@@ -272,7 +276,9 @@ def test_generate_exception_resets_progress_and_redirects(monkeypatch):
         "app.web.routes.run_routes.generate_schedules_into_session",
         fake_generate_schedules_into_session,
     )
-    monkeypatch.setattr("app.web.routes.run_routes.generation_progress", observed_progress)
+    monkeypatch.setattr(
+        "app.web.routes.run_routes.generation_progress", observed_progress
+    )
     monkeypatch.setattr("app.web.routes.run_routes.is_running", observed_running)
 
     app = create_app()
@@ -321,7 +327,9 @@ def test_reset_clears_overrides_and_progress_state():
 
     assert generation_progress[session_id] == 0
     assert is_running[session_id] is False
-    assert ("success", "Reset Generator settings to config defaults.") in _get_flashes(client)
+    assert ("success", "Reset Generator settings to config defaults.") in _get_flashes(
+        client
+    )
 
 
 def test_get_progress_returns_current_session_progress(monkeypatch):
@@ -331,6 +339,7 @@ def test_get_progress_returns_current_session_progress(monkeypatch):
     This test avoids depending on a specific persisted session sid by
     monkeypatching the route module's generation_progress mapping.
     """
+
     class FakeProgressStore(dict):
         def get(self, key, default=None):
             return 42
