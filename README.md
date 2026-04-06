@@ -428,9 +428,9 @@ Details:
 
 - Event handlers are used to update the UI button styles, and update the state.
 
-### Design Pattern: state
+### Design Pattern: State
 
-2. Command (Behavoiral Pattern)
+2. State (Behavoiral Pattern)
 Located in 
 ```
 app/web/routes/run_routes.py
@@ -439,20 +439,20 @@ app/web/templates/generator.html
 ```
 Details:
 
-- The progress bar's behavior changes based on the internal state
+- The progress bar's behavior changes based on on how many schedules have currently been generated (app.js)
 
-- uses lots of conditionals to determine how it behaves
+- uses lots of conditionals to determine how it behaves (app.js)
 
-- UI behavior tied to internal state
+- UI behavior tied to internal state (run_routes.py pinging for updates)
 
 states:
-- initially progress is at 0% when no running/initially started
+- initially, the progress bar is at 0% when no running/initially started.
 
-- when running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+- when running, the progress bar updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
 
-- completed at 100%
+- completed at 100%, redirects the user automatically to the viewer page.
 
-- when it encounters and error, show an error message instead of progressing
+- when it encounters and error, show an error message instead of progressing. Allows for retrying.
 
 ---
 
