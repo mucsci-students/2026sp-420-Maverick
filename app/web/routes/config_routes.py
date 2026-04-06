@@ -46,9 +46,8 @@ from app.web.services.config_service import (
     add_faculty_service,
     remove_faculty_service,
     modify_faculty_service,
-    set_faculty_time_service, 
+    set_faculty_time_service,
     remove_faculty_time_service,
-
     # Rooms
     add_room_service,
     remove_room_service,
@@ -294,6 +293,7 @@ def modify_faculty():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/faculty/set_time")
 def faculty_set_time():
     try:
@@ -302,6 +302,7 @@ def faculty_set_time():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 @bp.post("/faculty/remove_time")
 def faculty_remove_time():
