@@ -64,6 +64,17 @@ from app.web.services.config_service import (
     add_conflict_service,
     remove_conflict_service,
     modify_conflict_service,
+
+    # Time Slots
+    add_time_slot_service,
+    remove_time_slot_service,
+    modify_time_slot_service,
+
+    # Meeting Patterns
+    add_pattern_service,
+    remove_pattern_service,
+    modify_pattern_service,
+    toggle_pattern_service,
 )
 
 bp = Blueprint("config", __name__, url_prefix="/config")
