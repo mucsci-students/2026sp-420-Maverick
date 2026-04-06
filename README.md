@@ -525,6 +525,49 @@ Make sure you:
 
 ---
 
+## Running Linting, Formatting, and Type Checks
+
+After installing dependencies with:
+
+```bash
+uv sync --dev
+```
+
+Run the linter:
+```
+uv run ruff check .
+```
+
+Run the formatter:
+```
+uv run ruff format .
+```
+
+Check formatting without changing files:
+```
+uv run ruff format . --check
+```
+
+Run ty:
+```
+uv run ty check app tests
+```
+
+### What to run locally after you make the changes
+
+From the repo root:
+
+```bash
+uv sync --dev
+uv run ruff check .
+uv run ruff format .
+uv run mypy app tests
+uv run ty check app tests
+uv run pytest --cov=app --cov-branch --cov-report=xml
+```
+
+---
+
 ## Acknowledgements
 
 Built with: 
