@@ -29,6 +29,13 @@ from app.web.services.config_service import (
     remove_course_service,
     modify_room_service,
     modify_faculty_service,
+    add_time_slot_service,
+    modify_time_slot_service,
+    remove_time_slot_service,
+    add_pattern_service,
+    modify_pattern_service,
+    remove_pattern_service,
+    toggle_pattern_service,
 )
 
 
@@ -736,3 +743,187 @@ def test_conflict_services_call_dependencies(app_context, monkeypatch):
     )
     assert calls[5] == ("commit", True)
 
+
+def test_add_time_slot_service_writes_canonical_slot(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"faculty": [], "courses": [], "rooms": [], "labs": []},
+            "limit": 3,
+            "optimizer_flags": [],
+            "time_slot_config": {
+                "times": {
+                    "MON": [],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": [],
+                },
+                "classes": [],
+            },
+        }
+
+        add_time_slot_service(day="MON", start="08:00", spacing="60", end="17:00")
+
+        slots = session[SESSION_CONFIG_KEY]["time_slot_config"]["times"]["MON"]
+        assert len(slots) == 1
+        assert slots[0] == {"start": "08:00", "spacing": 60, "end": "17:00"}
+        assert get_unsaved() is True
+
+
+def test_modify_and_remove_time_slot_service_use_index(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"faculty": [], "courses": [], "rooms": [], "labs": []},
+            "time_slot_config": {
+                "times": {
+                    "MON": [{"start": "08:00", "spacing": 60, "end": "12:00"}],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": [],
+                },
+                "classes": [],
+            },
+        }
+
+        modify_time_slot_service(
+            day="MON",
+            index="0",
+            start="09:00",
+            spacing="50",
+            end="13:00",
+        )
+
+        slots = session[SESSION_CONFIG_KEY]["time_slot_config"]["times"]["MON"]
+        assert slots[0] == {"start": "09:00", "spacing": 50, "end": "13:00"}
+
+        remove_time_slot_service(day="MON", index="0")
+        assert session[SESSION_CONFIG_KEY]["time_slot_config"]["times"]["MON"] == []
+
+
+def test_add_pattern_service_creates_canonical_class_pattern(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"faculty": [], "courses": [], "rooms": [], "labs": []},
+            "time_slot_config": {
+                "times": {
+                    "MON": [{"start": "08:00", "spacing": 60, "end": "17:00"}],
+                    "TUE": [],
+                    "WED": [{"start": "08:00", "spacing": 60, "end": "17:00"}],
+                    "THU": [],
+                    "FRI": [{"start": "08:00", "spacing": 60, "end": "17:00"}],
+                },
+                "classes": [],
+            },
+        }
+
+        add_pattern_service(
+            credits="3",
+            days="MON,WED,FRI",
+            duration="50",
+            is_lab=False,
+            fixed_start_time="09:00",
+            enabled=True,
+        )
+
+        classes = session[SESSION_CONFIG_KEY]["time_slot_config"]["classes"]
+        assert len(classes) == 1
+        assert classes[0]["credits"] == 3
+        assert classes[0]["meetings"] == [
+            {"day": "MON", "duration": 50},
+            {"day": "WED", "duration": 50},
+            {"day": "FRI", "duration": 50},
+        ]
+        assert classes[0]["start_time"] == "09:00"
+        assert "disabled" not in classes[0]
+
+
+def test_modify_toggle_and_remove_pattern_service_by_index(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"faculty": [], "courses": [], "rooms": [], "labs": []},
+            "time_slot_config": {
+                "times": {
+                    "MON": [{"start": "08:00", "spacing": 60, "end": "17:00"}],
+                    "TUE": [{"start": "08:00", "spacing": 60, "end": "17:00"}],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": [],
+                },
+                "classes": [
+                    {
+                        "credits": 4,
+                        "meetings": [{"day": "MON", "duration": 50}],
+                    }
+                ],
+            },
+        }
+
+        modify_pattern_service(
+            index="0",
+            credits="4",
+            days="MON,TUE",
+            duration="110",
+            is_lab="on",
+            fixed_start_time="10:00",
+        )
+
+        pattern = session[SESSION_CONFIG_KEY]["time_slot_config"]["classes"][0]
+        assert pattern["credits"] == 4
+        assert pattern["meetings"] == [
+            {"day": "MON", "duration": 110, "lab": True},
+            {"day": "TUE", "duration": 110, "lab": True},
+        ]
+        assert pattern["start_time"] == "10:00"
+
+        toggle_pattern_service(index="0", enabled="false")
+        assert pattern["disabled"] is True
+
+        toggle_pattern_service(index="0", enabled="true")
+        assert "disabled" not in pattern
+
+        remove_pattern_service(index="0")
+        assert session[SESSION_CONFIG_KEY]["time_slot_config"]["classes"] == []
+
+
+def test_validate_config_rejects_time_slot_with_bad_time_format():
+    cfg = {
+        "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        "time_slot_config": {
+            "times": {
+                "MON": [{"start": "8:00", "spacing": 60, "end": "17:00"}],
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+            "classes": [],
+        },
+    }
+
+    with pytest.raises(ValueError, match="Invalid time format"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_pattern_day_without_time_slots():
+    cfg = {
+        "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        "time_slot_config": {
+            "times": {
+                "MON": [],
+                "TUE": [],
+                "WED": [],
+                "THU": [],
+                "FRI": [],
+            },
+            "classes": [
+                {
+                    "credits": 3,
+                    "meetings": [{"day": "MON", "duration": 50}],
+                }
+            ],
+        },
+    }
+
+    with pytest.raises(ValueError, match="no time slots are configured for MON"):
+        validate_config(cfg)
