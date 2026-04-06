@@ -400,62 +400,6 @@ Services connect Flask routes to the scheduling logic.
 
 ---
 
-## Design Pattern: Observer
-
-1. Observer (Behavioral Pattern)
-Located in 
-```
-app/web/templates/visual_schedule.html
-```
-Details:
-- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
-- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
-
-- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
-
-- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
-- A new function is called when the state changes. 
-- If a top category is changed then the sub-filters are reset.
-
-- Observer 1 is used to update the main view sections.
-(All, Faculty, Rooms, Labs)
-- State also controls the visibility of the sub-filtering.
-(e.g.: Show-Faculty, Filter - Hobbs)
-
-- Observer 2 is used to update the calendar container visibility (sub-filtering).
-
-- Observer 3 is used to update the day grid layout.
-
-- Event handlers are used to update the UI button styles, and update the state.
-
-### Design Pattern: state
-
-2. Command (Behavoiral Pattern)
-Located in 
-```
-app/web/routes/run_routes.py
-app/web/static/app.js
-app/web/templates/generator.html
-```
-Details:
-
-- The progress bar's behavior changes based on the internal state
-
-- uses lots of conditionals to determine how it behaves
-
-- UI behavior tied to internal state
-
-states:
-- initially progress is at 0% when no running/initially started
-
-- when running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
-
-- completed at 100%
-
-- when it encounters and error, show an error message instead of progressing
-
----
-
 ## Design Pattern: Command
 
 Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
@@ -494,6 +438,62 @@ By encapsulating user actions as commands:
 - The AI does not directly manipulate the configuration, improving security and maintainability
 
 This approach makes the system more modular, and extensible.
+
+---
+
+## Design Pattern: Observer
+
+1. Observer (Behavioral Pattern)
+Located in 
+```
+app/web/templates/visual_schedule.html
+```
+Details:
+- A central State object is used to control the filtering used with the visual calendar view (visual_schedule.html).
+- When the state changes (e.g.: day changes to 'Monday') all parts of the UI that use the state update themselves automatically.
+
+- Shown: CalendarState object manages the filters. Instead of one giant function (what it started as), there are smaller "listeners" that handle on job (e.g.: one listener for Day filter, one for Room filter).
+
+- CalendarState holds the state of the calendar filtering. When a value changes, it notifies all "subscribed" functions to update themselves. 
+- A new function is called when the state changes. 
+- If a top category is changed then the sub-filters are reset.
+
+- Observer 1 is used to update the main view sections.
+(All, Faculty, Rooms, Labs)
+- State also controls the visibility of the sub-filtering.
+(e.g.: Show-Faculty, Filter - Hobbs)
+
+- Observer 2 is used to update the calendar container visibility (sub-filtering).
+
+- Observer 3 is used to update the day grid layout.
+
+- Event handlers are used to update the UI button styles, and update the state.
+
+## Design Pattern: state
+
+### Command (Behavoiral Pattern)
+Located in 
+```
+app/web/routes/run_routes.py
+app/web/static/app.js
+app/web/templates/generator.html
+```
+Details:
+
+- The progress bar's behavior changes based on the internal state
+
+- uses lots of conditionals to determine how it behaves
+
+- UI behavior tied to internal state
+
+states:
+- initially progress is at 0% when no running/initially started
+
+- when running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+
+- completed at 100%
+
+- when it encounters and error, show an error message instead of progressing
 
 ---
 
