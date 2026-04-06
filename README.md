@@ -469,9 +469,11 @@ Details:
 
 - Event handlers are used to update the UI button styles, and update the state.
 
-## Design Pattern: state
+---
 
-### Command (Behavoiral Pattern)
+## Design Pattern: State
+
+### State (Behavoiral Pattern)
 Located in 
 ```
 app/web/routes/run_routes.py
@@ -486,14 +488,14 @@ Details:
 
 - UI behavior tied to internal state
 
-states:
-- initially progress is at 0% when no running/initially started
+States:
+- Initially progress is at 0% when no running/initially started
 
-- when running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
+- When running, progress updates continuously and updates are made to the progress bar (i.e. the percentage increases and the bottom text changes)
 
-- completed at 100%
+- Completed at 100%
 
-- when it encounters and error, show an error message instead of progressing
+- When it encounters and error, show an error message instead of progressing
 
 ---
 
