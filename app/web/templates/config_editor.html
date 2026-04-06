@@ -577,8 +577,9 @@ Extends base.html.
       <option value="FRI">FRI</option>
     </select>
 
-    <input name="start_time" placeholder="Start Time (e.g., 08:00)" required>
-    <input name="end_time" placeholder="End Time (e.g., 09:15)" required>
+    <input type="time" name="start" required>
+    <input name="spacing" type="number" min="1" placeholder="Spacing (minutes, e.g., 60)" required>
+   <input type="time" name="end" required>
 
     <button type="submit">Add</button>
   </form>
@@ -595,7 +596,7 @@ Extends base.html.
       <option value="FRI">FRI</option>
     </select>
 
-    <input name="index" placeholder="Slot Number" required>
+    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
     <button type="submit">Remove</button>
   </form>
 
@@ -611,13 +612,43 @@ Extends base.html.
       <option value="FRI">FRI</option>
     </select>
 
-    <input name="index" placeholder="Slot Number" required>
-    <input name="start_time" placeholder="New Start Time" required>
-    <input name="end_time" placeholder="New End Time" required>
+    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
+    <input name="start" placeholder="New Start Time" required>
+    <input name="spacing" type="number" min="1" placeholder="New Spacing (minutes)" required>
+    <input name="end" placeholder="New End Time" required>
 
     <button type="submit">Modify</button>
   </form>
+
+  {% set tsc = config.time_slot_config if config and config.time_slot_config else {} %}
+{% set times = tsc.times if tsc and tsc.times else {} %}
+
+{% if config and config.time_slot_config %}
+  {% set times = config.time_slot_config.times if config.time_slot_config.times else {} %}
+
+  <h3>Current Time Slots</h3>
+  {% for day, slots in times.items() %}
+    <div style="margin-bottom: 1rem;">
+      <strong>{{ day }}</strong>
+      <ul>
+        {% for slot in slots %}
+          <li>
+            [{{ loop.index0 }}]
+            start={{ slot.start }},
+            spacing={{ slot.spacing }},
+            end={{ slot.end }}
+          </li>
+        {% endfor %}
+        {% if not slots %}
+          <li>No slots configured.</li>
+        {% endif %}
+      </ul>
+    </div>
+  {% endfor %}
+{% endif %}
 </section>
+
+
 
 <!-- Meeting Pattern Configuration -->
 <section class="card">
@@ -626,8 +657,6 @@ Extends base.html.
   <!-- Add Pattern -->
   <h3>Add Pattern</h3>
   <form method="post" action="/config/pattern/add">
-    <input name="pattern_id" placeholder="Pattern ID (e.g., MWF_3CR)" required>
-
     <select name="credits" required>
       <option value="" disabled selected>Credits</option>
       <option value="1">1</option>
@@ -637,15 +666,14 @@ Extends base.html.
     </select>
 
     <input name="days" placeholder="Days (e.g., MON,WED,FRI)" required>
-    <input name="duration" placeholder="Duration (minutes)" required>
-
+    <input name="duration" type="number" min="1" placeholder="Duration (minutes)" required>
     <input name="fixed_start_time" placeholder="Fixed Start Time (optional)">
 
-    <label style="display:flex; align-items:center; gap: -10px;">
+    <label style="display:flex; align-items:center; gap: 8px;">
       <input type="checkbox" name="is_lab"> Lab
     </label>
 
-    <label style="display:flex; align-items:center; gap: -10px;">
+    <label style="display:flex; align-items:center; gap: 8px;">
       <input type="checkbox" name="enabled" checked> Enabled
     </label>
 
@@ -655,17 +683,17 @@ Extends base.html.
   <!-- Remove Pattern -->
   <h3>Remove Pattern</h3>
   <form method="post" action="/config/pattern/remove">
-    <input name="pattern_id" placeholder="Pattern ID" required>
+    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
     <button type="submit">Remove</button>
   </form>
 
   <!-- Modify Pattern -->
   <h3>Modify Pattern</h3>
   <form method="post" action="/config/pattern/modify">
-    <input name="pattern_id" placeholder="Pattern ID" required>
+    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
 
-    <input name="days" placeholder="Days (MON,WED)">
-    <input name="duration" placeholder="Duration (minutes)">
+    <input name="days" placeholder="Days (e.g., MON,WED)">
+    <input name="duration" type="number" min="1" placeholder="Duration (minutes)">
     <select name="credits">
       <option value="" disabled selected>Credits</option>
       <option value="1">1</option>
@@ -676,7 +704,7 @@ Extends base.html.
 
     <input name="fixed_start_time" placeholder="Fixed Start Time">
 
-    <label style="display:flex; align-items:center; gap: -10px;">
+    <label style="display:flex; align-items:center; gap: 8px;">
       <input type="checkbox" name="is_lab"> Lab
     </label>
 
@@ -686,7 +714,7 @@ Extends base.html.
   <!-- Toggle Pattern -->
   <h3>Enable / Disable Pattern</h3>
   <form method="post" action="/config/pattern/toggle">
-    <input name="pattern_id" placeholder="Pattern ID" required>
+    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
 
     <select name="enabled" required>
       <option value="true">Enable</option>
@@ -695,6 +723,27 @@ Extends base.html.
 
     <button type="submit">Apply</button>
   </form>
+
+{% if config and config.time_slot_config %}
+  {% set classes = config.time_slot_config.classes if config.time_slot_config.classes else [] %}
+
+  <h3>Current Meeting Patterns</h3>
+  <ul>
+    {% for pattern in classes %}
+      <li style="margin-bottom: 0.75rem;">
+        [{{ loop.index0 }}]
+        credits={{ pattern.credits }},
+        meetings={{ pattern.meetings }},
+        start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
+        disabled={{ pattern.disabled if pattern.disabled is defined else False }}
+      </li>
+    {% endfor %}
+    {% if not classes %}
+      <li>No meeting patterns configured.</li>
+    {% endif %}
+  </ul>
+{% endif %}
+</ul>
 </section>
 
 {% endblock %}

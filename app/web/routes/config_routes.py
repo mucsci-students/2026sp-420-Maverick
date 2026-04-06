@@ -18,6 +18,9 @@ These routes act as Controllers in the MVC architecture.
 
 # Flask utilities for routing, request handling, flashing messages,
 # session access, redirects, template rendering, and downloadable responses.
+from flask import session
+from app.web.services.config_service import SESSION_CONFIG_KEY
+
 from flask import (
     Blueprint,
     render_template,
@@ -75,6 +78,7 @@ from app.web.services.config_service import (
     remove_pattern_service,
     modify_pattern_service,
     toggle_pattern_service,
+    
 )
 
 bp = Blueprint("config", __name__, url_prefix="/config")
@@ -84,7 +88,8 @@ bp = Blueprint("config", __name__, url_prefix="/config")
 @bp.get("/")
 def editor():
     status = get_config_status()
-    return render_template("config_editor.html", status=status)
+    config = session.get(SESSION_CONFIG_KEY)
+    return render_template("config_editor.html", status=status, config=config)
 
 
 # Load / Save
