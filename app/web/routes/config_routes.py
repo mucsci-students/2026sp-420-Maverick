@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow
-# Date: 2026-03-08
+# Date: 2026-04-05
 """
 Configuration Routes
 
@@ -444,6 +444,75 @@ def conflict_modify():
     try:
         modify_conflict_service(**request.form.to_dict())
         flash("Conflict modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+# -------------------------
+# Time Slot Routes
+# -------------------------
+@bp.post("/timeslot/add")
+def timeslot_add():
+    try:
+        add_time_slot_service(**request.form.to_dict())
+        flash("Time slot added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/timeslot/remove")
+def timeslot_remove():
+    try:
+        remove_time_slot_service(**request.form.to_dict())
+        flash("Time slot removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/timeslot/modify")
+def timeslot_modify():
+    try:
+        modify_time_slot_service(**request.form.to_dict())
+        flash("Time slot modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+# -------------------------
+# Meeting Pattern Routes
+# -------------------------
+@bp.post("/pattern/add")
+def pattern_add():
+    try:
+        add_pattern_service(**request.form.to_dict())
+        flash("Pattern added successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/pattern/remove")
+def pattern_remove():
+    try:
+        remove_pattern_service(**request.form.to_dict())
+        flash("Meeting pattern removed successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/pattern/modify")
+def pattern_modify():
+    try:
+        modify_pattern_service(**request.form.to_dict())
+        flash("Meeting pattern modified successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/pattern/toggle")
+def pattern_toggle():
+    try:
+        toggle_pattern_service(**request.form.to_dict())
+        flash("Meeting pattern toggled successfully.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
