@@ -37,6 +37,7 @@ from app.web.services.config_service import (
 # TOOL DEFINITIONS (WHAT AI CAN DO)
 # ---------------------------------------------------
 
+
 def get_tool_definitions():
     """
     Return the list of approved tools the AI is allowed to call.
@@ -110,14 +111,10 @@ def get_tool_definitions():
             "description": "Mark a faculty member as unavailable on a specific day by setting that day's times to an empty list.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "day": {"type": "string"}
-                },
-                "required": ["name", "day"]
-            }
+                "properties": {"name": {"type": "string"}, "day": {"type": "string"}},
+                "required": ["name", "day"],
+            },
         },
-
         # --------------------------------------------------------
         # Room Tools
         # --------------------------------------------------------
@@ -158,7 +155,6 @@ def get_tool_definitions():
                 "required": ["room", "new_name"],
             },
         },
-
         # --------------------------------------------------------
         # Lab Tools
         # --------------------------------------------------------
@@ -199,7 +195,6 @@ def get_tool_definitions():
                 "required": ["lab", "new_name"],
             },
         },
-
         # --------------------------------------------------------
         # Course Tools
         # --------------------------------------------------------
@@ -330,7 +325,6 @@ def get_tool_definitions():
                 "required": ["course_id", "conflicts"],
             },
         },
-
         # --------------------------------------------------------
         # Conflict Tools
         # --------------------------------------------------------
@@ -388,6 +382,7 @@ def get_tool_definitions():
 # Validation
 # ================================================================
 
+
 def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
     """
     Perform lightweight validation before dispatching a tool.
@@ -412,7 +407,7 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
             return False, "Missing required field: name"
         if not args.get("day"):
             return False, "Missing required field: day"
-    
+
     if tool_name in {"add_room", "remove_room"} and not args.get("room"):
         return False, "Missing required field: room"
 
@@ -467,7 +462,7 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
             return False, "Missing required field: course_id"
         if not args.get("lab"):
             return False, "Missing required field: lab"
-        
+
     if tool_name == "remove_course_lab":
         if not args.get("course_id"):
             return False, "Missing required field: course_id"
@@ -505,6 +500,7 @@ def validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
 # TOOL DISPATCHER (HOW PYTHON EXECUTES THEM)
 # ================================================================
 
+
 def execute_tool(tool_name: str, args: dict) -> dict:
     """
     Execute a validated AI tool request.
@@ -533,7 +529,7 @@ def execute_tool(tool_name: str, args: dict) -> dict:
 
         if tool_name == "modify_faculty":
             return modify_faculty_tool(args)
-        
+
         if tool_name == "set_faculty_day_unavailable":
             return set_faculty_day_unavailable_tool(args)
 
@@ -608,6 +604,7 @@ def execute_tool(tool_name: str, args: dict) -> dict:
 # ================================================================
 # Tool Implementations
 # ================================================================
+
 
 def add_faculty_tool(args: dict) -> dict:
     add_faculty_service(
@@ -826,8 +823,7 @@ def remove_course_lab_tool(args: dict) -> dict:
 
 def modify_course_faculty_tool(args: dict) -> dict:
     cleaned_faculty = [
-        f.strip() for f in args["faculty"]
-        if isinstance(f, str) and f.strip()
+        f.strip() for f in args["faculty"] if isinstance(f, str) and f.strip()
     ]
 
     modify_course_service(
@@ -848,8 +844,7 @@ def modify_course_faculty_tool(args: dict) -> dict:
 
 def modify_course_conflicts_tool(args: dict) -> dict:
     cleaned_conflicts = [
-        c.strip() for c in args["conflicts"]
-        if isinstance(c, str) and c.strip()
+        c.strip() for c in args["conflicts"] if isinstance(c, str) and c.strip()
     ]
 
     modify_course_service(
