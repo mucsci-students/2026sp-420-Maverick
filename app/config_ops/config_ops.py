@@ -65,14 +65,14 @@ Related User Stories:
 
 #     print("\n--- Current Scheduler Configuration Summary ---")
 
-#     # Iterate through the categories 
+#     # Iterate through the categories
 #     categories = ["faculty", "courses", "rooms", "labs"]
-    
+
 #     for category in categories:
 #         items = inner_config.get(category, [])
 #         count = len(items)
 #         print(f"{category.capitalize()}: {count} items loaded")
-    
+
 #     print("-----------------------------------------------\n")
 
 # def save_config(path: str, config_data: Dict[str, Any]) -> None:
@@ -86,7 +86,7 @@ Related User Stories:
 #     with p.open("w", encoding="utf-8") as f:
 #         json.dump(config_data, f, indent=2, ensure_ascii=False)
 #         f.write("\n")
-    
+
 # def pretty_print_config(config_data: Dict[str, Any]) -> str:
 #     """Return full human-readable config (pretty JSON)."""
 #     config_data = ensure_defaults(config_data)

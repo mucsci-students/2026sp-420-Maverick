@@ -114,6 +114,7 @@ You must not:
 - pretend that a change succeeded when no tool executed
 """.strip()
 
+
 def build_base_prompt() -> str:
     """
     Return the fixed system/base prompt for the AI tool.
@@ -233,7 +234,7 @@ def process_ai_command(user_command: str) -> dict:
     )
 
     # ---------------------------------------------
-    # TOOL HANDLING 
+    # TOOL HANDLING
     # ---------------------------------------------
     # The Responses API may return structured output items.
     # If the model selects one of our approved function tools:
@@ -275,7 +276,7 @@ def process_ai_command(user_command: str) -> dict:
             result.setdefault("model", model_name)
 
             return result
-        
+
     ai_message = extract_text_from_response(response)
 
     return {

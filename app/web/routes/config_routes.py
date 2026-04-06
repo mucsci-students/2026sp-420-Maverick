@@ -18,7 +18,16 @@ These routes act as Controllers in the MVC architecture.
 
 # Flask utilities for routing, request handling, flashing messages,
 # session access, redirects, template rendering, and downloadable responses.
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, Response
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    Response,
+)
 
 from app.web.services.run_service import (
     SESSION_SCHEDULES_KEY,
@@ -31,29 +40,24 @@ from app.web.services.config_service import (
     load_config_into_session,
     save_config_from_session,
     get_config_status,
-    set_schedules_updated,    
+    set_schedules_updated,
     export_config_bytes,
-
-    # Faculty 
+    # Faculty
     add_faculty_service,
     remove_faculty_service,
     modify_faculty_service,
-
     # Rooms
     add_room_service,
     remove_room_service,
     modify_room_service,
-
     # Labs
     add_lab_service,
     remove_lab_service,
     modify_lab_service,
-
     # Courses
     add_course_service,
     remove_course_service,
     modify_course_service,
-
     # Conflicts
     add_conflict_service,
     remove_conflict_service,
@@ -62,11 +66,13 @@ from app.web.services.config_service import (
 
 bp = Blueprint("config", __name__, url_prefix="/config")
 
-# Editor 
+
+# Editor
 @bp.get("/")
 def editor():
     status = get_config_status()
     return render_template("config_editor.html", status=status)
+
 
 # Load / Save
 @bp.post("/load")
@@ -116,7 +122,6 @@ def load_file():
     if not uploaded_file or uploaded_file.filename == "":
         flash("No config file selected.", "error")
         return redirect(url_for("config.editor"))
-
 
     # Ensure the uploaded file appears to be a JSON configuration file.
     # This is a basic safety check before attempting to parse it.
@@ -181,6 +186,7 @@ def export():
         # The front end will display this message to the user.
         return Response(str(e), status=400, mimetype="text/plain")
 
+
 # Clear Input JSON
 @bp.post("/clear")
 def clear():
@@ -193,7 +199,7 @@ def clear():
 
     Responsibilities:
         - Resets the application to a "no configuration loaded" state.
-        - Redirects back to the Config Editor view        
+        - Redirects back to the Config Editor view
 
     Side Effects:
         - Removes loaded configuration path.
@@ -223,7 +229,7 @@ def clear():
     # 2. Remove Schedule Data (If Present)
     # ----------------------------------------
 
-    # fallback schedule key 
+    # fallback schedule key
     session.pop("schedules", None)
 
     # Remove generated schedules used in Viewer
@@ -263,15 +269,17 @@ def faculty_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a faculty was removed
 @bp.post("/faculty/remove")
 def faculty_remove():
-    try: 
+    try:
         remove_faculty_service(**request.form.to_dict())
         flash("Faculty removed successfully.", "success")
     except Exception as e:
-        flash(str(e), "error")  
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a faculty was modified
 @bp.post("/faculty/modify")
@@ -280,7 +288,7 @@ def modify_faculty():
         modify_faculty_service(**request.form.to_dict())
         flash("Faculty modified successfully.", "success")
     except Exception as e:
-        flash(str(e), "error")  
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
 
@@ -294,6 +302,7 @@ def room_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a room was removed
 @bp.post("/room/remove")
 def room_remove():
@@ -304,18 +313,20 @@ def room_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a room was modified
 @bp.post("/room/modify")
 def modify_room():
     try:
         modify_room_service(
-            request.form.get("room"), 
+            request.form.get("room"),
             request.form.get("new_name"),
         )
         flash("Room modified successfully.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a new lab was added
 @bp.post("/lab/add")
@@ -327,6 +338,7 @@ def lab_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a lab was removed
 @bp.post("/lab/remove")
 def lab_remove():
@@ -337,25 +349,28 @@ def lab_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a lab was modified
 @bp.post("/lab/modify")
 def modify_lab():
-    try:   
+    try:
         modify_lab_service(**request.form.to_dict())
         flash("Lab modified successfully.", "success")
     except Exception as e:
-        flash(str(e), "error") 
+        flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a new course was added
 @bp.post("/course/add")
 def course_add():
-    try: 
+    try:
         add_course_service(**request.form.to_dict())
         flash("Course added successfully.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a course was removed
 @bp.post("/course/remove")
@@ -367,6 +382,7 @@ def course_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a course was modified
 @bp.post("/course/modify")
 def course_modify():
@@ -376,6 +392,7 @@ def course_modify():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a new conflict was added
 @bp.post("/conflict/add")
@@ -387,6 +404,7 @@ def conflict_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # Tells user that a conflict was removed
 @bp.post("/conflict/remove")
 def conflict_remove():
@@ -396,6 +414,7 @@ def conflict_remove():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # Tells user that a conflict was modified
 @bp.post("/conflict/modify")

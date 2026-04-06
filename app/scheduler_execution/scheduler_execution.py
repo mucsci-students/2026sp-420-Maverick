@@ -8,6 +8,7 @@ The web app directly calls scheduler_core via run_service.py.
 
 This class may be used for CLI or future refactoring.
 """
+
 """
 scheduler_execution.py
 
@@ -19,7 +20,7 @@ settings, and saving generated schedules to files.
 
 Related User Stories:
     C1 — Run Scheduler with Options
-"""  
+"""
 
 # import json
 # import csv
@@ -58,7 +59,7 @@ Related User Stories:
 
 #     # Executes the full scheduling pipeline
 #     def run(self) -> None:
-    
+
 #         self._load_config()
 
 #         schedules = self._generate_schedules(self.limit, self.optimize)
@@ -73,7 +74,7 @@ Related User Stories:
 #         self._write_output(schedules)
 
 #     # ========== Internal Methods ==========
- 
+
 #     # Loads configuration from JSON file
 #     def _load_config(self) -> None:
 
@@ -101,7 +102,7 @@ Related User Stories:
 #         self,
 #         schedules: List[Dict[str, Any]]
 #     ) -> None:
-        
+
 #         if self.output_format == "json":
 #             self._write_json(schedules)
 
@@ -142,8 +143,6 @@ Related User Stories:
 #             writer = csv.DictWriter(file, fieldnames=fieldnames)
 #             writer.writeheader()
 #             writer.writerows(schedules)
-
-
 
 
 #     def _optimize_schedules(self, schedules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

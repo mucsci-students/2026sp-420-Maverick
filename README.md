@@ -561,7 +561,6 @@ From the repo root:
 uv sync --dev
 uv run ruff check .
 uv run ruff format .
-uv run mypy app tests
 uv run ty check app tests
 uv run pytest --cov=app --cov-branch --cov-report=xml
 ```
