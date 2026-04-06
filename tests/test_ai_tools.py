@@ -40,6 +40,8 @@ from app.web.services.ai_tools import (
     add_conflict_tool,
     remove_conflict_tool,
     modify_conflict_tool,
+    validate_tool_args,
+    set_faculty_day_unavailable_tool,
 )
 
 
@@ -861,3 +863,593 @@ def test_faculty_tool_modify(monkeypatch):
     assert result["success"] is True
     assert result["changes_applied"] is True
     assert "Modified faculty France" in result["message"]
+
+
+def test_validate_tool_args_rejects_missing_name_for_faculty_tools():
+    """
+    Ensures faculty tools that require a name fail validation when the
+    name field is missing.
+    """
+    is_valid, error = validate_tool_args("add_faculty", {"appointment_type": "Full-time"})
+    assert is_valid is False
+    assert error == "Missing required field: name"
+
+    is_valid, error = validate_tool_args("remove_faculty", {})
+    assert is_valid is False
+    assert error == "Missing required field: name"
+
+    is_valid, error = validate_tool_args("modify_faculty", {})
+    assert is_valid is False
+    assert error == "Missing required field: name"
+
+
+def test_validate_tool_args_rejects_missing_appointment_type_for_add_faculty():
+    """
+    Ensures add_faculty fails validation when appointment_type is missing.
+    """
+    is_valid, error = validate_tool_args("add_faculty", {"name": "Smith"})
+
+    assert is_valid is False
+    assert error == "Missing required field: appointment_type"
+
+
+def test_validate_tool_args_rejects_missing_fields_for_set_faculty_day_unavailable():
+    """
+    Ensures set_faculty_day_unavailable validates both required fields.
+    """
+    is_valid, error = validate_tool_args("set_faculty_day_unavailable", {"day": "MON"})
+    assert is_valid is False
+    assert error == "Missing required field: name"
+
+    is_valid, error = validate_tool_args(
+        "set_faculty_day_unavailable",
+        {"name": "Smith"},
+    )
+    assert is_valid is False
+    assert error == "Missing required field: day"
+
+
+def test_validate_tool_args_rejects_missing_room_fields():
+    """
+    Ensures room tools fail validation when required room fields are missing.
+    """
+    is_valid, error = validate_tool_args("add_room", {})
+    assert is_valid is False
+    assert error == "Missing required field: room"
+
+    is_valid, error = validate_tool_args("remove_room", {})
+    assert is_valid is False
+    assert error == "Missing required field: room"
+
+    is_valid, error = validate_tool_args("modify_room", {"room": "Roddy 140"})
+    assert is_valid is False
+    assert error == "Missing required field: new_name"
+
+
+def test_validate_tool_args_rejects_missing_lab_fields():
+    """
+    Ensures lab tools fail validation when required lab fields are missing.
+    """
+    is_valid, error = validate_tool_args("add_lab", {})
+    assert is_valid is False
+    assert error == "Missing required field: lab"
+
+    is_valid, error = validate_tool_args("remove_lab", {})
+    assert is_valid is False
+    assert error == "Missing required field: lab"
+
+    is_valid, error = validate_tool_args("modify_lab", {"lab": "Linux"})
+    assert is_valid is False
+    assert error == "Missing required field: new_name"
+
+
+def test_validate_tool_args_rejects_add_course_missing_course_id():
+    """
+    Ensures add_course requires a course_id.
+    """
+    is_valid, error = validate_tool_args(
+        "add_course",
+        {"credits": 3, "room": "Roddy 140"},
+    )
+
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+
+def test_validate_tool_args_rejects_add_course_non_integer_credits():
+    """
+    Ensures add_course rejects credits when they are not an integer.
+    """
+    is_valid, error = validate_tool_args(
+        "add_course",
+        {"course_id": "CS101", "credits": "3", "room": "Roddy 140"},
+    )
+
+    assert is_valid is False
+    assert error == "credits must be an integer"
+
+
+def test_validate_tool_args_rejects_add_course_missing_room():
+    """
+    Ensures add_course requires a room value.
+    """
+    is_valid, error = validate_tool_args(
+        "add_course",
+        {"course_id": "CS101", "credits": 3},
+    )
+
+    assert is_valid is False
+    assert error == "Missing required field: room"
+
+
+def test_validate_tool_args_rejects_remove_course_missing_course_id():
+    """
+    Ensures remove_course requires a course_id.
+    """
+    is_valid, error = validate_tool_args("remove_course", {})
+
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+
+def test_validate_tool_args_rejects_modify_course_credits_missing_course_id():
+    """
+    Ensures modify_course_credits requires course_id.
+    """
+    is_valid, error = validate_tool_args("modify_course_credits", {"credits": 4})
+
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+
+def test_validate_tool_args_rejects_modify_course_credits_non_integer():
+    """
+    Ensures modify_course_credits rejects non-integer credits.
+    """
+    is_valid, error = validate_tool_args(
+        "modify_course_credits",
+        {"course_id": "CS101", "credits": "4"},
+    )
+
+    assert is_valid is False
+    assert error == "credits must be an integer"
+
+
+def test_validate_tool_args_rejects_modify_course_credits_non_positive():
+    """
+    Ensures modify_course_credits rejects zero or negative credits.
+    """
+    is_valid, error = validate_tool_args(
+        "modify_course_credits",
+        {"course_id": "CS101", "credits": 0},
+    )
+
+    assert is_valid is False
+    assert error == "credits must be a positive integer"
+
+
+def test_validate_tool_args_rejects_modify_course_room_missing_fields():
+    """
+    Ensures modify_course_room validates both course_id and room.
+    """
+    is_valid, error = validate_tool_args("modify_course_room", {"room": "Roddy 140"})
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+    is_valid, error = validate_tool_args("modify_course_room", {"course_id": "CS101"})
+    assert is_valid is False
+    assert error == "Missing required field: room"
+
+
+def test_validate_tool_args_rejects_modify_course_lab_missing_fields():
+    """
+    Ensures modify_course_lab validates both course_id and lab.
+    """
+    is_valid, error = validate_tool_args("modify_course_lab", {"lab": "Linux"})
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+    is_valid, error = validate_tool_args("modify_course_lab", {"course_id": "CS101"})
+    assert is_valid is False
+    assert error == "Missing required field: lab"
+
+
+def test_validate_tool_args_rejects_remove_course_lab_missing_course_id():
+    """
+    Ensures remove_course_lab requires course_id.
+    """
+    is_valid, error = validate_tool_args("remove_course_lab", {})
+
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+
+def test_validate_tool_args_rejects_modify_course_faculty_invalid_faculty_type():
+    """
+    Ensures modify_course_faculty requires faculty to be a list.
+    """
+    is_valid, error = validate_tool_args(
+        "modify_course_faculty",
+        {"course_id": "CS101", "faculty": "Smith"},
+    )
+
+    assert is_valid is False
+    assert error == "faculty must be a list"
+
+
+def test_validate_tool_args_rejects_modify_course_conflicts_invalid_conflicts_type():
+    """
+    Ensures modify_course_conflicts requires conflicts to be a list.
+    """
+    is_valid, error = validate_tool_args(
+        "modify_course_conflicts",
+        {"course_id": "CS101", "conflicts": "CS102"},
+    )
+
+    assert is_valid is False
+    assert error == "conflicts must be a list"
+
+
+def test_validate_tool_args_rejects_conflict_tools_missing_fields():
+    """
+    Ensures add/remove conflict tools validate both required IDs.
+    """
+    is_valid, error = validate_tool_args("add_conflict", {"conflict_course_id": "CS102"})
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+    is_valid, error = validate_tool_args("remove_conflict", {"course_id": "CS101"})
+    assert is_valid is False
+    assert error == "Missing required field: conflict_course_id"
+
+
+def test_validate_tool_args_rejects_modify_conflict_missing_fields():
+    """
+    Ensures modify_conflict validates all required IDs.
+    """
+    is_valid, error = validate_tool_args("modify_conflict", {"old_conflict_course_id": "CS102"})
+    assert is_valid is False
+    assert error == "Missing required field: course_id"
+
+    is_valid, error = validate_tool_args(
+        "modify_conflict",
+        {"course_id": "CS101", "new_conflict_course_id": "CS103"},
+    )
+    assert is_valid is False
+    assert error == "Missing required field: old_conflict_course_id"
+
+    is_valid, error = validate_tool_args(
+        "modify_conflict",
+        {"course_id": "CS101", "old_conflict_course_id": "CS102"},
+    )
+    assert is_valid is False
+    assert error == "Missing required field: new_conflict_course_id"
+
+
+def test_execute_tool_rejects_failed_validation_before_dispatch(monkeypatch):
+    """
+    Ensures execute_tool returns the validation failure payload without
+    attempting dispatch when validation fails.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.validate_tool_args",
+        lambda tool_name, args: (False, "Missing required field: name"),
+    )
+
+    result = execute_tool("add_faculty", {})
+
+    assert result == {
+        "success": False,
+        "message": "Validation failed: Missing required field: name",
+        "changes_applied": False,
+    }
+
+
+def test_execute_tool_dispatches_add_faculty(monkeypatch):
+    """
+    Ensures execute_tool routes add_faculty requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.add_faculty_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Added faculty {args['name']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "add_faculty",
+        {"name": "Smith", "appointment_type": "Full-time"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Added faculty Smith"
+
+
+def test_execute_tool_dispatches_remove_faculty(monkeypatch):
+    """
+    Ensures execute_tool routes remove_faculty requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.remove_faculty_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Removed faculty {args['name']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool("remove_faculty", {"name": "Smith"})
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Removed faculty Smith"
+
+
+def test_execute_tool_dispatches_modify_faculty(monkeypatch):
+    """
+    Ensures execute_tool routes modify_faculty requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.modify_faculty_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Modified faculty {args['name']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "modify_faculty",
+        {"name": "Smith", "appointment_type": "Adjunct"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Modified faculty Smith"
+
+
+def test_execute_tool_dispatches_set_faculty_day_unavailable(monkeypatch):
+    """
+    Ensures execute_tool routes set_faculty_day_unavailable requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.set_faculty_day_unavailable_tool",
+        lambda args: {
+            "success": True,
+            "message": f"{args['name']} unavailable on {args['day']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "set_faculty_day_unavailable",
+        {"name": "Smith", "day": "MON"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Smith unavailable on MON"
+
+
+def test_execute_tool_dispatches_add_room(monkeypatch):
+    """
+    Ensures execute_tool routes add_room requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.add_room_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Added room {args['room']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool("add_room", {"room": "Roddy 080"})
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Added room Roddy 080"
+
+
+def test_execute_tool_dispatches_modify_room(monkeypatch):
+    """
+    Ensures execute_tool routes modify_room requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.modify_room_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Renamed room {args['room']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "modify_room",
+        {"room": "Roddy 140", "new_name": "Roddy 141"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Renamed room Roddy 140"
+
+
+def test_execute_tool_dispatches_add_lab(monkeypatch):
+    """
+    Ensures execute_tool routes add_lab requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.add_lab_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Added lab {args['lab']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool("add_lab", {"lab": "Linux"})
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Added lab Linux"
+
+
+def test_execute_tool_dispatches_remove_lab(monkeypatch):
+    """
+    Ensures execute_tool routes remove_lab requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.remove_lab_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Removed lab {args['lab']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool("remove_lab", {"lab": "Linux"})
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Removed lab Linux"
+
+
+def test_execute_tool_dispatches_modify_lab(monkeypatch):
+    """
+    Ensures execute_tool routes modify_lab requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.modify_lab_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Renamed lab {args['lab']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "modify_lab",
+        {"lab": "Linux", "new_name": "Mac"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Renamed lab Linux"
+
+
+def test_execute_tool_dispatches_remove_course(monkeypatch):
+    """
+    Ensures execute_tool routes remove_course requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.remove_course_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Removed course {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool("remove_course", {"course_id": "CS101"})
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Removed course CS101"
+
+
+def test_execute_tool_dispatches_add_conflict(monkeypatch):
+    """
+    Ensures execute_tool routes add_conflict requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.add_conflict_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Added conflict for {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "add_conflict",
+        {"course_id": "CS101", "conflict_course_id": "CS102"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Added conflict for CS101"
+
+
+def test_execute_tool_dispatches_remove_conflict(monkeypatch):
+    """
+    Ensures execute_tool routes remove_conflict requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.remove_conflict_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Removed conflict for {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "remove_conflict",
+        {"course_id": "CS101", "conflict_course_id": "CS102"},
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Removed conflict for CS101"
+
+
+def test_execute_tool_dispatches_modify_conflict(monkeypatch):
+    """
+    Ensures execute_tool routes modify_conflict requests correctly.
+    """
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.modify_conflict_tool",
+        lambda args: {
+            "success": True,
+            "message": f"Modified conflict for {args['course_id']}",
+            "changes_applied": True,
+        },
+    )
+
+    result = execute_tool(
+        "modify_conflict",
+        {
+            "course_id": "CS101",
+            "old_conflict_course_id": "CS102",
+            "new_conflict_course_id": "CS103",
+        },
+    )
+
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert result["message"] == "Modified conflict for CS101"
+
+
+def test_set_faculty_day_unavailable_tool_calls_service_wrapper(monkeypatch):
+    """
+    Ensures set_faculty_day_unavailable_tool delegates to the service wrapper.
+    """
+    captured = {}
+
+    def fake_set_faculty_day_unavailable_service(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "app.web.services.ai_tools.set_faculty_day_unavailable_service",
+        fake_set_faculty_day_unavailable_service,
+    )
+
+    result = set_faculty_day_unavailable_tool({"name": "Smith", "day": "FRI"})
+
+    assert captured == {"name": "Smith", "day": "FRI"}
+    assert result["success"] is True
+    assert result["changes_applied"] is True
+    assert "Set faculty Smith as unavailable on FRI" in result["message"]
