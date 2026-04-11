@@ -18,67 +18,61 @@ These routes act as Controllers in the MVC architecture.
 
 # Flask utilities for routing, request handling, flashing messages,
 # session access, redirects, template rendering, and downloadable responses.
-from flask import session
-from app.web.services.config_service import SESSION_CONFIG_KEY
-
 from flask import (
     Blueprint,
+    Response,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    flash,
     session,
-    Response,
-)
-
-from app.web.services.run_service import (
-    SESSION_SCHEDULES_KEY,
-    SESSION_SELECTED_INDEX_KEY,
-    SESSION_USER_SELECTED_KEY,
+    url_for,
 )
 
 # Config service helpers used by the Config Editor routes.
 from app.web.services.config_service import (
-    load_config_into_session,
-    save_config_from_session,
-    get_config_status,
-    set_schedules_updated,
-    export_config_bytes,
-    # Faculty
-    add_faculty_service,
-    remove_faculty_service,
-    modify_faculty_service,
-    set_faculty_time_service,
-    remove_faculty_time_service,
-    # Rooms
-    add_room_service,
-    remove_room_service,
-    modify_room_service,
-    # Labs
-    add_lab_service,
-    remove_lab_service,
-    modify_lab_service,
-    # Courses
-    add_course_service,
-    remove_course_service,
-    modify_course_service,
+    SESSION_CONFIG_KEY,
     # Conflicts
     add_conflict_service,
-    remove_conflict_service,
-    modify_conflict_service,
-
-    # Time Slots
-    add_time_slot_service,
-    remove_time_slot_service,
-    modify_time_slot_service,
-
+    # Courses
+    add_course_service,
+    # Faculty
+    add_faculty_service,
+    # Labs
+    add_lab_service,
     # Meeting Patterns
     add_pattern_service,
-    remove_pattern_service,
+    # Rooms
+    add_room_service,
+    # Time Slots
+    add_time_slot_service,
+    export_config_bytes,
+    get_config_status,
+    load_config_into_session,
+    modify_conflict_service,
+    modify_course_service,
+    modify_faculty_service,
+    modify_lab_service,
     modify_pattern_service,
+    modify_room_service,
+    modify_time_slot_service,
+    remove_conflict_service,
+    remove_course_service,
+    remove_faculty_service,
+    remove_faculty_time_service,
+    remove_lab_service,
+    remove_pattern_service,
+    remove_room_service,
+    remove_time_slot_service,
+    save_config_from_session,
+    set_faculty_time_service,
+    set_schedules_updated,
     toggle_pattern_service,
-    
+)
+from app.web.services.run_service import (
+    SESSION_SCHEDULES_KEY,
+    SESSION_SELECTED_INDEX_KEY,
+    SESSION_USER_SELECTED_KEY,
 )
 
 bp = Blueprint("config", __name__, url_prefix="/config")

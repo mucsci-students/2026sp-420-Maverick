@@ -7,7 +7,8 @@ Purpose:
     This test module verifies the correctness of the Course Management functionality
     implemented in the application layer. It ensures that courses can be added,
     modified, deleted, and that course conflicts can be managed within the scheduler
-    configuration according to the project user stories (Chunk A — A2 Course Management).
+    configuration according to the project user stories 
+    (Chunk A — A2 Course Management).
 
 Scope:
     - Add Course:
@@ -39,10 +40,11 @@ Related User Stories:
     A2.6 — Delete Conflict
 """
 
-import pytest
-from app.course_management import course_management
 from typing import List
 
+import pytest
+
+from app.course_management import course_management
 
 # ---------------------------
 # Delete Conflict
@@ -525,7 +527,10 @@ def test_get_course_raises_error(example):
 
 
 def test_ensure_conflicts_list_none(example):
-    """Ensures _ensure_conflicts_list creates empty conflicts list if missing and returns it."""
+    """
+    Ensures _ensure_conflicts_list creates empty conflicts list if missing 
+    and returns it.
+    """
     course = {"course_id": "CS101"}
 
     conflicts = course_management._ensure_conflicts_list(course)

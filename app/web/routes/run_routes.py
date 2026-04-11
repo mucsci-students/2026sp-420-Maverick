@@ -43,21 +43,29 @@ High-Level Flow:
 # Imports
 # ==================================================
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask import session  # Session access for checking loaded config defaults
-from app.web.services.run_service import (
-    generate_schedules_into_session,
-    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,  # Session access for checking loaded config defaults
+    url_for,
 )
+
 from app.web.services.config_service import (
     SESSION_CONFIG_KEY,
 )  # Where the loaded config is stored
 from app.web.services.progress_store import (
     generation_progress,
-    progress_lock,
     is_running,
+    progress_lock,
+)
+from app.web.services.run_service import (
+    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
+    generate_schedules_into_session,
 )
 
 # ==================================================

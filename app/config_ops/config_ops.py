@@ -54,7 +54,8 @@ Related User Stories:
 #         raise ValueError(f"Invalid JSON in config file '{path}': {e}") from e
 
 #     if not isinstance(data, dict):
-#         raise ValueError(f"Config file '{path}' must contain a JSON object at the root.")
+#         raise ValueError(
+#           f"Config file '{path}' must contain a JSON object at the root.")
 
 #     return ensure_defaults(data)
 

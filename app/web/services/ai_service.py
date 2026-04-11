@@ -35,15 +35,15 @@ Notes:
 
 import json
 
+from app.web.services.ai_tools import execute_tool, get_tool_definitions
+
 # Existing config service import used for pulling high-level status
 # about the current configuration. We do not mutate config yet in Phase 2.
-from app.web.services.config_service import get_config_status, _get_working_config
+from app.web.services.config_service import _get_working_config, get_config_status
 
 # OpenAI client helper functions are isolated in their own module so that
 # external API setup does not clutter the AI orchestration logic.
-from app.web.services.openai_client import get_openai_client, get_model_name
-
-from app.web.services.ai_tools import get_tool_definitions, execute_tool
+from app.web.services.openai_client import get_model_name, get_openai_client
 
 # ------------------------------------------------------------------
 # Base Prompt
@@ -80,7 +80,8 @@ When using tools:
 - Only call a tool if the required arguments are known
 - Do not invent values that were not provided
 - Prefer exact names for course IDs, rooms, labs, and faculty
-- If required information is missing, respond with a clarification-style message instead of guessing
+- If required information is missing, 
+  respond with a clarification-style message instead of guessing
 - Use the most specific available tool for the request
 - Do not use a broad course modification pattern when a specific course tool exists
 
@@ -95,7 +96,8 @@ For course updates, use the most specific available tool:
 - use remove_course_lab for removing a lab from a course
 - use modify_course_faculty for changing faculty assignments
 - use modify_course_conflicts for changing conflict lists
-- use add_conflict or remove_conflict when the user wants to add or remove a single conflict relationship
+- use add_conflict or remove_conflict when the user wants to add 
+  or remove a single conflict relationship
 
 Examples:
 - "Rename course CS163 to CS370" -> rename_course

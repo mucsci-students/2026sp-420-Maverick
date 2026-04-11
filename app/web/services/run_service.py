@@ -24,18 +24,19 @@ High-Level Flow:
 # Imports
 # ------------------------------
 
-from flask import session  # Session storage for per-user state
 from copy import deepcopy  # Prevent mutation of loaded config
 from datetime import datetime  # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
-from app.web.services.config_service import SESSION_CONFIG_KEY
-from scheduler_core.main import generate_schedules  # Core solver engine
+
+from flask import session  # Session storage for per-user state
+
 from app.web.services.config_service import SESSION_CONFIG_KEY, validate_config
 from app.web.services.progress_store import (
     generation_progress,
-    progress_lock,
     is_running,
+    progress_lock,
 )
+from scheduler_core.main import generate_schedules  # Core solver engine
 
 # ----------------------------------
 # Session Keys (Key Sources of Date)

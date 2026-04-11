@@ -16,22 +16,23 @@ These are base-case tests designed to:
 - Catch regressions in grouping/filter behavior
 """
 
+
 import pytest
-import io
+from flask import session
+
 from app.web.app import create_app
 from app.web.services.schedule_service import (
-    _group_by,
-    get_view_data,
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
+    _group_by,
+    export_schedules_to_csv,
+    get_view_data,
+    is_valid_file,
     next_schedule,
     prev_schedule,
     select_schedule,
-    export_schedules_to_csv,
-    is_valid_file,
 )
-from flask import session
 
 
 def test_group_by_basic():

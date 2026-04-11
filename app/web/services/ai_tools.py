@@ -14,24 +14,23 @@ Design Rules:
 """
 
 from app.web.services.config_service import (
-    add_faculty_service,
-    remove_faculty_service,
-    modify_faculty_service,
-    set_faculty_day_unavailable_service,
-    add_room_service,
-    remove_room_service,
-    modify_room_service,
-    add_lab_service,
-    remove_lab_service,
-    modify_lab_service,
-    add_course_service,
-    remove_course_service,
-    modify_course_service,
     add_conflict_service,
-    remove_conflict_service,
+    add_course_service,
+    add_faculty_service,
+    add_lab_service,
+    add_room_service,
     modify_conflict_service,
+    modify_course_service,
+    modify_faculty_service,
+    modify_lab_service,
+    modify_room_service,
+    remove_conflict_service,
+    remove_course_service,
+    remove_faculty_service,
+    remove_lab_service,
+    remove_room_service,
+    set_faculty_day_unavailable_service,
 )
-
 
 # ---------------------------------------------------
 # TOOL DEFINITIONS (WHAT AI CAN DO)
@@ -108,7 +107,9 @@ def get_tool_definitions():
         {
             "type": "function",
             "name": "set_faculty_day_unavailable",
-            "description": "Mark a faculty member as unavailable on a specific day by setting that day's times to an empty list.",
+            "description": 
+                "Mark a faculty member as unavailable on a specific day "
+                "by setting that day's times to an empty list.",
             "parameters": {
                 "type": "object",
                 "properties": {"name": {"type": "string"}, "day": {"type": "string"}},
@@ -770,7 +771,8 @@ def modify_course_credits_tool(args: dict) -> dict:
     )
     return {
         "success": True,
-        "message": f"Changed credits for course {args['course_id']} to {args['credits']}.",
+        "message": 
+            f"Changed credits for course {args['course_id']} to {args['credits']}.",
         "changes_applied": True,
         "details": {"action": "modify_course_credits", **args},
     }

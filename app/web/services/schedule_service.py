@@ -36,9 +36,13 @@ Design Notes:
 # Imports
 # ------------------------------
 
+# function for exporting the schedule(s) to a csv file
+import csv
+import io
 import json  # Serialize/deserialize schedules to/from JSON
+from typing import Dict, List, Literal, Optional
+
 from flask import session  # Per-user session storage (viewer state + schedules)
-from typing import List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, ValidationError
 
 # ------------------------------
@@ -197,58 +201,14 @@ def export_schedules_to_file(path: str):
         json.dump(schedules, f, indent=2)
 
 
-# Old import_schedules_from_file commented out
-# def import_schedules_from_file(path: str):
+
 # Disables the 'Export Schedules' button if there are no schedules to export.
 def is_export_enabled() -> bool:
     count = len(_get_schedules())
     return count != 0
 
 
-def import_schedules_from_file(path: str):
-    """
-    Imports schedules from a JSON file and loads them into session.
-
-    Parameters:
-        path (str):
-            Source file path containing a JSON list of schedule objects.
-
-    Raises:
-        ValueError:
-            If the loaded JSON is not a list (expected top-level structure).
-
-    Side Effects:
-        - Overwrites session schedules
-        - Resets selected index to 0 (first schedule)
-    """
-    """
-    with open(path, "r", encoding="utf-8") as f:
-    with open('./configs/config_base.json', "r", encoding="utf-8") as f:
-        schedules = json.load(f)
-
-
-    # Basic structural validation: the Viewer expects a list of schedules
-    if not isinstance(schedules, list):
-        raise ValueError("Imported schedules file must contain a JSON list.")
-    
-    # in-depth validation of each schedule's structure against the schema.
-    scheduleschema = Schema()
-    for s in schedules:
-        is_valid_file(s, scheduleschema)
-
-    is_export_enabled()
-
-    session[SESSION_SCHEDULES_KEY] = schedules
-
-    # Reset navigation to first schedule for consistency.
-    session[SESSION_SELECTED_INDEX_KEY] = 0
-    """
-
-
-# New import_schedules_from_file:
 # app/web/services/schedule_service.py
-
-
 def import_schedules_from_file(source):
     """
     Imports schedules from a JSON source and APPENDS them to the existing
@@ -307,11 +267,6 @@ def get_schedules_for_export():
     Returns the raw list of schedules from the session for browser download.
     """
     return _get_schedules()
-
-
-# function for exporting the schedule(s) to a csv file
-import csv
-import io
 
 
 def export_schedules_to_csv(indices: List[int]) -> str:
@@ -559,7 +514,8 @@ def get_view_data():
     # Pick the current schedule only if the index is valid
     current = schedules[index] if schedules and 0 <= index < len(schedules) else None
 
-    # Assignments are stored under the "assignments" key (same shape as run_service output)
+    # Assignments are stored under the "assignments" key 
+    # (same shape as run_service output)
     assignments = (current or {}).get("assignments", [])
 
     # ------------------------------

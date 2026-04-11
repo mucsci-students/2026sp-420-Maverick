@@ -16,34 +16,38 @@ Acts as the Controller layer for schedule viewing functionality.
 """
 
 # app/web/routes/viewer_routes.py
+# route for exporting schedule(s) to a file
+import json
+
 from flask import (
     Blueprint,
+    Response,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    flash,
     session,
-    Response,
+    url_for,
 )
+
 from app.web.services.config_service import (
-    update_schedules,
     _get_cgf,
     get_schedules_updated,
     set_schedules_updated,
+    update_schedules,
 )
 from app.web.services.schedule_service import (
+    SESSION_SCHEDULES_KEY,
+    SESSION_SELECTED_INDEX_KEY,
+    export_schedules_to_csv,
+    export_schedules_to_file,
+    get_schedules_for_export,
     get_view_data,
+    import_schedules_from_file,
+    is_export_enabled,
     next_schedule,
     prev_schedule,
     select_schedule,
-    export_schedules_to_file,
-    import_schedules_from_file,
-    SESSION_SCHEDULES_KEY,
-    SESSION_SELECTED_INDEX_KEY,
-    is_export_enabled,
-    get_schedules_for_export,
-    export_schedules_to_csv,
 )
 
 bp = Blueprint("viewer", __name__, url_prefix="/viewer")
@@ -179,13 +183,14 @@ def import_():
 
 
 # Added an import for temporary file handling if need be
-import os
 
 
 # import file route made for importing/uploading a file from user's local system
 @bp.post("/import_file")
 def import_file():
-    """Handles uploading multiple files from the user's local system and appending them."""
+    """
+    Handles uploading multiple files from the user's local system and appending them.
+    """
 
     # Use getlist to capture all files from the 'multiple' input
     uploaded_files = request.files.getlist("schedule_file")
@@ -195,20 +200,22 @@ def import_file():
         return redirect(url_for("viewer.viewer"))
 
     total_added = 0
-    final_count = 0
     files_count = 0
 
     try:
         for file in uploaded_files:
             if file and file.filename.endswith(".json"):
-                # Your existing service function handles individual file objects perfectly
+                # The existing service function handles 
+                # individual file objects perfectly
                 added, total = import_schedules_from_file(file)
                 total_added += added
-                final_count = total
                 files_count += 1
 
         flash(
-            f"Successfully imported {files_count} file(s)! Added {total_added} new schedule(s).",
+            (
+                f"Successfully imported {files_count} file(s)! "
+                f"Added {total_added} new schedule(s)."
+            ),
             "success",
         )
 
@@ -216,10 +223,6 @@ def import_file():
         flash(f"Upload failed: {e}", "error")
 
     return redirect(url_for("viewer.viewer"))
-
-
-# route for exporting schedule(s) to a file
-import json
 
 
 @bp.post("/export_file")
@@ -314,11 +317,6 @@ def grid_view():
     if not data["has_schedules"]:
         flash("No schedules found.", "error")
         return redirect(url_for("viewer.viewer"))
-
-    # We can use the same conflict safety check (COMMENTED OUT, cause conflicts don't matter)
-    # if data.get("has_conflicts"):
-    #     flash("Cannot generate grid view for a schedule with conflicts.", "error")
-    #     return redirect(url_for("viewer.viewer"))
 
     return render_template("grid_schedule.html", data=data)
 

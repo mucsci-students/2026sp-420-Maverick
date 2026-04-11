@@ -36,46 +36,45 @@ Notes:
 
 # Standard library imports used for JSON parsing, file path handling,
 # and safe deep-copying of configuration dictionaries.
+import copy
 import json
 import os
-import copy
 import re
+from os import PathLike
 
 # Flask session stores the user's active working configuration,
 # editor state, and related UI flags.
 from flask import session
 
-from os import PathLike
+# Course + conflict management operations from the domain/application layer.
+from app.course_management.course_management import (
+    add_conflict,
+    add_course,
+    modify_conflict,
+    modify_course,
+    remove_conflict,
+    remove_course,
+)
 
 # Faculty management operations from the domain/application layer.
 from app.faculty_management.faculty_management import (
     add_faculty,
-    remove_faculty,
     modify_faculty,
-)
-
-# Course + conflict management operations from the domain/application layer.
-from app.course_management.course_management import (
-    add_course,
-    remove_course,
-    modify_course,
-    add_conflict,
-    remove_conflict,
-    modify_conflict,
-)
-
-# Room management operations.
-from app.room_management.room_management import (
-    add_room,
-    remove_room,
-    modify_room,
+    remove_faculty,
 )
 
 # Lab management operations.
 from app.lab_management.lab_management import (
     add_lab,
-    remove_lab,
     modify_lab,
+    remove_lab,
+)
+
+# Room management operations.
+from app.room_management.room_management import (
+    add_room,
+    modify_room,
+    remove_room,
 )
 
 # ================================================================
@@ -237,8 +236,8 @@ def detect_conflicts(cfg):
 
         room_names.add(name)
 
-    for l in config.get("labs", []):
-        name = l if isinstance(l, str) else l.get("name")
+    for lab in config.get("labs", []):
+        name = lab if isinstance(lab, str) else lab.get("name")
 
         if not name:
             conflicts.append("Lab with missing name.")
@@ -421,9 +420,10 @@ def load_config_into_session(source):
         # Use filename for tracking instead of a filesystem path
         loaded_path = getattr(source, "filename", None)
 
-    # ------------------------------------------------------------------------------------------------------
-    # Continue with existing logic (Apply defaults, store in session, write working_config.json, etc.)
-    # ------------------------------------------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # Continue with existing logic 
+    # (Apply defaults, store in session, write working_config.json, etc.)
+    # -----------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
     working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
@@ -516,7 +516,8 @@ def get_default_export_filename() -> str:
 
     Rules:
       - If a real config was loaded, suggest its basename.
-      - If nothing loaded (or only working_config.json exists), suggest new_config_file.json.
+      - If nothing loaded (or only working_config.json exists), 
+        suggest new_config_file.json.
     """
     path = session.get(SESSION_CONFIG_PATH_KEY)
     if not path:
@@ -524,7 +525,8 @@ def get_default_export_filename() -> str:
 
     base = os.path.basename(str(path))
 
-    # If the "loaded path" is the internal working file, treat it like "no loaded config"
+    # If the "loaded path" is the internal working file, 
+    # treat it like "no loaded config"
     if os.path.abspath(str(path)) == os.path.abspath(WORKING_PATH):
         return "new_config_file.json"
 
@@ -651,13 +653,17 @@ def _validate_time_slot_config(cfg):
             spacing = slot.get("spacing")
 
             if start is None or end is None or spacing is None:
-                raise ValueError(f"Each time slot in {day} must include start, spacing, and end.")
+                raise ValueError(
+                    f"Each time slot in {day} must include start, spacing, and end."
+                )
 
             start_mins = _minutes_from_hhmm(str(start))
             end_mins = _minutes_from_hhmm(str(end))
 
             if end_mins <= start_mins:
-                raise ValueError(f"Time slot end must be after start in {day}: {start} - {end}")
+                raise ValueError(
+                    f"Time slot end must be after start in {day}: {start} - {end}"
+                )
 
             if not isinstance(spacing, int) or spacing <= 0:
                 raise ValueError(f"Invalid spacing in {day}: {spacing}")
@@ -692,7 +698,8 @@ def _validate_time_slot_config(cfg):
             # Meeting day must have at least one time range configured
             if day not in times or not times.get(day):
                 raise ValueError(
-                    f"Pattern {idx} uses {day}, but no time slots are configured for {day}."
+                    f"Pattern {idx} uses {day}, but no time slots are configured for "
+                    f"{day}."
                 )
 
         start_time = klass.get("start_time")
@@ -723,7 +730,7 @@ def validate_config(cfg):
 
     room_names = [r if isinstance(r, str) else r.get("name") for r in rooms]
 
-    lab_names = [l if isinstance(l, str) else l.get("name") for l in labs]
+    lab_names = [lab if isinstance(lab, str) else lab.get("name") for lab in labs]
 
     for course in courses:
         cid = course.get("course_id")
@@ -740,9 +747,9 @@ def validate_config(cfg):
             if r not in room_names:
                 raise ValueError(f"Invalid room '{r}' in course {cid}")
 
-        for l in course.get("lab", []):
-            if l not in lab_names:
-                raise ValueError(f"Invalid lab '{l}' in course {cid}")
+        for lab in course.get("lab", []):
+            if lab not in lab_names:
+                raise ValueError(f"Invalid lab '{lab}' in course {cid}")
 
         for f in course.get("faculty", []):
             if f not in faculty_names:
@@ -1092,7 +1099,15 @@ def _parse_meetings(days: str, duration: str, is_lab=False):
     return meetings
 
 
-def add_pattern_service(credits, days, duration, is_lab=False, fixed_start_time=None, enabled=True, **kwargs):
+def add_pattern_service(
+    credits,
+    days,
+    duration,
+    is_lab=False,
+    fixed_start_time=None,
+    enabled=True,
+    **kwargs,
+):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 

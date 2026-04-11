@@ -15,13 +15,15 @@ Scope:
         with default or custom availability and appropriate course limits.
 
     - Modify Faculty:
-        Confirms that existing faculty availability and configuration details can be updated.
+        Confirms that existing faculty availability 
+        and configuration details can be updated.
 
     - Manage Faculty Preferences:
         Confirms that course preferences can be added and stored correctly.
 
     - Delete Faculty:
-        Confirms that faculty members can be removed and no longer appear in the configuration.
+        Confirms that faculty members can be removed 
+        and no longer appear in the configuration.
 
 Testing Strategy:
     - Uses temporary or test configuration files to avoid modifying real data.
@@ -35,9 +37,11 @@ Related User Stories:
     A1.4 — Delete Faculty
 """
 
-import pytest
-from app.faculty_management import faculty_management
 from typing import List
+
+import pytest
+
+from app.faculty_management import faculty_management
 
 # ---------------------------
 # Delete Faculty
@@ -157,7 +161,9 @@ def test_modify_faculty_member_nonexistent(example):
 
 
 def test_modify_faculty_update_appointment_type(example):
-    """Ensures updating a faculty member's appointment type updates all related defaults."""
+    """
+    Ensures updating a faculty member's appointment type updates all related defaults.
+    """
     name = example["config"]["faculty"][0]["name"]
 
     faculty_management.modify_faculty(example, name, appointment_type="adjunct")
@@ -229,7 +235,9 @@ def test_modify_faculty_replace_preferences(example):
 # Faculty default
 # ---------------------------
 def test_faculty_defaults_raises_error():
-    """Ensures faculty_defaults raises a ValueError when given an unknown appointment type"""
+    """
+    Ensures faculty_defaults raises a ValueError when given an unknown appointment type
+    """
     with pytest.raises(ValueError):
         faculty_management.faculty_defaults("something")
 

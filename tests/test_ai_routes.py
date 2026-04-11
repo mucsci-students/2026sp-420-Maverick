@@ -16,7 +16,7 @@ These are base-case route tests designed to:
 - Confirm command submission behavior remains stateless
 """
 
-from flask import Flask, session
+from flask import Flask
 
 from app.web.routes.ai_routes import bp
 from app.web.services.config_service import SESSION_CONFIG_KEY

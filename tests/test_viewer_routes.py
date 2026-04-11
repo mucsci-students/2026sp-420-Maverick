@@ -23,7 +23,7 @@ Notes:
 
 from io import BytesIO
 
-from flask import Flask, session
+from flask import Flask
 
 from app.web.app import create_app
 from app.web.routes.viewer_routes import bp
@@ -71,7 +71,7 @@ def _make_app():
     return app
 
 
-def test_viewer_route_loads(monkeypatch):
+def test_viewer_route_loads_with_mocked_service_data(monkeypatch):
     """
     Ensures the main viewer page loads successfully with normal service data.
     """

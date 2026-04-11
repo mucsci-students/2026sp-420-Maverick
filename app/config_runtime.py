@@ -13,9 +13,9 @@ import os
 
 try:
     from app.local_settings import (
-        OPENAI_API_KEY,
         FLASK_SECRET_KEY,
         MAVERICK_OPENAI_MODEL,
+        OPENAI_API_KEY,
     )
 except ImportError:
     OPENAI_API_KEY = None

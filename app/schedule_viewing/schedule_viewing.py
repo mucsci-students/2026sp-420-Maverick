@@ -40,7 +40,8 @@ Related User Stories:
 
 #     headers = schedule_data[0].keys()
 
-#     # Use csv.DictWriter function so that it's formatted correctly, and prints to terminal.
+#     # Use csv.DictWriter function so that it's formatted correctly, 
+#     # and prints to terminal.
 #     writer = csv.DictWriter(sys.stdout, fieldnames=headers)
 
 #     # Print the header row (e.g., course_id, room, time).
@@ -51,7 +52,10 @@ Related User Stories:
 
 
 # # A function that exports the schedule to a csv file.
-# def export_schedule_to_csv_file(schedule_data: List[Dict[str, Any]], filename: str = "schedule_output.csv") -> None:
+# def export_schedule_to_csv_file(
+#     schedule_data: List[Dict[str, Any]],
+#     filename: str = "schedule_output.csv",
+# ) -> None:
 #     try:
 #         if not schedule_data:
 #             raise ValueError("No data to save.")

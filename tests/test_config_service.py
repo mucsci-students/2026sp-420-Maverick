@@ -1,34 +1,34 @@
 # Author: Tanner Ness, Ian Swartz
 # Date: 2026-04-05
 
-import pytest
 import json
 
-import app.web.services.config_service as config_service
-
+import pytest
 from flask import session
+
+import app.web.services.config_service as config_service
 from app.web.services.config_service import (
-    load_config_into_session,
-    get_config_status,
-    sanitize_export_filename,
-    detect_conflicts,
-    validate_config,
-    add_faculty_service,
-    get_unsaved,
-    clear_config,
     SESSION_CONFIG_KEY,
-    export_config_bytes,
-    set_faculty_day_unavailable_service,
-    add_room_service,
-    add_lab_service,
     add_course_service,
-    save_config_from_session,
-    update_schedules,
+    add_faculty_service,
+    add_lab_service,
+    add_room_service,
+    clear_config,
+    detect_conflicts,
+    export_config_bytes,
+    get_config_status,
+    get_unsaved,
+    load_config_into_session,
+    modify_faculty_service,
+    modify_room_service,
+    remove_course_service,
     remove_faculty_service,
     remove_room_service,
-    remove_course_service,
-    modify_room_service,
-    modify_faculty_service,
+    sanitize_export_filename,
+    save_config_from_session,
+    set_faculty_day_unavailable_service,
+    update_schedules,
+    validate_config,
 )
 
 
@@ -276,7 +276,10 @@ def test_update_schedules_fails_on_conflicts(app_context):
 
         with pytest.raises(
             ValueError,
-            match="Schedules cannot be generated until configuration conflicts are resolved.",
+            match=(
+                "Schedules cannot be generated until configuration conflicts "
+                "are resolved."
+            ),
         ):
             update_schedules(cfg)
 
