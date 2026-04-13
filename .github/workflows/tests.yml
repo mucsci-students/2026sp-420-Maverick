@@ -34,9 +34,6 @@ jobs:
       - name: Run Ruff formatter check
         run: uv run ruff format . --check
 
-      - name: Run mypy
-        run: uv run mypy app tests
-
       - name: Run ty
         run: uv run ty check app tests --output-format=github
 
