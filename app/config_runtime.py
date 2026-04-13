@@ -11,16 +11,24 @@ Configuration lookup order:
 
 import os
 
-OPENAI_API_KEY: str | None = None
-FLASK_SECRET_KEY: str | None = None
-MAVERICK_OPENAI_MODEL: str | None = None
+OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+FLASK_SECRET_KEY: str | None = os.getenv("FLASK_SECRET_KEY")
+MAVERICK_OPENAI_MODEL: str | None = os.getenv("MAVERICK_OPENAI_MODEL")
 
 try:
-    from app import local_settings
+    from app.local_settings import (
+        FLASK_SECRET_KEY as LOCAL_FLASK_SECRET_KEY,
+    )
+    from app.local_settings import (
+        MAVERICK_OPENAI_MODEL as LOCAL_MAVERICK_OPENAI_MODEL,
+    )
+    from app.local_settings import (
+        OPENAI_API_KEY as LOCAL_OPENAI_API_KEY,
+    )
 
-    OPENAI_API_KEY = getattr(local_settings, "OPENAI_API_KEY", None)
-    FLASK_SECRET_KEY = getattr(local_settings, "FLASK_SECRET_KEY", None)
-    MAVERICK_OPENAI_MODEL = getattr(local_settings, "MAVERICK_OPENAI_MODEL", None)
+    OPENAI_API_KEY = LOCAL_OPENAI_API_KEY
+    FLASK_SECRET_KEY = LOCAL_FLASK_SECRET_KEY
+    MAVERICK_OPENAI_MODEL = LOCAL_MAVERICK_OPENAI_MODEL
 except ImportError:
     pass
 
