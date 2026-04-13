@@ -689,21 +689,34 @@ def _validate_time_slot_config(cfg):
             if not isinstance(meeting, dict):
                 raise ValueError(f"Pattern {idx} contains an invalid meeting object.")
 
-            day = meeting.get("day")
+            meeting_days = meeting.get("days")
             duration = meeting.get("duration")
 
-            if day not in VALID_DAYS:
-                raise ValueError(f"Pattern {idx} contains invalid day: {day}")
-
-            if not isinstance(duration, int) or duration <= 0:
-                raise ValueError(f"Pattern {idx} contains invalid duration: {duration}")
-
-            # Meeting day must have at least one time range configured
-            if day not in times or not times.get(day):
+            if not isinstance(meeting_days, list) or not meeting_days:
                 raise ValueError(
-                    f"Pattern {idx} uses {day}, but no time slots are configured for "
-                    f"{day}."
+                    f"Pattern {idx} must include at least one day in 'days'."
                 )
+
+            try:
+                duration_value = int(duration)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Pattern {idx} has invalid duration '{duration}'."
+                ) from None
+
+            if duration_value <= 0:
+                raise ValueError(f"Pattern {idx} has invalid duration '{duration}'.")
+
+            for day in meeting_days:
+                if day not in VALID_DAYS:
+                    raise ValueError(f"Pattern {idx} contains invalid day: {day}")
+
+                # Meeting day must have at least one time range configured
+                if day not in times or not times.get(day):
+                    raise ValueError(
+                        f"Pattern {idx} uses {day}, but no time slots are configured "
+                        f"for {day}."
+                    )
 
         start_time = klass_dict.get("start_time")
         if start_time is not None:
