@@ -17,31 +17,31 @@ Notes:
 """
 
 from app.web.services.ai_tools import (
-    get_tool_definitions,
-    execute_tool,
-    add_course_tool,
-    rename_course_tool,
-    modify_course_credits_tool,
-    modify_course_room_tool,
-    modify_course_lab_tool,
-    remove_course_lab_tool,
-    modify_course_faculty_tool,
-    modify_course_conflicts_tool,
-    add_faculty_tool,
-    remove_faculty_tool,
-    modify_faculty_tool,
-    add_room_tool,
-    remove_room_tool,
-    modify_room_tool,
-    add_lab_tool,
-    remove_lab_tool,
-    modify_lab_tool,
-    remove_course_tool,
     add_conflict_tool,
-    remove_conflict_tool,
+    add_course_tool,
+    add_faculty_tool,
+    add_lab_tool,
+    add_room_tool,
+    execute_tool,
+    get_tool_definitions,
     modify_conflict_tool,
-    validate_tool_args,
+    modify_course_conflicts_tool,
+    modify_course_credits_tool,
+    modify_course_faculty_tool,
+    modify_course_lab_tool,
+    modify_course_room_tool,
+    modify_faculty_tool,
+    modify_lab_tool,
+    modify_room_tool,
+    remove_conflict_tool,
+    remove_course_lab_tool,
+    remove_course_tool,
+    remove_faculty_tool,
+    remove_lab_tool,
+    remove_room_tool,
+    rename_course_tool,
     set_faculty_day_unavailable_tool,
+    validate_tool_args,
 )
 
 
@@ -870,7 +870,9 @@ def test_validate_tool_args_rejects_missing_name_for_faculty_tools():
     Ensures faculty tools that require a name fail validation when the
     name field is missing.
     """
-    is_valid, error = validate_tool_args("add_faculty", {"appointment_type": "Full-time"})
+    is_valid, error = validate_tool_args(
+        "add_faculty", {"appointment_type": "Full-time"}
+    )
     assert is_valid is False
     assert error == "Missing required field: name"
 
@@ -1094,7 +1096,9 @@ def test_validate_tool_args_rejects_conflict_tools_missing_fields():
     """
     Ensures add/remove conflict tools validate both required IDs.
     """
-    is_valid, error = validate_tool_args("add_conflict", {"conflict_course_id": "CS102"})
+    is_valid, error = validate_tool_args(
+        "add_conflict", {"conflict_course_id": "CS102"}
+    )
     assert is_valid is False
     assert error == "Missing required field: course_id"
 
@@ -1107,7 +1111,9 @@ def test_validate_tool_args_rejects_modify_conflict_missing_fields():
     """
     Ensures modify_conflict validates all required IDs.
     """
-    is_valid, error = validate_tool_args("modify_conflict", {"old_conflict_course_id": "CS102"})
+    is_valid, error = validate_tool_args(
+        "modify_conflict", {"old_conflict_course_id": "CS102"}
+    )
     assert is_valid is False
     assert error == "Missing required field: course_id"
 

@@ -25,7 +25,7 @@ Notes:
 
 # Flask helpers for routing, form handling, flashing messages,
 # redirecting the user, and rendering HTML templates.
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 # Import the service-layer function that will process a single AI command.
 from app.web.services.ai_service import process_ai_command
@@ -33,7 +33,6 @@ from app.web.services.ai_service import process_ai_command
 # Import the existing session key used by the config editor so that
 # the AI feature can verify that a configuration is currently loaded.
 from app.web.services.config_service import SESSION_CONFIG_KEY
-
 
 # Create a dedicated Blueprint for AI chat functionality.
 # This keeps the Chunk A feature isolated from the existing config,

@@ -20,17 +20,15 @@ These are base-case tests intended to:
 from flask import Flask, session
 
 from app.web.services.config_service import SESSION_CONFIG_KEY
+from app.web.services.progress_store import generation_progress, is_running
 from app.web.services.run_service import (
     KNOWN_OPTIMIZER_FLAGS,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
     _to_int,
     generate_schedules_into_session,
 )
-from app.web.services.progress_store import generation_progress, is_running
 
 
 def _make_app():
@@ -65,7 +63,7 @@ def test_generate_schedules_into_session_raises_without_config():
     app = _make_app()
 
     with app.test_request_context("/"):
-        session.sid = "test-session-missing-config"
+        session["_test_sid"] = "test-session-missing-config"
 
         try:
             generate_schedules_into_session(limit=5)
@@ -74,8 +72,9 @@ def test_generate_schedules_into_session_raises_without_config():
             assert "No config loaded" in str(exc)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_blocks_concurrent_generation():
@@ -85,8 +84,8 @@ def test_generate_schedules_into_session_blocks_concurrent_generation():
     app = _make_app()
 
     with app.test_request_context("/"):
-        session.sid = "test-session-concurrent"
-        is_running[session.sid] = True
+        session["_test_sid"] = "test-session-concurrent"
+        is_running[session["_test_sid"]] = True
 
         try:
             generate_schedules_into_session(limit=5)
@@ -95,8 +94,9 @@ def test_generate_schedules_into_session_blocks_concurrent_generation():
             assert "already in progress" in str(exc)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_stores_schedules(monkeypatch):
@@ -166,7 +166,7 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-store"
+        session["_test_sid"] = "test-session-store"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         count = generate_schedules_into_session(limit=1)
@@ -187,8 +187,9 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
         assert session[SESSION_USER_SELECTED_KEY] is False
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeypatch):
@@ -232,7 +233,7 @@ def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeyp
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-flags"
+        session["_test_sid"] = "test-session-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(
@@ -249,8 +250,9 @@ def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeyp
         assert all(flag in KNOWN_OPTIMIZER_FLAGS for flag in used_flags)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
@@ -296,7 +298,7 @@ def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-default-flags"
+        session["_test_sid"] = "test-session-default-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(limit=1, optimizer_flags=None)
@@ -307,8 +309,9 @@ def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
         assert used_flags == ["faculty_room", "pack_rooms"]
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
@@ -352,7 +355,7 @@ def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-empty-flags"
+        session["_test_sid"] = "test-session-empty-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(limit=1, optimizer_flags=[])
@@ -363,5 +366,6 @@ def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
         assert used_flags == []
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)

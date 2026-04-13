@@ -12,7 +12,8 @@ Responsibilities:
   ready for CSV/JSON export.
 
 Flat row schema (required + optional):
-  schedule_id, course_id, day, start, room, faculty, lab, duration, credits, meeting_index
+  schedule_id, course_id, day, start,
+  room, faculty, lab, duration, credits, meeting_index
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from __future__ import annotations
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Tuple, Iterator
+from typing import Any, Dict, Iterator, List, Tuple
 
 from scheduler import Scheduler
 from scheduler.config import CombinedConfig
@@ -261,7 +262,8 @@ def generate_schedules(
 
     IMPORTANT:
     - limit is the number of SCHEDULES (models) to produce, not number of rows.
-    - optimize flag is passed through for future use (core optimization can be added later).
+    - optimize flag is passed through for future use
+      (core optimization can be added later).
     """
     combined = CombinedConfig(**cfg)
     s = Scheduler(combined)
@@ -280,7 +282,7 @@ def generate_schedules(
             )
 
         print(
-            f"\n================ PROCESSED OUTPUT (Schedule {schedule_id}) ================"
+            f"\n============== PROCESSED OUTPUT (Schedule {schedule_id}) =============="
         )
         for row in schedule_rows:
             print(

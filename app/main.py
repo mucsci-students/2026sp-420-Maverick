@@ -6,8 +6,12 @@
 
 # import argparse
 
-# from app.config_ops.config_ops import load_config, save_config, pretty_print_config, summarize_config
-# from app.faculty_management.faculty_management import add_faculty, remove_faculty, parse_prefs, modify_faculty
+# from app.config_ops.config_ops import (
+#     load_config, save_config, pretty_print_config, summarize_config
+# )
+# from app.faculty_management.faculty_management import (
+#     add_faculty, remove_faculty, parse_prefs, modify_faculty
+# )
 # from app.room_management.room_management import add_room, remove_room, modify_room
 # from app.lab_management.lab_management import add_lab, remove_lab, modify_lab
 # from app.course_management.course_management import (
@@ -29,10 +33,15 @@
 #     show.add_argument("--path", default = "configs/config_dev.json")
 #     show.add_argument("--full", action = "store_true", help="Show full JSON")
 
-#     save = cfg_sub.add_parser("save", help = "Save configuration (no-op if already saved)")
+#     save = cfg_sub.add_parser(
+#       "save", help = "Save configuration (no-op if already saved)"
+#     )
 #     save.add_argument("--path", default = "configs/config_dev.json")
 
-#     set_limit = cfg_sub.add_parser("set-limit", help="Set schedule generation limit in config file")
+#     set_limit = cfg_sub.add_parser(
+#         "set-limit",
+#         help="Set schedule generation limit in config file"
+#     )
 #     set_limit.add_argument("--path", default="configs/config_dev.json")
 #     set_limit.add_argument("--limit", type=int, required=True)
 
@@ -124,19 +133,33 @@
 #     course_mod.add_argument("--faculty", action="append")
 #     course_mod.add_argument("--conflicts", action="append")
 #     # --- course conflicts add/remove/modify ---
-#     conf_add = course_sub.add_parser("conflict-add", help="Add a conflict to a course")
+#     conf_add = course_sub.add_parser(
+#       "conflict-add",
+#       help="Add a conflict to a course"
+#     )
 #     conf_add.add_argument("--path", default="configs/config_dev.json")
-#     conf_add.add_argument("--id", required=True, help="Course to modify (e.g., CS101)")
-#     conf_add.add_argument("--conflict", required=True, help="Course to conflict with (e.g., CS102)")
-#     conf_add.add_argument("--no-symmetric", action="store_true", help="Do not add reverse conflict")
+#     conf_add.add_argument(
+#       "--id", required=True, help="Course to modify (e.g., CS101)"
+#     )
+#     conf_add.add_argument(
+#       "--conflict", required=True, help="Course to conflict with (e.g., CS102)"
+#     )
+#     conf_add.add_argument(
+#       "--no-symmetric", action="store_true", help="Do not add reverse conflict"
+#     )
 
-#     conf_rm = course_sub.add_parser("conflict-remove", help="Remove a conflict from a course")
+#     conf_rm = course_sub.add_parser(
+#       "conflict-remove",
+#       help="Remove a conflict from a course"
+#     )
 #     conf_rm.add_argument("--path", default="configs/config_dev.json")
 #     conf_rm.add_argument("--id", required=True)
 #     conf_rm.add_argument("--conflict", required=True)
 #     conf_rm.add_argument("--no-symmetric", action="store_true")
 
-#     conf_mod = course_sub.add_parser("conflict-modify", help="Replace a conflict old->new")
+#     conf_mod = course_sub.add_parser(
+#       "conflict-modify", help="Replace a conflict old->new"
+#     )
 #     conf_mod.add_argument("--path", default="configs/config_dev.json")
 #     conf_mod.add_argument("--id", required=True)
 #     conf_mod.add_argument("--old", required=True)
@@ -212,7 +235,9 @@
 #     if args.command == "faculty" and args.fac_cmd == "add":
 #         cfg = load_config(args.path)
 #         prefs = parse_prefs(args.pref)  # converts ["CSCI450:8"] -> list[dict]
-#         add_faculty(cfg, args.name, args.type, day=args.day, time_range=args.time, prefs=prefs)
+#         add_faculty(
+#           cfg, args.name, args.type, day=args.day, time_range=args.time, prefs=prefs
+#         )
 #         save_config(args.path, cfg)
 #         print(f"Added faculty {args.name}")
 #         return
@@ -341,7 +366,10 @@
 #             symmetric=not args.no_symmetric,
 #         )
 #         save_config(args.path, cfg)
-#         print(f"Added conflict: {args.id} <-> {args.conflict}" if not args.no_symmetric else f"Added conflict: {args.id} -> {args.conflict}")
+#         print(f"Added conflict: {args.id} <-> {args.conflict}"
+#           if not args.no_symmetric
+#           else f"Added conflict: {args.id} -> {args.conflict}"
+#         )
 #         return
 
 #     # Course conflict remove
@@ -354,7 +382,10 @@
 #             symmetric=not args.no_symmetric,
 #         )
 #         save_config(args.path, cfg)
-#         print(f"Removed conflict: {args.id} <-> {args.conflict}" if not args.no_symmetric else f"Removed conflict: {args.id} -> {args.conflict}")
+#         print(f"Removed conflict: {args.id} <-> {args.conflict}"
+#           if not args.no_symmetric
+#           else f"Removed conflict: {args.id} -> {args.conflict}"
+#         )
 #         return
 
 #     # Course conflict modify

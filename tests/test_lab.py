@@ -33,8 +33,8 @@ Related User Stories:
 """
 
 import pytest
-from app.lab_management import lab_management
 
+from app.lab_management import lab_management
 
 # ---------------------------
 # Delete Lab

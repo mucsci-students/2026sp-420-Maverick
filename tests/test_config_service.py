@@ -1,41 +1,41 @@
 # Author: Tanner Ness, Ian Swartz
 # Date: 2026-04-05
 
-import pytest
 import json
 
-import app.web.services.config_service as config_service
-
+import pytest
 from flask import session
+
+import app.web.services.config_service as config_service
 from app.web.services.config_service import (
-    load_config_into_session,
-    get_config_status,
-    sanitize_export_filename,
-    detect_conflicts,
-    validate_config,
-    add_faculty_service,
-    get_unsaved,
-    clear_config,
     SESSION_CONFIG_KEY,
-    export_config_bytes,
-    set_faculty_day_unavailable_service,
-    add_room_service,
-    add_lab_service,
     add_course_service,
-    save_config_from_session,
-    update_schedules,
-    remove_faculty_service,
-    remove_room_service,
-    remove_course_service,
-    modify_room_service,
-    modify_faculty_service,
-    add_time_slot_service,
-    modify_time_slot_service,
-    remove_time_slot_service,
+    add_faculty_service,
+    add_lab_service,
     add_pattern_service,
+    add_room_service,
+    add_time_slot_service,
+    clear_config,
+    detect_conflicts,
+    export_config_bytes,
+    get_config_status,
+    get_unsaved,
+    load_config_into_session,
+    modify_faculty_service,
     modify_pattern_service,
+    modify_room_service,
+    modify_time_slot_service,
+    remove_course_service,
+    remove_faculty_service,
     remove_pattern_service,
+    remove_room_service,
+    remove_time_slot_service,
+    sanitize_export_filename,
+    save_config_from_session,
+    set_faculty_day_unavailable_service,
     toggle_pattern_service,
+    update_schedules,
+    validate_config,
 )
 
 
@@ -283,7 +283,10 @@ def test_update_schedules_fails_on_conflicts(app_context):
 
         with pytest.raises(
             ValueError,
-            match="Schedules cannot be generated until configuration conflicts are resolved.",
+            match=(
+                "Schedules cannot be generated until configuration conflicts "
+                "are resolved."
+            ),
         ):
             update_schedules(cfg)
 
@@ -830,9 +833,9 @@ def test_add_pattern_service_creates_canonical_class_pattern(app_context):
         assert len(classes) == 1
         assert classes[0]["credits"] == 3
         assert classes[0]["meetings"] == [
-            {"day": "MON", "duration": 50},
-            {"day": "WED", "duration": 50},
-            {"day": "FRI", "duration": 50},
+            {"days": ["MON"], "duration": "50"},
+            {"days": ["WED"], "duration": "50"},
+            {"days": ["FRI"], "duration": "50"},
         ]
         assert classes[0]["start_time"] == "09:00"
         assert "disabled" not in classes[0]
@@ -853,7 +856,7 @@ def test_modify_toggle_and_remove_pattern_service_by_index(app_context):
                 "classes": [
                     {
                         "credits": 4,
-                        "meetings": [{"day": "MON", "duration": 50}],
+                        "meetings": [{"days": ["MON"], "duration": "50"}],
                     }
                 ],
             },
@@ -871,8 +874,8 @@ def test_modify_toggle_and_remove_pattern_service_by_index(app_context):
         pattern = session[SESSION_CONFIG_KEY]["time_slot_config"]["classes"][0]
         assert pattern["credits"] == 4
         assert pattern["meetings"] == [
-            {"day": "MON", "duration": 110, "lab": True},
-            {"day": "TUE", "duration": 110, "lab": True},
+            {"days": ["MON"], "duration": "110", "lab": True},
+            {"days": ["TUE"], "duration": "110", "lab": True},
         ]
         assert pattern["start_time"] == "10:00"
 
@@ -919,7 +922,7 @@ def test_validate_config_rejects_pattern_day_without_time_slots():
             "classes": [
                 {
                     "credits": 3,
-                    "meetings": [{"day": "MON", "duration": 50}],
+                    "meetings": [{"days": ["MON"], "duration": "50"}],
                 }
             ],
         },

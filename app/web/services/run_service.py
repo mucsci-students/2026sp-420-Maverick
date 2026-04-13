@@ -24,18 +24,19 @@ High-Level Flow:
 # Imports
 # ------------------------------
 
-from flask import session  # Session storage for per-user state
 from copy import deepcopy  # Prevent mutation of loaded config
 from datetime import datetime  # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
-from app.web.services.config_service import SESSION_CONFIG_KEY
-from scheduler_core.main import generate_schedules  # Core solver engine
+
+from flask import session  # Session storage for per-user state
+
 from app.web.services.config_service import SESSION_CONFIG_KEY, validate_config
 from app.web.services.progress_store import (
     generation_progress,
-    progress_lock,
     is_running,
+    progress_lock,
 )
+from scheduler_core.main import generate_schedules  # Core solver engine
 
 # ----------------------------------
 # Session Keys (Key Sources of Date)
@@ -91,6 +92,18 @@ def _to_int(x: Any, default: int = 0) -> int:
         return default
 
 
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
+
+
 # ------------------------------
 # Core Service Function
 # ------------------------------
@@ -127,7 +140,7 @@ def generate_schedules_into_session(
     """
 
     # sets the session id
-    session_id = session.sid
+    session_id = _get_session_id()
 
     # prevents concurrent generations
     with progress_lock:

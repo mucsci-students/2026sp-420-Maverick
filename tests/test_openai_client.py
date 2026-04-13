@@ -12,7 +12,7 @@ Purpose:
 - Confirm config helper integration works as expected
 """
 
-from app.web.services.openai_client import get_openai_client, get_model_name
+from app.web.services.openai_client import get_model_name, get_openai_client
 
 
 def test_get_openai_client_raises_without_api_key(monkeypatch):

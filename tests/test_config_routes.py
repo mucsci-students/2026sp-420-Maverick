@@ -315,6 +315,7 @@ def test_faculty_add_success(monkeypatch):
     response = client.post("/config/faculty/add", data={"name": "Hardy"})
 
     assert response.status_code == 302
+    assert called["data"] is not None
     assert called["data"]["name"] == "Hardy"
 
 
@@ -403,6 +404,7 @@ def test_lab_add_success(monkeypatch):
     response = client.post("/config/lab/add", data={"lab": "Linux"})
 
     assert response.status_code == 302
+    assert called["data"] is not None
     assert called["data"]["lab"] == "Linux"
 
 
@@ -425,6 +427,7 @@ def test_course_add_success(monkeypatch):
     response = client.post("/config/course/add", data={"course_id": "CMSC 161"})
 
     assert response.status_code == 302
+    assert called["data"] is not None
     assert called["data"]["course_id"] == "CMSC 161"
 
 
@@ -450,6 +453,7 @@ def test_conflict_add_success(monkeypatch):
     )
 
     assert response.status_code == 302
+    assert called["data"] is not None
     assert called["data"]["course_id"] == "CMSC 161"
 
 

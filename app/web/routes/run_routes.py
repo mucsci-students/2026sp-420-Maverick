@@ -43,21 +43,29 @@ High-Level Flow:
 # Imports
 # ==================================================
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask import session  # Session access for checking loaded config defaults
-from app.web.services.run_service import (
-    generate_schedules_into_session,
-    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,  # Session access for checking loaded config defaults
+    url_for,
 )
+
 from app.web.services.config_service import (
     SESSION_CONFIG_KEY,
 )  # Where the loaded config is stored
 from app.web.services.progress_store import (
     generation_progress,
-    progress_lock,
     is_running,
+    progress_lock,
+)
+from app.web.services.run_service import (
+    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
+    generate_schedules_into_session,
 )
 
 # ==================================================
@@ -69,6 +77,21 @@ from app.web.services.progress_store import (
 #   - URL Prefix: /run
 #   - All generator-related routes are grouped under this namespace.
 bp = Blueprint("run", __name__, url_prefix="/run")
+
+
+# ==================================================
+# Helper function
+# ==================================================
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
 
 
 # ==================================================
@@ -191,7 +214,7 @@ def generate():
     # 2. Generate Schedules via Service Layer
     # ----------------------------------------
 
-    session_id = session.sid
+    session_id = _get_session_id()
 
     try:
         # Persist Generator overrides so the UI stays consistent after generating
@@ -240,10 +263,12 @@ def reset():
     session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
     session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
 
+    session_id = _get_session_id()
+
     # clears the session progress
     with progress_lock:
-        generation_progress[session.sid] = 0
-        is_running[session.sid] = False
+        generation_progress[session_id] = 0
+        is_running[session_id] = False
 
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
@@ -257,7 +282,7 @@ def get_progress():
     """
     Returns the current generation progress (from 0 -> 100)
     """
-    session_id = session.sid
+    session_id = _get_session_id()
 
     with progress_lock:
         progress = generation_progress.get(session_id, 0)

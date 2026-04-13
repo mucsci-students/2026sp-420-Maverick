@@ -33,8 +33,8 @@ Related User Stories:
 """
 
 import pytest
-from app.room_management import room_management
 
+from app.room_management import room_management
 
 # ---------------------------
 # Delete Room

@@ -14,7 +14,6 @@ Related User Stories:
 
 from typing import Any, Dict, List
 
-
 # -----------------------------
 # Internal Helpers
 # -----------------------------
@@ -34,7 +33,8 @@ def get_lab_list(cfg: Dict[str, Any]) -> List[str]:
 
 
 """
-Description: find_lab_index takes a list of labs and returns if the lab was found in the list or not.
+Description: find_lab_index takes a list of labs 
+and returns if the lab was found in the list or not.
 Parameters :
            lab_list -> the list of labs.
            lab_name -> the name of the lab.
@@ -79,18 +79,18 @@ def remove_lab_helper(cfg: Dict[str, Any], lab: str) -> None:
     for course in course_list:
         labs = course.get("lab", [])
 
-        for l in range(len(labs)):
-            if labs[l].lower() == lab_lower:
-                labs.pop(l)
+        for lab_index in range(len(labs)):
+            if labs[lab_index].lower() == lab_lower:
+                labs.pop(lab_index)
                 break
 
     # Removes any instance(s) of lab in faculty -> 'lab_preferences' if it exists.
     for faculty in faculty_list:
         lab_prefs = faculty.get("lab_preferences", {})
 
-        for l in list(lab_prefs):
-            if l.lower() == lab_lower:
-                lab_prefs.pop(l, None)
+        for lab_name in list(lab_prefs):
+            if lab_name.lower() == lab_lower:
+                lab_prefs.pop(lab_name, None)
                 break
 
 

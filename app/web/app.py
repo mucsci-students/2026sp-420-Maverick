@@ -67,10 +67,10 @@ def create_app():
     # ---------------------------------------------------------
     # Register blueprints
     # ---------------------------------------------------------
+    from app.web.routes.ai_routes import bp as ai_bp
     from app.web.routes.config_routes import bp as config_bp
     from app.web.routes.run_routes import bp as run_bp
     from app.web.routes.viewer_routes import bp as viewer_bp
-    from app.web.routes.ai_routes import bp as ai_bp
 
     app.register_blueprint(config_bp)
     app.register_blueprint(run_bp)

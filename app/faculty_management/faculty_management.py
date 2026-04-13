@@ -184,7 +184,9 @@ def find_faculty_index(faculty_list: List[Dict[str, Any]], name: str) -> int:
 # -----------------------------
 
 """
-Description: remove_faculty_helper remove all instances of the faculty member from courses.
+Description: 
+    remove_faculty_helper remove all instances of the faculty member from courses.
+
 Parameters:
     cfg -> the configuration file.
     name -> the name to remove.
@@ -205,7 +207,8 @@ def remove_faculty_helper(cfg: Dict[str, Any], name: str) -> None:
 
     # For each course, remove the deleted faculty from its faculty list
     for course in course_list:
-        # IMPORTANT: this should default to [] not None, otherwise len(faculty) can crash
+        # IMPORTANT:
+        #   this should default to [] not None, otherwise len(faculty) can crash
         faculty = course.get("faculty", [])
 
         # Iterate by index and remove the first match
@@ -253,7 +256,7 @@ def add_faculty(
         prefs = []
 
     # Faculty record stored in the config
-    entry = {
+    entry: Dict[str, Any] = {
         "name": name,
         "maximum_credits": max_c,
         "minimum_credits": min_c,
