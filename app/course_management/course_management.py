@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 # JSON config gets loaded in a Python dict via (cfg).
 # The courses are found at/live at: cfg["config"]["courses"]
 #
-# This helper function ensures that the path exists 
+# This helper function ensures that the path exists
 # and returns the list of course dicts.
 def get_course_list(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     # .setdefault ensures it exists or creates it

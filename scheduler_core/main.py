@@ -12,7 +12,7 @@ Responsibilities:
   ready for CSV/JSON export.
 
 Flat row schema (required + optional):
-  schedule_id, course_id, day, start, 
+  schedule_id, course_id, day, start,
   room, faculty, lab, duration, credits, meeting_index
 """
 
@@ -262,7 +262,7 @@ def generate_schedules(
 
     IMPORTANT:
     - limit is the number of SCHEDULES (models) to produce, not number of rows.
-    - optimize flag is passed through for future use 
+    - optimize flag is passed through for future use
       (core optimization can be added later).
     """
     combined = CombinedConfig(**cfg)

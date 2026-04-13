@@ -872,7 +872,7 @@ def test_validate_tool_args_rejects_missing_name_for_faculty_tools():
     """
     is_valid, error = validate_tool_args(
         "add_faculty", {"appointment_type": "Full-time"}
-        )
+    )
     assert is_valid is False
     assert error == "Missing required field: name"
 
@@ -1098,7 +1098,7 @@ def test_validate_tool_args_rejects_conflict_tools_missing_fields():
     """
     is_valid, error = validate_tool_args(
         "add_conflict", {"conflict_course_id": "CS102"}
-        )
+    )
     assert is_valid is False
     assert error == "Missing required field: course_id"
 
@@ -1113,7 +1113,7 @@ def test_validate_tool_args_rejects_modify_conflict_missing_fields():
     """
     is_valid, error = validate_tool_args(
         "modify_conflict", {"old_conflict_course_id": "CS102"}
-        )
+    )
     assert is_valid is False
     assert error == "Missing required field: course_id"
 

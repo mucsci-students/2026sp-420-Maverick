@@ -207,7 +207,7 @@ def remove_faculty_helper(cfg: Dict[str, Any], name: str) -> None:
 
     # For each course, remove the deleted faculty from its faculty list
     for course in course_list:
-        # IMPORTANT: 
+        # IMPORTANT:
         #   this should default to [] not None, otherwise len(faculty) can crash
         faculty = course.get("faculty", [])
 
@@ -256,7 +256,7 @@ def add_faculty(
         prefs = []
 
     # Faculty record stored in the config
-    entry = {
+    entry: Dict[str, Any] = {
         "name": name,
         "maximum_credits": max_c,
         "minimum_credits": min_c,

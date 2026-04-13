@@ -41,6 +41,7 @@ import json
 import os
 import re
 from os import PathLike
+from typing import Any, cast
 
 # Flask session stores the user's active working configuration,
 # editor state, and related UI flags.
@@ -421,7 +422,7 @@ def load_config_into_session(source):
         loaded_path = getattr(source, "filename", None)
 
     # -----------------------------------------------------------------------
-    # Continue with existing logic 
+    # Continue with existing logic
     # (Apply defaults, store in session, write working_config.json, etc.)
     # -----------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
@@ -516,7 +517,7 @@ def get_default_export_filename() -> str:
 
     Rules:
       - If a real config was loaded, suggest its basename.
-      - If nothing loaded (or only working_config.json exists), 
+      - If nothing loaded (or only working_config.json exists),
         suggest new_config_file.json.
     """
     path = session.get(SESSION_CONFIG_PATH_KEY)
@@ -525,7 +526,7 @@ def get_default_export_filename() -> str:
 
     base = os.path.basename(str(path))
 
-    # If the "loaded path" is the internal working file, 
+    # If the "loaded path" is the internal working file,
     # treat it like "no loaded config"
     if os.path.abspath(str(path)) == os.path.abspath(WORKING_PATH):
         return "new_config_file.json"
@@ -673,8 +674,10 @@ def _validate_time_slot_config(cfg):
         if not isinstance(klass, dict):
             raise ValueError(f"Pattern at index {idx} must be an object.")
 
-        credits = klass.get("credits")
-        meetings = klass.get("meetings")
+        klass_dict = cast(dict[str, Any], klass)
+
+        credits = klass_dict.get("credits")
+        meetings = klass_dict.get("meetings")
 
         if not isinstance(credits, int) or credits <= 0:
             raise ValueError(f"Pattern {idx} has invalid credits: {credits}")
@@ -702,7 +705,7 @@ def _validate_time_slot_config(cfg):
                     f"{day}."
                 )
 
-        start_time = klass.get("start_time")
+        start_time = klass_dict.get("start_time")
         if start_time is not None:
             _minutes_from_hhmm(str(start_time))
 
@@ -760,7 +763,7 @@ def validate_config(cfg):
                 raise ValueError(f"Invalid conflict '{conflict}' in course {cid}")
 
     _validate_time_slot_config(cfg)
-    
+
 
 # ================================================================
 # Status
@@ -1066,28 +1069,28 @@ def modify_time_slot_service(day, index, start, spacing, end):
 # ================================================================
 # Meeting Pattern Management
 # ================================================================
-def _parse_meetings(days: str, duration: str, is_lab=False):
+def _parse_meetings(
+    days: str | list[str],
+    duration: int | str,
+    is_lab: bool = False,
+) -> list[dict[str, Any]]:
     """
-    Convert a comma-separated day string into canonical meeting objects.
-    Example:
-        days="MON,WED,FRI", duration="50", is_lab=False
-        -> [
-            {"day": "MON", "duration": 50},
-            {"day": "WED", "duration": 50},
-            {"day": "FRI", "duration": 50},
-        ]
+    Convert day input into canonical meeting objects.
     """
-    duration = int(duration)
+    duration_str = str(int(duration))
+
+    if isinstance(days, str):
+        parsed_days = [day.strip().upper() for day in days.split(",") if day.strip()]
+    else:
+        parsed_days = [day.strip().upper() for day in days if day.strip()]
+
     is_lab = str(is_lab).lower() in ["true", "on", "1"]
 
-    meetings = []
-    for day in str(days).split(","):
-        clean_day = day.strip().upper()
-        if not clean_day:
-            continue
-        meeting = {
-            "day": clean_day,
-            "duration": duration,
+    meetings: list[dict[str, Any]] = []
+    for day in parsed_days:
+        meeting: dict[str, Any] = {
+            "days": [day],
+            "duration": duration_str,
         }
         if is_lab:
             meeting["lab"] = True
@@ -1100,21 +1103,22 @@ def _parse_meetings(days: str, duration: str, is_lab=False):
 
 
 def add_pattern_service(
-    credits,
-    days,
-    duration,
-    is_lab=False,
-    fixed_start_time=None,
-    enabled=True,
+    credits: int | str,
+    days: str | list[str],
+    duration: int | str,
+    is_lab: bool | str = False,
+    fixed_start_time: str | None = None,
+    enabled: bool | str = True,
     **kwargs,
 ):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
     enabled = str(enabled).lower() in ["true", "on", "1"]
-    pattern = {
+    is_lab_bool = str(is_lab).lower() in ["true", "on", "1"]
+    pattern: dict[str, Any] = {
         "credits": int(credits),
-        "meetings": _parse_meetings(days, duration, is_lab),
+        "meetings": _parse_meetings(days, duration, is_lab_bool),
     }
 
     fixed_start_time = (fixed_start_time or "").strip()

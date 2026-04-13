@@ -201,7 +201,6 @@ def export_schedules_to_file(path: str):
         json.dump(schedules, f, indent=2)
 
 
-
 # Disables the 'Export Schedules' button if there are no schedules to export.
 def is_export_enabled() -> bool:
     count = len(_get_schedules())
@@ -514,7 +513,7 @@ def get_view_data():
     # Pick the current schedule only if the index is valid
     current = schedules[index] if schedules and 0 <= index < len(schedules) else None
 
-    # Assignments are stored under the "assignments" key 
+    # Assignments are stored under the "assignments" key
     # (same shape as run_service output)
     assignments = (current or {}).get("assignments", [])
 

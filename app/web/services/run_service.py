@@ -92,6 +92,18 @@ def _to_int(x: Any, default: int = 0) -> int:
         return default
 
 
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
+
+
 # ------------------------------
 # Core Service Function
 # ------------------------------
@@ -128,7 +140,7 @@ def generate_schedules_into_session(
     """
 
     # sets the session id
-    session_id = session.sid
+    session_id = _get_session_id()
 
     # prevents concurrent generations
     with progress_lock:

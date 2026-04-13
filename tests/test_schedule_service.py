@@ -16,7 +16,6 @@ These are base-case tests designed to:
 - Catch regressions in grouping/filter behavior
 """
 
-
 import pytest
 from flask import session
 

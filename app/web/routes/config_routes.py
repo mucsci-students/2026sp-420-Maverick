@@ -137,7 +137,8 @@ def load_file():
 
     # Ensure the uploaded file appears to be a JSON configuration file.
     # This is a basic safety check before attempting to parse it.
-    if not uploaded_file.filename.lower().endswith(".json"):
+    filename = uploaded_file.filename or ""
+    if not filename.lower().endswith(".json"):
         flash("Please upload a valid JSON config file.", "error")
         return redirect(url_for("config.editor"))
 
@@ -458,6 +459,7 @@ def conflict_modify():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 # -------------------------
 # Time Slot Routes
 # -------------------------
@@ -470,6 +472,7 @@ def timeslot_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/timeslot/remove")
 def timeslot_remove():
     try:
@@ -479,6 +482,7 @@ def timeslot_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/timeslot/modify")
 def timeslot_modify():
     try:
@@ -487,6 +491,7 @@ def timeslot_modify():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 # -------------------------
 # Meeting Pattern Routes
@@ -500,6 +505,7 @@ def pattern_add():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/pattern/remove")
 def pattern_remove():
     try:
@@ -509,6 +515,7 @@ def pattern_remove():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/pattern/modify")
 def pattern_modify():
     try:
@@ -517,6 +524,7 @@ def pattern_modify():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 @bp.post("/pattern/toggle")
 def pattern_toggle():

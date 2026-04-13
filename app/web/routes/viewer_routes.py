@@ -204,12 +204,14 @@ def import_file():
 
     try:
         for file in uploaded_files:
-            if file and file.filename.endswith(".json"):
-                # The existing service function handles 
-                # individual file objects perfectly
-                added, total = import_schedules_from_file(file)
-                total_added += added
-                files_count += 1
+            if file:
+                filename = file.filename or ""
+                if filename.endswith(".json"):
+                    # The existing service function handles
+                    # individual file objects perfectly
+                    added, total = import_schedules_from_file(file)
+                    total_added += added
+                    files_count += 1
 
         flash(
             (

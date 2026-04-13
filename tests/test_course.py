@@ -7,7 +7,7 @@ Purpose:
     This test module verifies the correctness of the Course Management functionality
     implemented in the application layer. It ensures that courses can be added,
     modified, deleted, and that course conflicts can be managed within the scheduler
-    configuration according to the project user stories 
+    configuration according to the project user stories
     (Chunk A — A2 Course Management).
 
 Scope:
@@ -54,19 +54,23 @@ from app.course_management import course_management
 def test_delete_conflict(example):
     """Removes an existing conflict from the config."""
 
-    course_to_remove_from = None
-    conflict_to_remove = None
+    course_to_remove_from = ""
+    conflict_to_remove = ""
 
-    # Picks an actual existing course and conflict.
     for course in example["config"]["courses"]:
-        for conflict in course["conflicts"]:
-            if conflict:
-                course_to_remove_from = course["course_id"]
-                conflict_to_remove = course["conflicts"][0]
-                break
+        conflicts = course.get("conflicts", [])
+        if conflicts:
+            course_to_remove_from = course["course_id"]
+            conflict_to_remove = conflicts[0]
+            break
+
+    assert course_to_remove_from, "No course with conflicts found in test data"
+    assert conflict_to_remove, "No conflict found in test data"
 
     course_management.remove_conflict(
-        example, course_to_remove_from, conflict_to_remove
+        example,
+        course_to_remove_from,
+        conflict_to_remove,
     )
 
     assert not any(
@@ -528,7 +532,7 @@ def test_get_course_raises_error(example):
 
 def test_ensure_conflicts_list_none(example):
     """
-    Ensures _ensure_conflicts_list creates empty conflicts list if missing 
+    Ensures _ensure_conflicts_list creates empty conflicts list if missing
     and returns it.
     """
     course = {"course_id": "CS101"}

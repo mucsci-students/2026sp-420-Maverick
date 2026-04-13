@@ -39,7 +39,7 @@
 #     save.add_argument("--path", default = "configs/config_dev.json")
 
 #     set_limit = cfg_sub.add_parser(
-#         "set-limit", 
+#         "set-limit",
 #         help="Set schedule generation limit in config file"
 #     )
 #     set_limit.add_argument("--path", default="configs/config_dev.json")
@@ -134,7 +134,7 @@
 #     course_mod.add_argument("--conflicts", action="append")
 #     # --- course conflicts add/remove/modify ---
 #     conf_add = course_sub.add_parser(
-#       "conflict-add", 
+#       "conflict-add",
 #       help="Add a conflict to a course"
 #     )
 #     conf_add.add_argument("--path", default="configs/config_dev.json")
@@ -149,7 +149,7 @@
 #     )
 
 #     conf_rm = course_sub.add_parser(
-#       "conflict-remove", 
+#       "conflict-remove",
 #       help="Remove a conflict from a course"
 #     )
 #     conf_rm.add_argument("--path", default="configs/config_dev.json")
@@ -366,8 +366,8 @@
 #             symmetric=not args.no_symmetric,
 #         )
 #         save_config(args.path, cfg)
-#         print(f"Added conflict: {args.id} <-> {args.conflict}" 
-#           if not args.no_symmetric 
+#         print(f"Added conflict: {args.id} <-> {args.conflict}"
+#           if not args.no_symmetric
 #           else f"Added conflict: {args.id} -> {args.conflict}"
 #         )
 #         return
@@ -382,8 +382,8 @@
 #             symmetric=not args.no_symmetric,
 #         )
 #         save_config(args.path, cfg)
-#         print(f"Removed conflict: {args.id} <-> {args.conflict}" 
-#           if not args.no_symmetric 
+#         print(f"Removed conflict: {args.id} <-> {args.conflict}"
+#           if not args.no_symmetric
 #           else f"Removed conflict: {args.id} -> {args.conflict}"
 #         )
 #         return

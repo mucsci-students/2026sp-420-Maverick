@@ -80,6 +80,21 @@ bp = Blueprint("run", __name__, url_prefix="/run")
 
 
 # ==================================================
+# Helper function
+# ==================================================
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
+
+
+# ==================================================
 # Route: Generator Page (GET)
 # ==================================================
 
@@ -199,7 +214,7 @@ def generate():
     # 2. Generate Schedules via Service Layer
     # ----------------------------------------
 
-    session_id = session.sid
+    session_id = _get_session_id()
 
     try:
         # Persist Generator overrides so the UI stays consistent after generating
@@ -248,10 +263,12 @@ def reset():
     session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
     session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
 
+    session_id = _get_session_id()
+
     # clears the session progress
     with progress_lock:
-        generation_progress[session.sid] = 0
-        is_running[session.sid] = False
+        generation_progress[session_id] = 0
+        is_running[session_id] = False
 
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
@@ -265,7 +282,7 @@ def get_progress():
     """
     Returns the current generation progress (from 0 -> 100)
     """
-    session_id = session.sid
+    session_id = _get_session_id()
 
     with progress_lock:
         progress = generation_progress.get(session_id, 0)

@@ -271,6 +271,15 @@ def process_ai_command(user_command: str) -> dict:
                     "model": model_name,
                 }
 
+            if not isinstance(tool_name, str) or not tool_name:
+                return {
+                    "success": False,
+                    "message": "AI returned a tool call without a valid tool name.",
+                    "changes_applied": False,
+                    "tool_calls": [],
+                    "model": model_name,
+                }
+
             result = execute_tool(tool_name, arguments)
 
             # Optional but useful: include tool name in the result payload

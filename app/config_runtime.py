@@ -11,16 +11,18 @@ Configuration lookup order:
 
 import os
 
+OPENAI_API_KEY: str | None = None
+FLASK_SECRET_KEY: str | None = None
+MAVERICK_OPENAI_MODEL: str | None = None
+
 try:
-    from app.local_settings import (
-        FLASK_SECRET_KEY,
-        MAVERICK_OPENAI_MODEL,
-        OPENAI_API_KEY,
-    )
+    from app import local_settings
+
+    OPENAI_API_KEY = getattr(local_settings, "OPENAI_API_KEY", None)
+    FLASK_SECRET_KEY = getattr(local_settings, "FLASK_SECRET_KEY", None)
+    MAVERICK_OPENAI_MODEL = getattr(local_settings, "MAVERICK_OPENAI_MODEL", None)
 except ImportError:
-    OPENAI_API_KEY = None
-    FLASK_SECRET_KEY = None
-    MAVERICK_OPENAI_MODEL = None
+    pass
 
 
 def get_openai_api_key() -> str | None:

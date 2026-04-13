@@ -107,9 +107,8 @@ def get_tool_definitions():
         {
             "type": "function",
             "name": "set_faculty_day_unavailable",
-            "description": 
-                "Mark a faculty member as unavailable on a specific day "
-                "by setting that day's times to an empty list.",
+            "description": "Mark a faculty member as unavailable on a specific day "
+            "by setting that day's times to an empty list.",
             "parameters": {
                 "type": "object",
                 "properties": {"name": {"type": "string"}, "day": {"type": "string"}},
@@ -771,8 +770,9 @@ def modify_course_credits_tool(args: dict) -> dict:
     )
     return {
         "success": True,
-        "message": 
-            f"Changed credits for course {args['course_id']} to {args['credits']}.",
+        "message": (
+            f"Changed credits for course {args['course_id']} to {args['credits']}."
+        ),
         "changes_applied": True,
         "details": {"action": "modify_course_credits", **args},
     }

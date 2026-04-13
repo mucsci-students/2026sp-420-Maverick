@@ -40,7 +40,7 @@ Related User Stories:
 
 #     headers = schedule_data[0].keys()
 
-#     # Use csv.DictWriter function so that it's formatted correctly, 
+#     # Use csv.DictWriter function so that it's formatted correctly,
 #     # and prints to terminal.
 #     writer = csv.DictWriter(sys.stdout, fieldnames=headers)
 

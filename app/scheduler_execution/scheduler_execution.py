@@ -145,13 +145,13 @@ Related User Stories:
 #             writer.writerows(schedules)
 
 
-#     def _optimize_schedules(self, schedules: List[Dict[str, Any]]) -> 
+#     def _optimize_schedules(self, schedules: List[Dict[str, Any]]) ->
 #       List[Dict[str, Any]]:
 #         """
 #         Sprint 1 optimization (simple heuristic):
 #             (May Change in the future mainly for testing)
 
-#         - If faculty preferences exist in the loaded config, 
+#         - If faculty preferences exist in the loaded config,
 #           score schedules higher when
 #           the schedule's course matches a preferred course for that faculty.
 #         - Tie-breakers so output is deterministic.
@@ -206,7 +206,7 @@ Related User Stories:
 #                 str(s.get("course_id", "")),
 #                 str(s.get("faculty", "")),
 #                 str(s.get("room", "")),
-#                 int(s.get("schedule_id", 0)) 
+#                 int(s.get("schedule_id", 0))
 #                   if str(s.get("schedule_id", "0")).isdigit() else 0,
 #             ),
 #             reverse=True,

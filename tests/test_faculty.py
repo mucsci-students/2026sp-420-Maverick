@@ -15,14 +15,14 @@ Scope:
         with default or custom availability and appropriate course limits.
 
     - Modify Faculty:
-        Confirms that existing faculty availability 
+        Confirms that existing faculty availability
         and configuration details can be updated.
 
     - Manage Faculty Preferences:
         Confirms that course preferences can be added and stored correctly.
 
     - Delete Faculty:
-        Confirms that faculty members can be removed 
+        Confirms that faculty members can be removed
         and no longer appear in the configuration.
 
 Testing Strategy:
@@ -280,7 +280,7 @@ def test_faculty_build():
 
 def test_parse_prefs_none():
     """Ensures parse_prefs returns [] if no value passed"""
-    prefs = faculty_management.parse_prefs("")
+    prefs = faculty_management.parse_prefs(None)
     assert prefs == []
 
 
