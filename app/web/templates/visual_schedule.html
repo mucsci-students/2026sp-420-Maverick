@@ -90,7 +90,88 @@ Purpose:
         .course-card { position: absolute; left: 2px; right: 2px; padding: 5px; border-radius: 4px; border-left: 4px solid; font-size: 0.7rem; line-height: 1.2; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
         .course-id { font-weight: bold; display: block; margin-bottom: 1px; }
         
-        @media print { .no-print { display: none; } }
+        @media print {
+            .no-print {
+                display: none !important;
+                position: absolute !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            #category-btns, #sub-filter-container, #day-btns, .btn-print {
+                display: none !important;
+            }
+
+            html, body {
+                background-color: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .filter-section {
+                page-break-before: auto !important;
+                break-before: auto !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+
+            .filter-section:not([style*="none"]) ~ .filter-section:not([style*="none"]) {
+                page-break-before: always !important;
+                break-before: page !important;
+            }
+
+            .filter-section:not([style*="none"]) .section-title {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+
+            .calendar-wrapper {
+                display: grid !important;
+                width: 100% !important;
+                background-color: #dee2e6 !important; 
+                gap: 1px !important;
+                border: 1px solid #dee2e6 !important;
+            }
+
+            .calendar-wrapper > div {
+                background-color: white !important;
+            }
+
+            .day-column {
+                border-right: 1px solid #dee2e6 !important;
+                background-image: none !important;
+                min-height: 720px;
+            }
+
+            .day-column:last-child {
+                border-right: none !important;
+            }
+
+            .calendar-container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 20px;
+                box-shadow: none !important;
+            }
+
+            .section-title {
+                color: black !important;
+                border-bottom: 2px solid black !important;
+                margin-top: 0 !important;
+            }
+
+            .schedules-grid {
+                display: block !important;
+            }
+
+            .header, .course-card {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
     </style>
 </head>
 <body>

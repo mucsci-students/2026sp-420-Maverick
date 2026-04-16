@@ -167,13 +167,6 @@ Best working version.
     </div>
     {% endmacro %}
 
-    <div id="view-room" class="filter-section">
-        <h2 class="section-title">Room Master Schedules</h2>
-        <div class="schedules-grid">
-            {% for room, items in data.by_room.items() %}{{ render_calendar(room, items, room) }}{% endfor %}
-        </div>
-    </div>
-
     <div id="view-faculty" class="filter-section">
         <h2 class="section-title">Faculty Master Schedules</h2>
         <div class="schedules-grid">
@@ -181,7 +174,14 @@ Best working version.
         </div>
     </div>
 
-    <div id="view-lab" class="filter-section" style="display:none;">
+    <div id="view-room" class="filter-section">
+        <h2 class="section-title">Room Master Schedules</h2>
+        <div class="schedules-grid">
+            {% for room, items in data.by_room.items() %}{{ render_calendar(room, items, room) }}{% endfor %}
+        </div>
+    </div>
+
+    <div id="view-lab" class="filter-section">
         <h2 class="section-title">Lab Resource Schedules</h2>
         <div class="schedules-grid">
             {% set lab_types = [] %}
@@ -195,11 +195,6 @@ Best working version.
     </div>
 
     <script>
-        /**
-         * OBSERVER PATTERN: The Subject (CalendarState)
-         * This object holds the "State" of the application. When a value changes,
-         * it notifies all "subscribed" functions to update themselves.
-         */
         const CalendarState = {
             state: {
                 category: 'all',
@@ -208,17 +203,13 @@ Best working version.
             },
             observers: [],
 
-            // Register a new function to be called when state changes
             subscribe(fn) {
                 this.observers.push(fn);
             },
 
-            // Change a state value and trigger notifications
             set(key, value) {
                 this.state[key] = value;
-                // If we change the top category, we must reset the sub-filter
                 if (key === 'category') this.state.subFilter = 'all';
-                
                 this.notify();
             },
 
@@ -232,9 +223,9 @@ Best working version.
             document.querySelectorAll('.filter-section').forEach(section => {
                 const isAll = state.category === 'all';
                 const isMatch = section.id === 'view-' + state.category;
-                // Show if 'all' (except labs) OR if section matches category
+                
                 if (isAll) {
-                    section.style.display = (section.id === 'view-lab') ? 'none' : 'block';
+                    section.style.display = 'block';
                 } else {
                     section.style.display = isMatch ? 'block' : 'none';
                 }
@@ -245,7 +236,7 @@ Best working version.
             subRow.style.display = (state.category === 'all') ? 'none' : 'flex';
         });
 
-        // --- OBSERVER 2: Update Calendar Container Visibility (Sub-filtering) ---
+        // --- OBSERVER 2: Update Calendar Container Visibility ---
         CalendarState.subscribe((state) => {
             const containers = document.querySelectorAll('.calendar-container');
             containers.forEach(container => {
@@ -258,16 +249,14 @@ Best working version.
         // --- OBSERVER 3: Update Day Grid Layout ---
         CalendarState.subscribe((state) => {
             document.querySelectorAll('.calendar-wrapper').forEach(wrapper => {
-                wrapper.className = 'calendar-wrapper'; // Reset
+                wrapper.className = 'calendar-wrapper'; 
                 if (state.day !== 'all') {
                     wrapper.classList.add('filter-day-' + state.day);
                 }
             });
         });
 
-        /**
-         * DATA PREPARATION
-         */
+        // Data Preparation
         const filterData = {
             faculty: {{ data.by_faculty.keys()|list|tojson }},
             room: {{ data.by_room.keys()|list|tojson }},
@@ -281,8 +270,8 @@ Best working version.
         };
 
         /**
-         * EVENT HANDLERS
-         * These functions now only do two things: 
+         * Event Handlers
+         * These functions now only two things:
          * 1. Update UI button styles.
          * 2. Update the State (The Subject).
          */
@@ -319,7 +308,6 @@ Best working version.
             document.querySelectorAll(`${containerId} .nav-btn`).forEach(b => b.classList.remove('active'));
             activeBtn.classList.add('active');
         }
-
     </script>
 </body>
 </html>
