@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Jacob Karasow
-Date: 2026-03-08
+Date: 2026-04-17
 
 Config Editor Template
 
@@ -210,6 +210,46 @@ Extends base.html.
         <li>{{ k }}: {{ v }}</li>
       {% endfor %}
     </ul>
+    
+    <!-- Time Slot Summary -->
+{% if config and config.time_slot_config and config.time_slot_config.times %}
+  <h3>Time Slots</h3>
+  {% for day, slots in config.time_slot_config.times.items() %}
+    <div style="margin-bottom: 8px;">
+      <strong>{{ day }}</strong>: {{ slots|length }} slots
+      <ul>
+        {% for slot in slots %}
+          <li>
+            start={{ slot.start }},
+            spacing={{ slot.spacing }},
+            end={{ slot.end }}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% else %}
+  <h3>Time Slots</h3>
+  <p class="hint">No time slots configured.</p>
+{% endif %}
+
+<!-- Meeting Pattern Summary -->
+{% if config and config.time_slot_config and config.time_slot_config.classes %}
+  <h3>Meeting Patterns</h3>
+  <ul>
+    {% for pattern in config.time_slot_config.classes %}
+      <li>
+        credits={{ pattern.credits }},
+        meetings={{ pattern.meetings }},
+        start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
+        disabled={{ pattern.disabled if pattern.disabled is defined else False }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <h3>Meeting Patterns</h3>
+  <p class="hint">No meeting patterns configured.</p>
+{% endif %}
 
     {% if status.conflicts %}
 <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
@@ -219,6 +259,7 @@ Extends base.html.
       <li>{{ c }}</li>
     {% endfor %}
   </ul>
+
 </div>
 {% endif %}
 
@@ -234,516 +275,170 @@ Extends base.html.
 
 </section>
 
-<!-- ========================================================= -->
-<!-- Faculty Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides faculty CRUD operations.
-
-  Supported actions:
-    - Add faculty
-    - Remove faculty
-    - Modify faculty
-
-  Current exposed inputs:
-    - Faculty name
-    - Appointment type
-
-  Notes:
-    - Appointment type likely maps to backend rules for credit limits
-      and unique course limits.
-    - More advanced faculty attributes (times/preferences) may be
-      handled later or in a different UI revision.
--->
 <section class="card">
-  <h2>Faculty Management</h2>
+  <h2>Configuration Management</h2>
 
-  <!-- Input Fields -->
-  <style>
-    input, select {
-      width: 25%;
-      padding: 8px 10px;
-      margin: 4px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
+  <!-- Filter -->
+  <div class="row">
+    <label>Select Type</label>
+    <select id="entityType">
+      <option value="faculty">Faculty</option>
+      <option value="room">Room</option>
+      <option value="lab">Lab</option>
+      <option value="course">Course</option>
+      <option value="conflict">Conflict</option>
+      <option value="timeslot">Time Slot</option>
+      <option value="pattern">Meeting Pattern</option>
+    </select>
+  </div>
+
+  <!-- Universal Actions -->
+  <div class="row" style="margin-top:10px;">
+    <button onclick="setMode('add')">Add</button>
+    <button onclick="setMode('remove')">Remove</button>
+    <button onclick="setMode('modify')">Modify</button>
+  </div>
+
+  <hr>
+
+  <!-- Dynamic Form Container -->
+  <div id="formContainer"></div>
+</section>
+
+<script>
+let currentType = "faculty";
+let currentMode = "add";
+
+document.getElementById("entityType").addEventListener("change", (e) => {
+  currentType = e.target.value;
+  renderForm();
+});
+
+function setMode(mode) {
+  currentMode = mode;
+  renderForm();
+}
+
+function renderForm() {
+  const container = document.getElementById("formContainer");
+
+  let action = `/config/${currentType}/${currentMode}`;
+
+  let html = `<form method="post" action="${action}">`;
+
+  // =========================
+  // FIELD DEFINITIONS
+  // =========================
+
+  if (currentType === "faculty") {
+    html += `<input name="name" placeholder="Faculty Name" required>`;
+
+    if (currentMode !== "remove") {
+      html += `
+        <select name="appointment_type">
+          <option value="">Appointment Type</option>
+          <option value="Full-Time">Full-Time</option>
+          <option value="Adjunct">Adjunct</option>
+        </select>`;
     }
-    select {
-      appearance: none;
-      background-color: white;
+  }
+
+  if (currentType === "room") {
+    html += `<input name="room" placeholder="Room Name" required>`;
+    if (currentMode === "modify") {
+      html += `<input name="new_name" placeholder="New Name">`;
     }
-  </style>
-
-  <!-- Add Faculty -->
-  <!-- POST /config/faculty/add -->
-  <h3>Add Faculty</h3>
-  <form method="post" action="/config/faculty/add">
-    <input name = "name" placeholder = "Faculty Name (e.g., Dr. Johnson)" required>
-    
-    <!-- Appointment Type Drop-Down Selection -->
-    <select name = "appointment_type" required>
-      <option value="" disabled selected>Appointment Type</option>
-      <option value="Full-Time">Full-Time</option>
-      <option value="Adjunct">Adjunct</option>
-    </select>
-
-    <button type="submit">Add Faculty</button>
-  </form>
-
-  <!-- Remove Faculty -->
-  <!-- POST /config/faculty/remove -->
-  <h3>Remove Faculty</h3>
-  <form method="post" action="/config/faculty/remove">
-    <input name="name" placeholder="Faculty Name (e.g., Dr. Johnson)" required>
-    <button type="submit">Remove Faculty</button>
-  </form>
-
-  <!-- Modify Faculty -->
-  <!-- POST /config/faculty/modify -->
-  <h3>Modify Faculty</h3>
-  <form method="post" action="/config/faculty/modify">
-    <input name="name" placeholder="Current Name (e.g., Dr. Johnson)" required>
-    
-    <!-- Appointment Type Drop-Down Selection -->
-    <select name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
-      <option value="" disabled selected>Appointment Type</option>
-      <option value="Full-Time">Full-Time</option>
-      <option value="Adjunct">Adjunct</option>
-    </select>
-    
-    <button type="submit">Modify Faculty</button>
-  </form>
-
-  <h3>Set Faculty Availability</h3>
-<form method="post" action="/config/faculty/set_time" class="row">
-
-  <input name="name" placeholder="Faculty Name (e.g., Dr. Smith)" required>
-
-  <select name="day" required>
-    <option value="" disabled selected>Day</option>
-    <option value="MON">MON</option>
-    <option value="TUE">TUE</option>
-    <option value="WED">WED</option>
-    <option value="THU">THU</option>
-    <option value="FRI">FRI</option>
-  </select>
-
-  <input name="start_time" placeholder="Start (08:00)" required>
-  <input name="end_time" placeholder="End (12:00)" required>
-
-  <button type="submit">Add Availability</button>
-</form>
-
-<h3>Remove Faculty Availability</h3>
-<form method="post" action="/config/faculty/remove_time" class="row">
-
-  <input name="name" placeholder="Faculty Name" required>
-
-  <select name="day" required>
-    <option value="" disabled selected>Day</option>
-    <option value="MON">MON</option>
-    <option value="TUE">TUE</option>
-    <option value="WED">WED</option>
-    <option value="THU">THU</option>
-    <option value="FRI">FRI</option>
-  </select>
-
-  <input name="start_time" placeholder="Start">
-  <input name="end_time" placeholder="End">
-
-  <button type="submit">Remove</button>
-</form>
-
-</section>
-
-<!-- ========================================================= -->
-<!-- Room Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides room CRUD operations.
-
-  Supported actions:
-    - Add room
-    - Remove room
-    - Modify room
-
-  Current exposed inputs:
-    - Room name
--->
-<section class="card">
-  <h2>Room Management</h2>
-
-  <!-- Add Room -->
-  <!-- POST /config/room/add -->
-  <h3>Add Room</h3>
-  <form method="post" action="/config/room/add">
-    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Room -->
-  <!-- POST /config/room/remove -->
-  <h3>Remove Room</h3>
-  <form method="post" action="/config/room/remove">
-    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
-    <button type="submit">Remove Room</button>
-  </form>
-
-  <!-- Modify Room -->
-  <!-- POST /config/room/modify -->
-  <h3>Modify Room</h3>
-  <form method="post" action="/config/room/modify">
-    <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
-    <input name="new_name" placeholder="New Name (e.g., Roddy 141)">
-    <button type="submit">Modify Room</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Lab Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides lab CRUD operations.
-
-  Supported actions:
-    - Add lab
-    - Remove lab
-    - Modify lab
-
-  Current exposed inputs:
-    - Lab name
--->
-<section class="card">
-  <h2>Lab Management</h2>
-
-  <!-- Add Lab -->
-  <!-- POST /config/lab/add -->
-  <h3>Add Lab</h3>
-  <form method="post" action="/config/lab/add">
-    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
-    <button type="submit">Add Lab</button>
-  </form>
-
-  <!-- Remove Lab -->
-  <!-- POST /config/lab/remove -->
-  <h3>Remove Lab</h3>
-  <form method="post" action="/config/lab/remove">
-    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
-    <button type="submit">Remove Lab</button>
-  </form>
-
-  <!-- Modify Lab -->
-  <!-- POST /config/lab/modify -->
-  <h3>Modify Lab</h3>
-  <form method="post" action="/config/lab/modify">
-    <input name="lab" placeholder="Existing Lab Name (e.g., Linux Lab)" required>
-    <input name="new_name" placeholder="New Lab Name (e.g., MacLab)">
-    <button type="submit">Modify Lab</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Course Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides course CRUD operations.
-
-  Supported actions:
-    - Add course
-    - Remove course
-    - Modify course
-
-  Current exposed inputs:
-    - Course ID (e.g., CMSC 101)
-    - Number of credits
-    - Assigned room (must exist in config)
-    - New Course ID for modifications
--->
-<section class="card">
-  <h2>Course Management</h2>
-
-  <!-- Add Course -->
-  <!-- POST /config/course/add -->
-  <h3>Add Course</h3>
-  <form method="post" action="/config/course/add">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    
-    <!-- Number of Credits Drop-Down Selection -->
-    <select name="credits" required>
-      <option value="" disabled selected>Number of Credits</option>
-      <option value="0">0</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name = "room" placeholder="Room Name (Must Exist) (e.g., Roddy140)" required>
-    <button type="submit">Add Course</button>
-  </form>
-
-  <!-- Remove Course -->
-  <!-- POST /config/course/remove -->
-  <h3>Remove Course</h3>
-  <form method="post" action="/config/course/remove">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <button type="submit">Remove Course</button>
-  </form>
-
-  <!-- Modify Course -->
-  <!-- POST /config/course/modify -->
-  <h3>Modify Course</h3>
-  <form method="post" action="/config/course/modify">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-
-    <!-- Number of Credits Drop-Down Selection -->
-    <select name="credits" required>
-      <option value="" disabled selected>Number of Credits</option>
-      <option value="0">0</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
-
-    <button type="submit">Modify Course</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Conflict Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides conflict CRUD operations.
-
-  Supported actions:
-    - Add conflict
-    - Remove conflict
-    - Modify conflict
-
-  Current exposed inputs:
-    - Course ID
-    - Conflicting Course ID
-    - New Conflicting Course ID for modifications
--->
-  <section class="card">
-  <h2>Conflict Management</h2>
-
-  <!-- Add Conflict -->
-  <!-- POST /config/conflict/add -->
-  <h3>Add Conflict</h3>
-  <form method="post" action="/config/conflict/add">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
-    <button type="submit">Add Conflict</button>
-  </form>
-
-  <!-- Remove Conflict -->
-  <!-- POST /config/conflict/remove -->
-  <h3>Remove Conflict</h3>
-  <form method="post" action="/config/conflict/remove">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
-    <button type="submit">Remove Conflict</button>
-  </form>
-
-  <!-- Modify Conflict -->
-  <!-- POST /config/conflict/modify -->
-  <h3>Modify Conflict</h3>
-  <form method="post" action="/config/conflict/modify">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="old_conflict_course_id" placeholder="Old Conflicting Course ID (e.g., CMSC 201)" required>
-    <input name="new_conflict_course_id" placeholder="New Conflicting Course ID (e.g., CMSC 301)">
-    <button type="submit">Modify Conflict</button>
-  </form>
-</section>
-
-<!-- Time Slot Configuration -->
-<section class="card">
-  <h2>Time Slots</h2>
-
-  <!-- Add Time Slot -->
-  <h3>Add Time Slot</h3>
-  <form method="post" action="/config/timeslot/add">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input type="time" name="start" required>
-    <input name="spacing" type="number" min="1" placeholder="Spacing (minutes, e.g., 60)" required>
-   <input type="time" name="end" required>
-
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Time Slot -->
-  <h3>Remove Time Slot</h3>
-  <form method="post" action="/config/timeslot/remove">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
-    <button type="submit">Remove</button>
-  </form>
-
-  <!-- Modify Time Slot -->
-  <h3>Modify Time Slot</h3>
-  <form method="post" action="/config/timeslot/modify">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
-    <input name="start" placeholder="New Start Time" required>
-    <input name="spacing" type="number" min="1" placeholder="New Spacing (minutes)" required>
-    <input name="end" placeholder="New End Time" required>
-
-    <button type="submit">Modify</button>
-  </form>
-
-  {% set tsc = config.time_slot_config if config and config.time_slot_config else {} %}
-{% set times = tsc.times if tsc and tsc.times else {} %}
-
-{% if config and config.time_slot_config %}
-  {% set times = config.time_slot_config.times if config.time_slot_config.times else {} %}
-
-  <h3>Current Time Slots</h3>
-  {% for day, slots in times.items() %}
-    <div style="margin-bottom: 1rem;">
-      <strong>{{ day }}</strong>
-      <ul>
-        {% for slot in slots %}
-          <li>
-            [{{ loop.index0 }}]
-            start={{ slot.start }},
-            spacing={{ slot.spacing }},
-            end={{ slot.end }}
-          </li>
-        {% endfor %}
-        {% if not slots %}
-          <li>No slots configured.</li>
-        {% endif %}
-      </ul>
-    </div>
-  {% endfor %}
-{% endif %}
-</section>
-
-
-
-<!-- Meeting Pattern Configuration -->
-<section class="card">
-  <h2>Meeting Patterns</h2>
-
-  <!-- Add Pattern -->
-  <h3>Add Pattern</h3>
-  <form method="post" action="/config/pattern/add">
-    <select name="credits" required>
-      <option value="" disabled selected>Credits</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="days" placeholder="Days (e.g., MON,WED,FRI)" required>
-    <input name="duration" type="number" min="1" placeholder="Duration (minutes)" required>
-    <input name="fixed_start_time" placeholder="Fixed Start Time (optional)">
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="is_lab"> Lab
-    </label>
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="enabled" checked> Enabled
-    </label>
-
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Pattern -->
-  <h3>Remove Pattern</h3>
-  <form method="post" action="/config/pattern/remove">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-    <button type="submit">Remove</button>
-  </form>
-
-  <!-- Modify Pattern -->
-  <h3>Modify Pattern</h3>
-  <form method="post" action="/config/pattern/modify">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-
-    <input name="days" placeholder="Days (e.g., MON,WED)">
-    <input name="duration" type="number" min="1" placeholder="Duration (minutes)">
-    <select name="credits">
-      <option value="" disabled selected>Credits</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="fixed_start_time" placeholder="Fixed Start Time">
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="is_lab"> Lab
-    </label>
-
-    <button type="submit">Modify</button>
-  </form>
-
-  <!-- Toggle Pattern -->
-  <h3>Enable / Disable Pattern</h3>
-  <form method="post" action="/config/pattern/toggle">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-
-    <select name="enabled" required>
-      <option value="true">Enable</option>
-      <option value="false">Disable</option>
-    </select>
-
-    <button type="submit">Apply</button>
-  </form>
-
-{% if config and config.time_slot_config %}
-  {% set classes = config.time_slot_config.classes if config.time_slot_config.classes else [] %}
-
-  <h3>Current Meeting Patterns</h3>
-  <ul>
-    {% for pattern in classes %}
-      <li style="margin-bottom: 0.75rem;">
-        [{{ loop.index0 }}]
-        credits={{ pattern.credits }},
-        meetings={{ pattern.meetings }},
-        start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
-        disabled={{ pattern.disabled if pattern.disabled is defined else False }}
-      </li>
-    {% endfor %}
-    {% if not classes %}
-      <li>No meeting patterns configured.</li>
-    {% endif %}
-  </ul>
-{% endif %}
-</ul>
-</section>
-
+  }
+
+  if (currentType === "lab") {
+    html += `<input name="lab" placeholder="Lab Name" required>`;
+    if (currentMode === "modify") {
+      html += `<input name="new_name" placeholder="New Name">`;
+    }
+  }
+
+  if (currentType === "course") {
+    html += `<input name="course_id" placeholder="Course ID" required>`;
+
+    if (currentMode !== "remove") {
+      html += `
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      `;
+    }
+
+    if (currentMode === "add") {
+      html += `<input name="room" placeholder="Room Name">`;
+    }
+
+    if (currentMode === "modify") {
+      html += `<input name="new_course_id" placeholder="New Course ID">`;
+    }
+  }
+
+  if (currentType === "conflict") {
+    html += `<input name="course_id" placeholder="Course ID" required>`;
+    html += `<input name="conflict_course_id" placeholder="Conflicting Course ID" required>`;
+
+    if (currentMode === "modify") {
+      html += `<input name="new_conflict_course_id" placeholder="New Conflict">`;
+    }
+  }
+
+  if (currentType === "timeslot") {
+    html += `
+      <select name="day">
+        <option value="MON">MON</option>
+        <option value="TUE">TUE</option>
+        <option value="WED">WED</option>
+        <option value="THU">THU</option>
+        <option value="FRI">FRI</option>
+      </select>
+    `;
+
+    if (currentMode === "add") {
+      html += `
+        <input type="time" name="start">
+        <input type="number" name="spacing" placeholder="Spacing">
+        <input type="time" name="end">
+      `;
+    }
+
+    if (currentMode !== "add") {
+      html += `<input name="index" type="number" placeholder="Index">`;
+    }
+  }
+
+  if (currentType === "pattern") {
+    html += `<input name="index" type="number" placeholder="Pattern Index">`;
+
+    if (currentMode !== "remove") {
+      html += `
+        <input name="days" placeholder="Days (MON,WED)">
+        <input name="duration" type="number" placeholder="Duration">
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      `;
+    }
+  }
+
+  html += `<button type="submit">${currentMode.toUpperCase()}</button>`;
+  html += `</form>`;
+
+  container.innerHTML = html;
+}
+
+// initial render
+renderForm();
+</script>
 {% endblock %}
