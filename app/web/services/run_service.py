@@ -90,6 +90,88 @@ def _to_int(x: Any, default: int = 0) -> int:
         return int(x)
     except Exception:
         return default
+    
+
+def build_schedules_from_config(
+    cfg: Dict[str, Any],
+    limit: int,
+    optimizer_flags: Optional[List[str]],
+    session_id: str,
+) -> List[Dict[str, Any]]:
+    """
+    Builds generated schedule objects from a config dictionary.
+
+    This function is safe for background generation because it does not read
+    from or write to Flask session directly.
+    """
+
+    if limit <= 0:
+        raise ValueError("Schedule generation limit must be greater than 0.")
+
+    run_cfg = deepcopy(cfg)
+    validate_config(run_cfg)
+
+    run_cfg["limit"] = limit
+
+    if optimizer_flags is None:
+        optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+
+    optimizer_flags = [
+        flag for flag in optimizer_flags if flag in KNOWN_OPTIMIZER_FLAGS
+    ]
+
+    run_cfg["optimizer_flags"] = optimizer_flags
+    optimize = len(optimizer_flags) > 0
+
+    grouped: Dict[int, List[Dict[str, Any]]] = {}
+    schedules_generated = 0
+
+    with progress_lock:
+        generation_progress[session_id] = 5
+
+    for schedule_rows in generate_schedules(run_cfg, limit=limit, optimize=optimize):
+        schedules_generated += 1
+
+        percent = min(int((schedules_generated / limit) * 100), 99)
+
+        with progress_lock:
+            generation_progress[session_id] = percent
+
+        for row in schedule_rows:
+            sid = _to_int(row.get("schedule_id"), default=1)
+
+            grouped.setdefault(sid, []).append(
+                {
+                    "schedule_id": sid,
+                    "course_id": row.get("course_id", ""),
+                    "day": row.get("day", ""),
+                    "start": row.get("start", ""),
+                    "room": row.get("room", ""),
+                    "faculty": row.get("faculty", ""),
+                    "lab": row.get("lab", ""),
+                    "duration": row.get("duration", ""),
+                    "credits": row.get("credits", ""),
+                    "meeting_index": row.get("meeting_index", ""),
+                    "time": f"{row.get('day', '')} {row.get('start', '')}".strip(),
+                }
+            )
+
+    schedules: List[Dict[str, Any]] = []
+
+    for sid in sorted(grouped.keys()):
+        schedules.append(
+            {
+                "meta": {
+                    "schedule_id": sid,
+                    "generated_at": datetime.now().isoformat(timespec="seconds"),
+                    "optimizer_flags": optimizer_flags,
+                    "row_count": len(grouped[sid]),
+                },
+                "assignments": grouped[sid],
+            }
+        )
+
+    return schedules
 
 
 def _get_session_id() -> str:
@@ -223,6 +305,9 @@ def generate_schedules_into_session(
         # --------------------------------
         # 4. Invoke Core Scheduler Engine
         # --------------------------------
+
+        with progress_lock:
+            generation_progress[session_id] = 5
 
         # --- REAL SCHEDULER CALL ---
         # The scheduler returns a flat list of assignment rows.
