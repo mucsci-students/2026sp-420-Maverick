@@ -258,38 +258,36 @@ def generate_schedules(
     cfg: Dict[str, Any], limit: int, optimize: bool
 ) -> Iterator[List[Dict[str, Any]]]:
     """
-    Runs the scheduler and returns flat meeting-level rows.
+    Runs the scheduler and yields flat meeting-level schedule rows.
 
-    IMPORTANT:
-    - limit is the number of SCHEDULES (models) to produce, not number of rows.
-    - optimize flag is passed through for future use
-      (core optimization can be added later).
+    Defensive behavior:
+    - Validates limit before invoking the solver.
+    - Stops exactly at the requested schedule limit.
+    - Avoids storing all solver models in memory.
+    - Keeps the optimize argument for API compatibility, even though
+      optimization is currently handled by the scheduler configuration.
     """
+
+    if limit <= 0:
+        raise ValueError("Schedule generation limit must be greater than 0.")
+
     combined = CombinedConfig(**cfg)
-    s = Scheduler(combined)
+    scheduler = Scheduler(combined)
 
-    for schedule_id, schedule in enumerate(s.get_models(), start=1):
+    schedule_count = 0
+
+    for schedule in scheduler.get_models():
+        schedule_count += 1
+
         course_models = list(schedule)
-
-        print(f"\n=== RAW SCHEDULER OUTPUT: schedule {schedule_id} ===")
-        for course in course_models:
-            print(_safe_as_csv(course))
-
         schedule_rows: List[Dict[str, Any]] = []
+
         for course in course_models:
             schedule_rows.extend(
-                _parse_course_line_to_flat_rows(schedule_id, course, cfg)
-            )
-
-        print(
-            f"\n============== PROCESSED OUTPUT (Schedule {schedule_id}) =============="
-        )
-        for row in schedule_rows:
-            print(
-                f"{row['course_id']} | {row['day']} {row['start']} | room={row['room']}"
+                _parse_course_line_to_flat_rows(schedule_count, course, cfg)
             )
 
         yield schedule_rows
 
-        if schedule_id >= limit:
+        if schedule_count >= limit:
             break

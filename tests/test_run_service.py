@@ -369,3 +369,75 @@ def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
         session_id = session["_test_sid"]
         generation_progress.pop(session_id, None)
         is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_releases_running_flag_on_error(monkeypatch):
+    """
+    Ensures the generator lock is released even when scheduler generation fails.
+
+    This protects the app from getting stuck in a permanent
+    'Generation already in progress' state after an exception.
+    """
+    app = _make_app()
+
+    fake_cfg = {
+        "config": {
+            "rooms": ["Room A"],
+            "labs": [],
+            "courses": [],
+            "faculty": [],
+        },
+        "optimizer_flags": [],
+    }
+
+    def broken_generate_schedules(cfg, limit, optimize):
+        raise RuntimeError("Scheduler failed")
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        broken_generate_schedules,
+    )
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-session-error-cleanup"
+        session[SESSION_CONFIG_KEY] = fake_cfg
+
+        try:
+            generate_schedules_into_session(limit=1)
+            assert False, "Expected scheduler failure"
+        except RuntimeError:
+            pass
+
+        assert is_running[session["_test_sid"]] is False
+
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_rejects_zero_limit():
+    """
+    Ensures generation rejects invalid limits before invoking the scheduler.
+    """
+    app = _make_app()
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-session-zero-limit"
+        session[SESSION_CONFIG_KEY] = {
+            "config": {
+                "rooms": [],
+                "labs": [],
+                "courses": [],
+                "faculty": [],
+            }
+        }
+
+        try:
+            generate_schedules_into_session(limit=0)
+            assert False, "Expected ValueError for zero limit"
+        except ValueError as exc:
+            assert "limit must be greater than 0" in str(exc)
+
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
