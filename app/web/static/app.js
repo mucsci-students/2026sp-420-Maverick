@@ -662,32 +662,31 @@ function initConfigExport() {
 
 // starts the generation process
 async function startGenerationProgress() {
+  const form = document.getElementById("generate");
+  const barObject = document.getElementById("is-progress-bar-hidden");
+  const progressBar = document.getElementById("progress-bar");
 
-    const form = document.getElementById("generate")
-    const bar_object = document.getElementById("is-progress-bar-hidden");
-    const progress_bar = document.getElementById("progress-bar");
+  barObject.style.display = "block";
+  progressBar.value = 0;
+  progress_bar_current_progress = 0;
+  updateProgressUI(0);
 
-    // Displays the progress bar
-    bar_object.style.display = "block";
-    // Resets the progress bar value
-    progress_bar.value = 0;
+  await fetch("/run/reset", {
+    method: "POST",
+    redirect: "manual",
+  });
 
-    // resets the progress 
-    await fetch("/run/reset", {method: "POST"});
+  const res = await fetch("/run/generate", {
+    method: "POST",
+    body: new FormData(form),
+  });
 
-    // begins checking for updates to send to the progress bar object
-    checkGenerationProgress();
+  if (!res.ok) {
+    console.error("Generation failed");
+    return;
+  }
 
-    // starts the generation process
-    const res = await fetch("/run/generate", {
-      method: "POST",
-      body: new FormData(form)
-    });
-
-    // if generation fails
-    if (!res.ok) {
-      console.error("Generation failed");
-    }
+  checkGenerationProgress();
 }
 
 // keeps track of the current progress of the progress bar
@@ -701,10 +700,22 @@ async function checkGenerationProgress() {
         const res = await fetch("/run/progress");
         const data = await res.json();
 
+        if (data.error) {
+          console.error("Schedule generation error:", data.error);
+          updateProgressUI(0);
+
+          const flavorText = document.getElementById("flavor-text");
+          if (flavorText) {
+            flavorText.innerHTML = `Generation failed: ${data.error}`;
+          }
+
+          return;
+        }
+
         // console.log("data received:", data)
 
         // if the generation is still in progress or the progress bar has to catch up
-        if (data.progress < 100 || progress_bar_current_progress < 100) {
+        if (data.running || data.progress < 100 || progress_bar_current_progress < 100) {
           
             // Periodically checks for schedule progress updates
             incrementProgressBar(data.progress)
@@ -717,6 +728,15 @@ async function checkGenerationProgress() {
               progress_bar_current_progress = 0;
 
               // Redirects the user to the viewer page after a very short period
+              const completeRes = await fetch("/run/complete", {
+                method: "POST",
+              });
+
+              if (!completeRes.ok) {
+                console.error("Generation completed, but results could not be saved.");
+                return;
+              }
+
               setTimeout(() => (window.location.href = "/viewer"), 1200);
         }
     // Catches any error thay may be thrown

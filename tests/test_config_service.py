@@ -856,7 +856,7 @@ def test_modify_toggle_and_remove_pattern_service_by_index(app_context):
                 "classes": [
                     {
                         "credits": 4,
-                        "meetings": [{"days": ["MON"], "duration": "50"}],
+                        "meetings": [{"day": "MON", "duration": "50", "lab": False}],
                     }
                 ],
             },
@@ -922,7 +922,7 @@ def test_validate_config_rejects_pattern_day_without_time_slots():
             "classes": [
                 {
                     "credits": 3,
-                    "meetings": [{"days": ["MON"], "duration": "50"}],
+                    "meetings": [{"day": "MON", "duration": "50", "lab": False}],
                 }
             ],
         },

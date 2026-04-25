@@ -685,40 +685,68 @@ def _validate_time_slot_config(cfg):
         if not isinstance(meetings, list) or not meetings:
             raise ValueError(f"Pattern {idx} must have at least one meeting.")
 
-        for meeting in meetings:
+        for meeting_index, meeting in enumerate(meetings):
             if not isinstance(meeting, dict):
-                raise ValueError(f"Pattern {idx} contains an invalid meeting object.")
-
-            meeting_days = meeting.get("days")
-            duration = meeting.get("duration")
-
-            if not isinstance(meeting_days, list) or not meeting_days:
                 raise ValueError(
-                    f"Pattern {idx} must include at least one day in 'days'."
+                    f"Pattern {idx}, meeting {meeting_index} must be an object."
+                )
+
+            meeting_dict = cast(dict[str, Any], meeting)
+
+            meeting_day = meeting_dict.get("day")
+            duration = meeting_dict.get("duration")
+
+            if not isinstance(meeting_day, str) or not meeting_day:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index}must include a valid 'day'."
+                )
+
+            if meeting_day not in VALID_DAYS:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} contains invalid day: "
+                    f"{meeting_day}"
+                )
+
+            if meeting_day not in times or not times.get(meeting_day):
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} uses {meeting_day}, "
+                    f"but no time slots are configured for {meeting_day}."
+                )
+
+            if duration is None:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} must include a duration."
                 )
 
             try:
                 duration_value = int(duration)
             except (TypeError, ValueError):
                 raise ValueError(
-                    f"Pattern {idx} has invalid duration '{duration}'."
+                    f"Pattern {idx}, meeting {meeting_index} has invalid duration "
+                    f"'{duration}'."
                 ) from None
 
             if duration_value <= 0:
-                raise ValueError(f"Pattern {idx} has invalid duration '{duration}'.")
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} has invalid duration "
+                    f"'{duration}'."
+                )
 
-            for day in meeting_days:
-                if day not in VALID_DAYS:
-                    raise ValueError(f"Pattern {idx} contains invalid day: {day}")
+            lab = meeting_dict.get("lab", False)
 
-                # Meeting day must have at least one time range configured
-                if day not in times or not times.get(day):
-                    raise ValueError(
-                        f"Pattern {idx} uses {day}, but no time slots are configured "
-                        f"for {day}."
-                    )
+            if not isinstance(lab, bool):
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} field 'lab' must be "
+                    f"true or false."
+                )
+
+            fixed_start = meeting_dict.get("fixed_start")
+
+            if fixed_start is not None:
+                _minutes_from_hhmm(str(fixed_start))
 
         start_time = klass_dict.get("start_time")
+
         if start_time is not None:
             _minutes_from_hhmm(str(start_time))
 
