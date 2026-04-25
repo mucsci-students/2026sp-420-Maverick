@@ -268,26 +268,65 @@ def generate_schedules(
       optimization is currently handled by the scheduler configuration.
     """
 
+    print("CORE 1: entered scheduler_core.generate_schedules", flush=True)
+
     if limit <= 0:
         raise ValueError("Schedule generation limit must be greater than 0.")
 
+    print(f"CORE 2: limit validated -> {limit}", flush=True)
+    print(f"CORE 3: optimize flag received -> {optimize}", flush=True)
+
+    print("CORE 4: building CombinedConfig", flush=True)
     combined = CombinedConfig(**cfg)
+
+    print("CORE 5: CombinedConfig built successfully", flush=True)
+
+    print("CORE 6: creating Scheduler", flush=True)
     scheduler = Scheduler(combined)
+
+    print("CORE 7: Scheduler created successfully", flush=True)
 
     schedule_count = 0
 
+    print("CORE 8: about to call scheduler.get_models()", flush=True)
+
     for schedule in scheduler.get_models():
+        print("CORE 9: scheduler yielded raw model", flush=True)
+
         schedule_count += 1
 
+        print(f"CORE 10: processing schedule #{schedule_count}", flush=True)
+
         course_models = list(schedule)
+
+        print(
+            f"CORE 11: converted raw schedule to course list "
+            f"with {len(course_models)} course item(s)",
+            flush=True,
+        )
+
         schedule_rows: List[Dict[str, Any]] = []
 
         for course in course_models:
+            print(
+                f"CORE 12: parsing course model type -> {type(course).__name__}",
+                flush=True,
+            )
+
             schedule_rows.extend(
                 _parse_course_line_to_flat_rows(schedule_count, course, cfg)
             )
 
+        print(
+            f"CORE 13: yielding schedule #{schedule_count} "
+            f"with {len(schedule_rows)} row(s)",
+            flush=True,
+        )
+
         yield schedule_rows
 
         if schedule_count >= limit:
+            print(f"CORE 14: reached requested limit -> {limit}", flush=True)
             break
+
+    print("CORE 15: scheduler_core.generate_schedules finished", flush=True)

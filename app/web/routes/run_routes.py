@@ -43,6 +43,8 @@ High-Level Flow:
 # Imports
 # ==================================================
 
+import traceback
+
 from copy import deepcopy
 from threading import Thread
 
@@ -218,6 +220,8 @@ def generate():
     Returns immediately so the frontend can poll /run/progress while the
     scheduler runs in a background thread.
     """
+    print("RUN FORM DATA:", request.form.to_dict(flat=False), flush=True)
+
     try:
         limit = int(request.form.get("limit", "5"))
 
@@ -229,10 +233,19 @@ def generate():
     except ValueError:
         return {"error": "Limit must be an integer."}, 400
 
+    print(
+        f"RUN OVERRIDES: limit={limit}, optimizer_flags={optimizer_flags}",
+        flush=True,
+    )
+
     cfg = session.get(SESSION_CONFIG_KEY)
 
     if not cfg:
         return {"error": "No config loaded. Load a config first."}, 400
+
+    run_cfg = deepcopy(cfg)
+    run_cfg["limit"] = limit
+    run_cfg["optimizer_flags"] = optimizer_flags
 
     session_id = _get_session_id()
 
@@ -250,7 +263,7 @@ def generate():
 
     thread = Thread(
         target=_run_generation_job,
-        args=(session_id, deepcopy(cfg), limit, optimizer_flags),
+        args=(session_id, run_cfg, limit, optimizer_flags),
         daemon=True,
     )
     thread.start()

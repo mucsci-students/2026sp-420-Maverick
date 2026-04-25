@@ -105,23 +105,37 @@ def build_schedules_from_config(
     from or write to Flask session directly.
     """
 
+    print("CHECKPOINT 1: entered build_schedules_from_config", flush=True)
+
     if limit <= 0:
         raise ValueError("Schedule generation limit must be greater than 0.")
 
+    print("CHECKPOINT 2: limit validated", flush=True)
+
     run_cfg = deepcopy(cfg)
+    print("CHECKPOINT 3: config copied", flush=True)
+
     validate_config(run_cfg)
+    print("CHECKPOINT 4: config validated", flush=True)
 
     run_cfg["limit"] = limit
+    print(f"CHECKPOINT 5: limit applied -> {limit}", flush=True)
 
     if optimizer_flags is None:
         optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+
+    print(f"CHECKPOINT 6: raw optimizer flags -> {optimizer_flags}", flush=True)
 
     optimizer_flags = [
         flag for flag in optimizer_flags if flag in KNOWN_OPTIMIZER_FLAGS
     ]
 
+    print(f"CHECKPOINT 7: filtered optimizer flags -> {optimizer_flags}", flush=True)
+
     run_cfg["optimizer_flags"] = optimizer_flags
     optimize = len(optimizer_flags) > 0
+
+    print(f"CHECKPOINT 8: optimize flag -> {optimize}", flush=True)
 
     grouped: Dict[int, List[Dict[str, Any]]] = {}
     schedules_generated = 0
@@ -129,13 +143,24 @@ def build_schedules_from_config(
     with progress_lock:
         generation_progress[session_id] = 5
 
+    print("CHECKPOINT 9: progress set to 5%", flush=True)
+    print("CHECKPOINT 10: about to call scheduler_core.generate_schedules", flush=True)
+
     for schedule_rows in generate_schedules(run_cfg, limit=limit, optimize=optimize):
+        print("CHECKPOINT 11: scheduler yielded one schedule", flush=True)
+
         schedules_generated += 1
 
         percent = min(int((schedules_generated / limit) * 100), 99)
 
         with progress_lock:
             generation_progress[session_id] = percent
+
+        print(
+            f"CHECKPOINT 12: progress updated -> {percent}% "
+            f"after {schedules_generated} schedule(s)",
+            flush=True,
+        )
 
         for row in schedule_rows:
             sid = _to_int(row.get("schedule_id"), default=1)
@@ -156,6 +181,8 @@ def build_schedules_from_config(
                 }
             )
 
+    print("CHECKPOINT 13: scheduler loop finished", flush=True)
+
     schedules: List[Dict[str, Any]] = []
 
     for sid in sorted(grouped.keys()):
@@ -170,6 +197,8 @@ def build_schedules_from_config(
                 "assignments": grouped[sid],
             }
         )
+
+    print(f"CHECKPOINT 14: built {len(schedules)} final schedule(s)", flush=True)
 
     return schedules
 

@@ -700,10 +700,22 @@ async function checkGenerationProgress() {
         const res = await fetch("/run/progress");
         const data = await res.json();
 
+        if (data.error) {
+          console.error("Schedule generation error:", data.error);
+          updateProgressUI(0);
+
+          const flavorText = document.getElementById("flavor-text");
+          if (flavorText) {
+            flavorText.innerHTML = `Generation failed: ${data.error}`;
+          }
+
+          return;
+        }
+
         // console.log("data received:", data)
 
         // if the generation is still in progress or the progress bar has to catch up
-        if (data.progress < 100 || progress_bar_current_progress < 100) {
+        if (data.running || data.progress < 100 || progress_bar_current_progress < 100) {
           
             // Periodically checks for schedule progress updates
             incrementProgressBar(data.progress)
