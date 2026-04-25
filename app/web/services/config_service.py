@@ -691,12 +691,14 @@ def _validate_time_slot_config(cfg):
                     f"Pattern {idx}, meeting {meeting_index} must be an object."
                 )
 
-            meeting_day = meeting.get("day")
-            duration = meeting.get("duration")
+            meeting_dict = cast(dict[str, Any], meeting)
+
+            meeting_day = meeting_dict.get("day")
+            duration = meeting_dict.get("duration")
 
             if not isinstance(meeting_day, str) or not meeting_day:
                 raise ValueError(
-                    f"Pattern {idx}, meeting {meeting_index} must include a valid 'day'."
+                    f"Pattern {idx}, meeting {meeting_index}must include a valid 'day'."
                 )
 
             if meeting_day not in VALID_DAYS:
@@ -709,6 +711,11 @@ def _validate_time_slot_config(cfg):
                 raise ValueError(
                     f"Pattern {idx}, meeting {meeting_index} uses {meeting_day}, "
                     f"but no time slots are configured for {meeting_day}."
+                )
+
+            if duration is None:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} must include a duration."
                 )
 
             try:
@@ -725,7 +732,7 @@ def _validate_time_slot_config(cfg):
                     f"'{duration}'."
                 )
 
-            lab = meeting.get("lab", False)
+            lab = meeting_dict.get("lab", False)
 
             if not isinstance(lab, bool):
                 raise ValueError(
@@ -733,7 +740,7 @@ def _validate_time_slot_config(cfg):
                     f"true or false."
                 )
 
-            fixed_start = meeting.get("fixed_start")
+            fixed_start = meeting_dict.get("fixed_start")
 
             if fixed_start is not None:
                 _minutes_from_hhmm(str(fixed_start))

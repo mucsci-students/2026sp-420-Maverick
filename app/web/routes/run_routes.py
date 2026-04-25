@@ -43,8 +43,6 @@ High-Level Flow:
 # Imports
 # ==================================================
 
-import traceback
-
 from copy import deepcopy
 from threading import Thread
 
@@ -61,7 +59,6 @@ from flask import (
 from app.web.services.config_service import (
     SESSION_CONFIG_KEY,
 )  # Where the loaded config is stored
-
 from app.web.services.progress_store import (
     generation_errors,
     generation_progress,
@@ -69,7 +66,6 @@ from app.web.services.progress_store import (
     is_running,
     progress_lock,
 )
-
 from app.web.services.run_service import (
     KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
     SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,

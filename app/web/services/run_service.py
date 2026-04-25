@@ -90,7 +90,7 @@ def _to_int(x: Any, default: int = 0) -> int:
         return int(x)
     except Exception:
         return default
-    
+
 
 def build_schedules_from_config(
     cfg: Dict[str, Any],
@@ -261,7 +261,6 @@ def generate_schedules_into_session(
         is_running[session_id] = True
         generation_progress[session_id] = 0
 
-
     try:
         # ----------------------------------------
         # 1. Retrieve Configuration
@@ -273,10 +272,9 @@ def generate_schedules_into_session(
         if not cfg:
             # Explicit error instead of silent failure
             raise ValueError("No config loaded. Load a config first in Config Editor.")
-        
+
         if limit <= 0:
             raise ValueError("Schedule generation limit must be greater than 0.")
-
 
         # ----------------------------------
         # 2. Protect Original Configuration
@@ -341,7 +339,9 @@ def generate_schedules_into_session(
         # --- REAL SCHEDULER CALL ---
         # The scheduler returns a flat list of assignment rows.
         # Each row corresponds to one meeting instance.
-        for schedule_rows in generate_schedules(run_cfg, limit=limit, optimize=optimize):
+        for schedule_rows in generate_schedules(
+            run_cfg, limit=limit, optimize=optimize
+        ):
             # the number of schedule that have been generated so fat
             schedules_generated += 1
 
