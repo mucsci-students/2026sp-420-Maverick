@@ -516,11 +516,6 @@ pre {
   gap: 6px;
 }
 
-.index-label {
-  font-weight: 700;
-  color: #374151;
-}
-
 .meeting-pill {
   display: inline-flex;
   padding: 4px 8px;
@@ -598,4 +593,96 @@ pre {
 #formContainer input,
 #formContainer select {
   min-height: 34px;
+}
+
+
+/* ==========================================================================
+   Config Entity Summary Cards
+   ========================================================================== */
+
+.entity-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 18px;
+}
+
+.entity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.index-label {
+  font-weight: 700;
+  color: #334155;
+}
+
+.entity-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin: 10px 0 22px;
+}
+
+.entity-card {
+  padding: 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.entity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.entity-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.entity-detail-row {
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 0.92rem;
+}
+
+.entity-detail-row.stacked {
+  display: block;
+}
+
+.entity-detail-row.stacked strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.mini-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mini-pill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.82rem;
 }

@@ -262,103 +262,243 @@ Extends base.html.
           <li>{{ k }}: {{ v }}</li>
         {% endfor %}
       </ul>
+
+      <!-- Room Summary -->
+      {% if config and config.config and config.config.rooms %}
+        <h3>Rooms</h3>
+        <div class="entity-pill-list">
+          {% for room in config.config.rooms %}
+            <span class="entity-pill">
+              {{ room }}
+            </span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Rooms</h3>
+        <p class="hint">No rooms configured.</p>
+      {% endif %}
+
+      <!-- Lab Summary -->
+      {% if config and config.config and config.config.labs %}
+        <h3>Labs</h3>
+        <div class="entity-pill-list">
+          {% for lab in config.config.labs %}
+            <span class="entity-pill">
+              {{ lab }}
+            </span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Labs</h3>
+        <p class="hint">No labs configured.</p>
+      {% endif %}
+
+      <!-- Course Summary -->
+      {% if config and config.config and config.config.courses %}
+        <h3>Courses</h3>
+
+        <div class="entity-card-grid">
+          {% for course in config.config.courses %}
+            <div class="entity-card">
+              <div class="entity-card-header">
+                <strong>Index {{ loop.index0 }} — {{ course.course_id }}</strong>
+                <span class="entity-status">{{ course.credits }} credits</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Rooms:</strong>
+                <span>{{ course.room | join(", ") if course.room else "None" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Labs:</strong>
+                <span>{{ course.lab | join(", ") if course.lab else "None" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Faculty:</strong>
+                <span>{{ course.faculty | join(", ") if course.faculty else "Any / Unassigned" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Conflicts:</strong>
+                <span>{{ course.conflicts | join(", ") if course.conflicts else "None" }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Courses</h3>
+        <p class="hint">No courses configured.</p>
+      {% endif %}
+
+      <!-- Faculty Summary -->
+      {% if config and config.config and config.config.faculty %}
+        <h3>Faculty</h3>
+
+        <div class="entity-card-grid">
+          {% for faculty in config.config.faculty %}
+            <div class="entity-card">
+              <div class="entity-card-header">
+                <strong>{{ faculty.name }}</strong>
+                <span class="entity-status">
+                  {{ faculty.minimum_credits }}–{{ faculty.maximum_credits }} credits
+                </span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Unique Courses:</strong>
+                <span>{{ faculty.unique_course_limit }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Max Days:</strong>
+                <span>{{ faculty.maximum_days if faculty.maximum_days is defined else "Not set" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Mandatory Days:</strong>
+                <span>
+                  {{ faculty.mandatory_days | join(", ") if faculty.mandatory_days is defined and faculty.mandatory_days else "None" }}
+                </span>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Availability:</strong>
+                <div class="mini-pill-list">
+                  {% for day, ranges in faculty.times.items() %}
+                    <span class="mini-pill">
+                      {{ day }}:
+                      {{ ranges | join(", ") if ranges else "Unavailable" }}
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Course Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.course_preferences %}
+                    {% for course_id, weight in faculty.course_preferences.items() %}
+                      <span class="mini-pill">{{ course_id }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Room Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.room_preferences %}
+                    {% for room, weight in faculty.room_preferences.items() %}
+                      <span class="mini-pill">{{ room }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Lab Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.lab_preferences %}
+                    {% for lab, weight in faculty.lab_preferences.items() %}
+                      <span class="mini-pill">{{ lab }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Faculty</h3>
+        <p class="hint">No faculty configured.</p>
+      {% endif %}
       
       <!-- Time Slot Summary -->
-  {% if config and config.time_slot_config and config.time_slot_config.times %}
-    <h3>Time Slots</h3>
-    {% for day, slots in config.time_slot_config.times.items() %}
-      <div style="margin-bottom: 8px;">
-        <strong>{{ day }}</strong>: {{ slots|length }} slots
-        <ul>
-          {% for slot in slots %}
-            <li>
-              <strong>Index {{ loop.index0 }}:</strong>
-              start={{ slot.start }},
-              spacing={{ slot.spacing }},
-              end={{ slot.end }}
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endfor %}
-  {% else %}
-    <h3>Time Slots</h3>
-    <p class="hint">No time slots configured.</p>
-  {% endif %}
-
-  {% if config and config.time_slot_config and config.time_slot_config.classes %}
-    <h3>Meeting Patterns</h3>
-
-    <div class="pattern-grid">
-      {% for pattern in config.time_slot_config.classes %}
-        <div class="pattern-card">
-          <div class="pattern-card-header">
-            <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
-
-            {% if pattern.disabled is defined and pattern.disabled %}
-              <span class="pattern-status disabled">Disabled</span>
-            {% else %}
-              <span class="pattern-status active">Active</span>
-            {% endif %}
+      {% if config and config.time_slot_config and config.time_slot_config.times %}
+        <h3>Time Slots</h3>
+        {% for day, slots in config.time_slot_config.times.items() %}
+          <div style="margin-bottom: 8px;">
+            <strong>{{ day }}</strong>: {{ slots|length }} slots
+            <ul>
+              {% for slot in slots %}
+                <li>
+                  <strong>Index {{ loop.index0 }}:</strong>
+                  start={{ slot.start }},
+                  spacing={{ slot.spacing }},
+                  end={{ slot.end }}
+                </li>
+              {% endfor %}
+            </ul>
           </div>
+        {% endfor %}
+      {% else %}
+        <h3>Time Slots</h3>
+        <p class="hint">No time slots configured.</p>
+      {% endif %}
 
-          <div class="pattern-meta">
-            <span>
-              <strong>Start:</strong>
-              {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
-            </span>
-          </div>
+      <!-- Meeting Pattern Summary -->
+      {% if config and config.time_slot_config and config.time_slot_config.classes %}
+        <h3>Meeting Patterns</h3>
 
-          <div class="pattern-meetings">
-            {% for meeting in pattern.meetings %}
-              <span class="meeting-pill">
-                {{ meeting.day }} · {{ meeting.duration }} min
-                {% if meeting.lab is defined and meeting.lab %}
-                  · Lab
+        <div class="pattern-grid">
+          {% for pattern in config.time_slot_config.classes %}
+            <div class="pattern-card">
+              <div class="pattern-card-header">
+                <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
+
+                {% if pattern.disabled is defined and pattern.disabled %}
+                  <span class="pattern-status disabled">Disabled</span>
+                {% else %}
+                  <span class="pattern-status active">Active</span>
                 {% endif %}
-              </span>
-            {% endfor %}
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <h3>Meeting Patterns</h3>
-    <p class="hint">No meeting patterns configured.</p>
-  {% endif %}
+              </div>
 
-  <!-- Meeting Pattern Summary -->
-  {% if config and config.time_slot_config and config.time_slot_config.classes %}
-    <h3>Meeting Patterns</h3>
-    <ul>
-      {% for pattern in config.time_slot_config.classes %}
-        <li>
-          credits={{ pattern.credits }},
-          meetings={{ pattern.meetings }},
-          start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
-          disabled={{ pattern.disabled if pattern.disabled is defined else False }}
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <h3>Meeting Patterns</h3>
-    <p class="hint">No meeting patterns configured.</p>
-  {% endif %}
+              <div class="pattern-meta">
+                <span>
+                  <strong>Start:</strong>
+                  {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
+                </span>
+              </div>
+
+              <div class="pattern-meetings">
+                {% for meeting in pattern.meetings %}
+                  <span class="meeting-pill">
+                    {{ meeting.day }} · {{ meeting.duration }} min
+                    {% if meeting.lab is defined and meeting.lab %}
+                      · Lab
+                    {% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Meeting Patterns</h3>
+        <p class="hint">No meeting patterns configured.</p>
+      {% endif %}
 
       {% if status.conflicts %}
-  <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-    <strong>Configuration Conflicts Detected:</strong>
-    <ul>
-      {% for c in status.conflicts %}
-        <li>{{ c }}</li>
-      {% endfor %}
-    </ul>
+      <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+        <strong>Configuration Conflicts Detected:</strong>
+        <ul>
+          {% for c in status.conflicts %}
+            <li>{{ c }}</li>
+          {% endfor %}
+        </ul>
 
-  </div>
-  {% endif %}
+      </div>
+      {% endif %}
 
     {% else %}
-
       <!-- Indicates that no configuration is currently loaded -->
       <p><strong>File Loaded:</strong> No</p>
 
