@@ -275,6 +275,9 @@ Extends base.html.
 
 </section>
 
+<!-- ========================================================= -->
+<!-- Configuration Management                                  -->
+<!-- ========================================================= -->
 <section class="card">
   <h2>Configuration Management</h2>
 
@@ -299,8 +302,6 @@ Extends base.html.
     <button onclick="setMode('modify')">Modify</button>
   </div>
 
-<br>
-
 <form method="post" action="/config/undo" style="display:inline;">
   <button type="submit" id="undo">Undo</button>
 </form>
@@ -315,9 +316,149 @@ Extends base.html.
   <div id="formContainer"></div>
 </section>
 
+<!-- ========================================================= --> 
+<!-- Builder Pattern                                           -->
+<!-- ========================================================= --> 
 <script>
 let currentType = "faculty";
 let currentMode = "add";
+
+class FormBuilder {
+  constructor(type, mode) {
+    this.type = type;
+    this.mode = mode;
+    this.html = "";
+    this.action = `/config/${type}/${mode}`;
+  }
+
+  build() {
+    this.html = `<form method="post" action="${this.action}">`;
+
+    this.buildFields();
+
+    this.html += `<button type="submit">${this.mode.toUpperCase()}</button>`;
+    this.html += `</form>`;
+
+    return this.html;
+  }
+
+  buildFields() {
+    const t = this.type;
+    const m = this.mode;
+
+    if (t === "faculty") this.faculty();
+    if (t === "room") this.room();
+    if (t === "lab") this.lab();
+    if (t === "course") this.course();
+    if (t === "conflict") this.conflict();
+    if (t === "timeslot") this.timeslot();
+    if (t === "pattern") this.pattern();
+  }
+
+  faculty() {
+    this.html += `<input name="name" placeholder="Faculty Name" required>`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <select name="appointment_type">
+          <option value="">Appointment Type</option>
+          <option value="Full-Time">Full-Time</option>
+          <option value="Adjunct">Adjunct</option>
+        </select>`;
+    }
+  }
+
+  room() {
+    this.html += `<input name="room" placeholder="Room Name" required>`;
+    if (this.mode === "modify") {
+      this.html += `<input name="new_name" placeholder="New Name">`;
+    }
+  }
+
+  lab() {
+    this.html += `<input name="lab" placeholder="Lab Name" required>`;
+    if (this.mode === "modify") {
+      this.html += `<input name="new_name" placeholder="New Name">`;
+    }
+  }
+
+  course() {
+    this.html += `<input name="course_id" placeholder="Course ID" required>`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>`;
+    }
+
+    if (this.mode === "add") {
+      this.html += `<input name="room" placeholder="Room Name">`;
+    }
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_course_id" placeholder="New Course ID">`;
+    }
+  }
+
+  conflict() {
+    this.html += `<input name="course_id" placeholder="Course ID" required>`;
+    this.html += `<input name="conflict_course_id" placeholder="Conflicting Course ID" required>`;
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_conflict_course_id" placeholder="New Conflict">`;
+    }
+  }
+
+  timeslot() {
+    this.html += `
+      <select name="day">
+        <option value="MON">MON</option>
+        <option value="TUE">TUE</option>
+        <option value="WED">WED</option>
+        <option value="THU">THU</option>
+        <option value="FRI">FRI</option>
+      </select>`;
+
+    if (this.mode === "add") {
+      this.html += `
+        <input type="time" name="start">
+        <input type="number" name="spacing" placeholder="Spacing">
+        <input type="time" name="end">
+      `;
+    }
+
+    if (this.mode !== "add") {
+      this.html += `<input name="index" type="number" placeholder="Index">`;
+    }
+  }
+
+  pattern() {
+    this.html += `<input name="index" type="number" placeholder="Pattern Index">`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <input name="days" placeholder="Days (MON,WED)">
+        <input name="duration" type="number" placeholder="Duration">
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>`;
+    }
+  }
+}
+
+function renderForm() {
+  const builder = new FormBuilder(currentType, currentMode);
+  document.getElementById("formContainer").innerHTML = builder.build();
+}
 
 document.getElementById("entityType").addEventListener("change", (e) => {
   currentType = e.target.value;
@@ -327,125 +468,6 @@ document.getElementById("entityType").addEventListener("change", (e) => {
 function setMode(mode) {
   currentMode = mode;
   renderForm();
-}
-
-function renderForm() {
-  const container = document.getElementById("formContainer");
-
-  let action = `/config/${currentType}/${currentMode}`;
-
-  let html = `<form method="post" action="${action}">`;
-
-  // =========================
-  // FIELD DEFINITIONS
-  // =========================
-
-  if (currentType === "faculty") {
-    html += `<input name="name" placeholder="Faculty Name" required>`;
-
-    if (currentMode !== "remove") {
-      html += `
-        <select name="appointment_type">
-          <option value="">Appointment Type</option>
-          <option value="Full-Time">Full-Time</option>
-          <option value="Adjunct">Adjunct</option>
-        </select>`;
-    }
-  }
-
-  if (currentType === "room") {
-    html += `<input name="room" placeholder="Room Name" required>`;
-    if (currentMode === "modify") {
-      html += `<input name="new_name" placeholder="New Name">`;
-    }
-  }
-
-  if (currentType === "lab") {
-    html += `<input name="lab" placeholder="Lab Name" required>`;
-    if (currentMode === "modify") {
-      html += `<input name="new_name" placeholder="New Name">`;
-    }
-  }
-
-  if (currentType === "course") {
-    html += `<input name="course_id" placeholder="Course ID" required>`;
-
-    if (currentMode !== "remove") {
-      html += `
-        <select name="credits">
-          <option value="">Credits</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-      `;
-    }
-
-    if (currentMode === "add") {
-      html += `<input name="room" placeholder="Room Name">`;
-    }
-
-    if (currentMode === "modify") {
-      html += `<input name="new_course_id" placeholder="New Course ID">`;
-    }
-  }
-
-  if (currentType === "conflict") {
-    html += `<input name="course_id" placeholder="Course ID" required>`;
-    html += `<input name="conflict_course_id" placeholder="Conflicting Course ID" required>`;
-
-    if (currentMode === "modify") {
-      html += `<input name="new_conflict_course_id" placeholder="New Conflict">`;
-    }
-  }
-
-  if (currentType === "timeslot") {
-    html += `
-      <select name="day">
-        <option value="MON">MON</option>
-        <option value="TUE">TUE</option>
-        <option value="WED">WED</option>
-        <option value="THU">THU</option>
-        <option value="FRI">FRI</option>
-      </select>
-    `;
-
-    if (currentMode === "add") {
-      html += `
-        <input type="time" name="start">
-        <input type="number" name="spacing" placeholder="Spacing">
-        <input type="time" name="end">
-      `;
-    }
-
-    if (currentMode !== "add") {
-      html += `<input name="index" type="number" placeholder="Index">`;
-    }
-  }
-
-  if (currentType === "pattern") {
-    html += `<input name="index" type="number" placeholder="Pattern Index">`;
-
-    if (currentMode !== "remove") {
-      html += `
-        <input name="days" placeholder="Days (MON,WED)">
-        <input name="duration" type="number" placeholder="Duration">
-        <select name="credits">
-          <option value="">Credits</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-      `;
-    }
-  }
-
-  html += `<button type="submit">${currentMode.toUpperCase()}</button>`;
-  html += `</form>`;
-
-  container.innerHTML = html;
 }
 
 renderForm();
