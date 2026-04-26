@@ -35,9 +35,9 @@ Includes:
   <main class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="messages">
+        <div class="toast-container">
           {% for category, msg in messages %}
-            <div class="msg {{ category }}">{{ msg }}</div>
+            <div class="toast {{ category }}">{{ msg }}</div>
           {% endfor %}
         </div>
       {% endif %}
@@ -50,20 +50,16 @@ Includes:
 
   <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const flashes = document.querySelectorAll(".msg");
+    const toasts = document.querySelectorAll(".toast");
 
-    flashes.forEach((flash) => {
-      const dismissFlash = () => {
-        flash.classList.add("fade-out");
-
-        setTimeout(() => {
-          flash.remove();
-        }, 500);
+    toasts.forEach((toast) => {
+      const dismissToast = () => {
+        toast.classList.add("fade-out");
+        setTimeout(() => toast.remove(), 500);
       };
 
-      setTimeout(dismissFlash, 2500);
-
-      flash.addEventListener("click", dismissFlash);
+      setTimeout(dismissToast, 3000);
+      toast.addEventListener("click", dismissToast);
     });
   });
   </script>
