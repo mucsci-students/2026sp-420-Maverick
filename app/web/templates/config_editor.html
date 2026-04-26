@@ -1,6 +1,6 @@
 <!--
 Author: Antonio Corona, Jacob Karasow
-Date: 2026-04-17
+Date: 2026-04-26
 
 Config Editor Template
 
@@ -51,273 +51,320 @@ Extends base.html.
 {% block content %}
 <h1>Config Editor</h1>
 
-<!-- ========================================================= -->
-<!-- Load / Save / Clear Section                               -->
-<!-- ========================================================= -->
-<!--
-  This section contains the top-level file operations for the
-  configuration editor.
+<div
+  id="config-editor-state"
+  data-viewer-mode="{{ 'true' if is_viewer_mode else 'false' }}"
+></div>
 
-  User actions available here:
-    - Load a config JSON from the local machine
-    - Export the current working config to the local machine
-    - Clear the currently loaded config from session
--->
-<section class="card">
-  <h2>Load / Save</h2>
- 
-  <!--
-    Load Config Form
+<div class="mode-control">
 
-    Route:
-      POST /config/load_file
+  <span class="mode-badge mode-{{ app_mode }}">
+    {{ "Viewer Mode" if is_viewer_mode else "Editor Mode" }}
+  </span>
 
-    Purpose:
-      Lets the user choose a JSON configuration file from their
-      computer and upload it into the current session.
-
-    Behavior:
-      - Browser file picker restricts selection to .json files
-      - Multipart form encoding is required for file uploads
-      - On success, the controller updates session state and the
-        status panel below will reflect the loaded config
-  -->
-  <form method="post"
-        action="/config/load_file"
-        enctype="multipart/form-data"
-        class="row">
-    <label>Load config</label>
-    <input type="file" name="config_file" accept=".json" required>
-    <button type="submit">Load</button>
+  <form method="post" action="{{ url_for('config.set_mode_route') }}" class="mode-toggle-form">
+    {% if is_viewer_mode %}
+      <input type="hidden" name="mode" value="editor">
+      <button type="submit">Switch to Editor</button>
+    {% else %}
+      <input type="hidden" name="mode" value="viewer">
+      <button type="submit">Switch to Viewer</button>
+    {% endif %}
   </form>
 
-  <!-- Helper text explaining what this action does -->
-  <p class="hint">
-    Load imports a configuration JSON from your computer into the working session.
-  </p>
+</div>
 
-  <!--
-    Save / Export Configuration Form
-
-    Purpose:
-      Lets the user export the current working configuration to their local
-      machine using a browser save prompt.
-
-    Behavior:
-      - Uses a suggested filename when one is available
-      - Allows the user to change the filename before export
-      - Submission is handled by JavaScript in app.js
-      - Does not directly submit to a Flask POST route
-  -->
-  <form id="export-config-form" class="row">
-    <label>Save config</label>
-
-    <!--
-      Export filename input
-
-      Source:
-        status.default_filename if present
-
-      Fallback:
-        new_config_file.json
-
-      Purpose:
-        Gives the user control over the downloaded filename used
-        during the browser export flow.
-    -->
-    <input
-      id="export_filename"
-      name="filename"
-      value="{{ status.default_filename or 'new_config_file.json' }}"
-      placeholder="new_config_file.json"
-    >
-
-    <!-- Save button triggers the export flow in app.js -->
-    <button type="submit">Save</button>
-  </form>
-
-  <!-- Helper text explaining what this action does -->
-  <p class="hint">
-    Save exports the current working configuration to your computer.
-  </p>
-
-  <!--
-    Confirmation message container.
-    Hidden by default and shown by JavaScript after export success/failure.
-  -->
-  <div id="save-confirmation" class="hint" style="display:none;"></div>
-
-  <!--
-    Clear Config Form
-
-    Route:
-      POST /config/clear
-
-    Purpose:
-      Removes the currently loaded configuration from session state.
-
-    Behavior:
-      - Displays the currently loaded file/path in a disabled input
-      - Clear button is disabled when no config is currently loaded
-  -->
-  <form method="post" action="/config/clear" class="row">
-    <label>Clear loaded</label>
-    <input value="{{ status.path or '' }}" disabled>
-    <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Configuration Status Panel                                -->
-<!-- ========================================================= -->
-<!--
-  This section displays the current load state of the configuration.
-
-  When a config is loaded:
-    - Shows loaded status
-    - Shows the source filename/path
-    - Shows summary counts of configuration entities
-    - Shows detected conflict messages when available
-
-  When no config is loaded:
-    - Shows unloaded state
-    - Instructs the user to load a config first
--->
-<section class="card">
-  <h2>Status</h2>
-
-  {% if status.loaded %}
-
-    <!-- Indicates that a configuration is currently active in session -->
-    <p><strong>Loaded Status:</strong> Yes</p>
-
-    <!-- Displays the source path or filename of the loaded config -->
-    <p><strong>File Loaded:</strong> {{ status.path }}</p>
-
-    <!--
-      Summary counts list
-
-      Example contents:
-        faculty: 3
-        rooms: 5
-        courses: 8
-
-      This gives the user a quick overview of the currently loaded
-      configuration contents.
-    -->
-    <ul>
-      {% for k, v in status.counts.items() %}
-        <li>{{ k }}: {{ v }}</li>
-      {% endfor %}
-    </ul>
-    
-    <!-- Time Slot Summary -->
-{% if config and config.time_slot_config and config.time_slot_config.times %}
-  <h3>Time Slots</h3>
-  {% for day, slots in config.time_slot_config.times.items() %}
-    <div style="margin-bottom: 8px;">
-      <strong>{{ day }}</strong>: {{ slots|length }} slots
-      <ul>
-        {% for slot in slots %}
-          <li>
-            start={{ slot.start }},
-            spacing={{ slot.spacing }},
-            end={{ slot.end }}
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endfor %}
-{% else %}
-  <h3>Time Slots</h3>
-  <p class="hint">No time slots configured.</p>
-{% endif %}
-
-<!-- Meeting Pattern Summary -->
-{% if config and config.time_slot_config and config.time_slot_config.classes %}
-  <h3>Meeting Patterns</h3>
-  <ul>
-    {% for pattern in config.time_slot_config.classes %}
-      <li>
-        credits={{ pattern.credits }},
-        meetings={{ pattern.meetings }},
-        start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
-        disabled={{ pattern.disabled if pattern.disabled is defined else False }}
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <h3>Meeting Patterns</h3>
-  <p class="hint">No meeting patterns configured.</p>
-{% endif %}
-
-    {% if status.conflicts %}
-<div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-  <strong>Configuration Conflicts Detected:</strong>
-  <ul>
-    {% for c in status.conflicts %}
-      <li>{{ c }}</li>
-    {% endfor %}
-  </ul>
-
+{% if is_viewer_mode %}
+<div class="msg warning">
+  Viewer Mode: Editing disabled.
 </div>
 {% endif %}
 
+<div class="config-editor-controls">
+  <!-- ========================================================= -->
+  <!-- Load / Save / Clear Section                               -->
+  <!-- ========================================================= -->
+  <!--
+    This section contains the top-level file operations for the
+    configuration editor.
+
+    User actions available here:
+      - Load a config JSON from the local machine
+      - Export the current working config to the local machine
+      - Clear the currently loaded config from session
+  -->
+  <section class="card">
+    <h2>Load / Save</h2>
+  
+    <!--
+      Load Config Form
+
+      Route:
+        POST /config/load_file
+
+      Purpose:
+        Lets the user choose a JSON configuration file from their
+        computer and upload it into the current session.
+
+      Behavior:
+        - Browser file picker restricts selection to .json files
+        - Multipart form encoding is required for file uploads
+        - On success, the controller updates session state and the
+          status panel below will reflect the loaded config
+    -->
+    <form method="post"
+          action="/config/load_file"
+          enctype="multipart/form-data"
+          class="row">
+      <label>Load config</label>
+      <input type="file" name="config_file" accept=".json" required>
+      <button type="submit">Load</button>
+    </form>
+
+    <!-- Helper text explaining what this action does -->
+    <p class="hint">
+      Load imports a configuration JSON from your computer into the working session.
+    </p>
+
+    <!--
+      Save / Export Configuration Form
+
+      Purpose:
+        Lets the user export the current working configuration to their local
+        machine using a browser save prompt.
+
+      Behavior:
+        - Uses a suggested filename when one is available
+        - Allows the user to change the filename before export
+        - Submission is handled by JavaScript in app.js
+        - Does not directly submit to a Flask POST route
+    -->
+    <form id="export-config-form" class="row">
+      <label>Save config</label>
+
+      <!--
+        Export filename input
+
+        Source:
+          status.default_filename if present
+
+        Fallback:
+          new_config_file.json
+
+        Purpose:
+          Gives the user control over the downloaded filename used
+          during the browser export flow.
+      -->
+      <input
+        id="export_filename"
+        name="filename"
+        value="{{ status.default_filename or 'new_config_file.json' }}"
+        placeholder="new_config_file.json"
+      >
+
+      <!-- Save button triggers the export flow in app.js -->
+      <button type="submit">Save</button>
+    </form>
+
+    <!-- Helper text explaining what this action does -->
+    <p class="hint">
+      Save exports the current working configuration to your computer.
+    </p>
+
+    <!--
+      Confirmation message container.
+      Hidden by default and shown by JavaScript after export success/failure.
+    -->
+    <div id="save-confirmation" class="hint" style="display:none;"></div>
+
+    <!--
+      Clear Config Form
+
+      Route:
+        POST /config/clear
+
+      Purpose:
+        Removes the currently loaded configuration from session state.
+
+      Behavior:
+        - Displays the currently loaded file/path in a disabled input
+        - Clear button is disabled when no config is currently loaded
+    -->
+    <form method="post" action="/config/clear" class="row">
+      <label>Clear loaded</label>
+      <input value="{{ status.path or '' }}" disabled>
+      <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
+    </form>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- Configuration Status Panel                                -->
+  <!-- ========================================================= -->
+  <!--
+    This section displays the current load state of the configuration.
+
+    When a config is loaded:
+      - Shows loaded status
+      - Shows the source filename/path
+      - Shows summary counts of configuration entities
+      - Shows detected conflict messages when available
+
+    When no config is loaded:
+      - Shows unloaded state
+      - Instructs the user to load a config first
+  -->
+  <section class="card">
+    <h2>Status</h2>
+
+    {% if status.loaded %}
+
+      <!-- Indicates that a configuration is currently active in session -->
+      <p><strong>Loaded Status:</strong> Yes</p>
+
+      <!-- Displays the source path or filename of the loaded config -->
+      <p><strong>File Loaded:</strong> {{ status.path }}</p>
+
+      <!--
+        Summary counts list
+
+        Example contents:
+          faculty: 3
+          rooms: 5
+          courses: 8
+
+        This gives the user a quick overview of the currently loaded
+        configuration contents.
+      -->
+      <ul>
+        {% for k, v in status.counts.items() %}
+          <li>{{ k }}: {{ v }}</li>
+        {% endfor %}
+      </ul>
+      
+      <!-- Time Slot Summary -->
+  {% if config and config.time_slot_config and config.time_slot_config.times %}
+    <h3>Time Slots</h3>
+    {% for day, slots in config.time_slot_config.times.items() %}
+      <div style="margin-bottom: 8px;">
+        <strong>{{ day }}</strong>: {{ slots|length }} slots
+        <ul>
+          {% for slot in slots %}
+            <li>
+              start={{ slot.start }},
+              spacing={{ slot.spacing }},
+              end={{ slot.end }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
   {% else %}
-
-    <!-- Indicates that no configuration is currently loaded -->
-    <p><strong>File Loaded:</strong> No</p>
-
-    <!-- Helper text guiding the user toward the next required step -->
-    <p class="hint">Load a config to enable schedule generation.</p>
-
+    <h3>Time Slots</h3>
+    <p class="hint">No time slots configured.</p>
   {% endif %}
 
-</section>
+  <!-- Meeting Pattern Summary -->
+  {% if config and config.time_slot_config and config.time_slot_config.classes %}
+    <h3>Meeting Patterns</h3>
+    <ul>
+      {% for pattern in config.time_slot_config.classes %}
+        <li>
+          credits={{ pattern.credits }},
+          meetings={{ pattern.meetings }},
+          start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
+          disabled={{ pattern.disabled if pattern.disabled is defined else False }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <h3>Meeting Patterns</h3>
+    <p class="hint">No meeting patterns configured.</p>
+  {% endif %}
 
-<section class="card">
-  <h2>Configuration Management</h2>
+      {% if status.conflicts %}
+  <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+    <strong>Configuration Conflicts Detected:</strong>
+    <ul>
+      {% for c in status.conflicts %}
+        <li>{{ c }}</li>
+      {% endfor %}
+    </ul>
 
-  <!-- Filter -->
-  <div class="row">
-    <label>Select Type</label>
-    <select id="entityType">
-      <option value="faculty">Faculty</option>
-      <option value="room">Room</option>
-      <option value="lab">Lab</option>
-      <option value="course">Course</option>
-      <option value="conflict">Conflict</option>
-      <option value="timeslot">Time Slot</option>
-      <option value="pattern">Meeting Pattern</option>
-    </select>
   </div>
+  {% endif %}
 
-  <!-- Universal Actions -->
-  <div class="row" style="margin-top:10px;">
-    <button onclick="setMode('add')">Add</button>
-    <button onclick="setMode('remove')">Remove</button>
-    <button onclick="setMode('modify')">Modify</button>
-  </div>
+    {% else %}
 
-<br>
+      <!-- Indicates that no configuration is currently loaded -->
+      <p><strong>File Loaded:</strong> No</p>
 
-<form method="post" action="/config/undo" style="display:inline;">
-  <button type="submit" id="undo">Undo</button>
-</form>
+      <!-- Helper text guiding the user toward the next required step -->
+      <p class="hint">Load a config to enable schedule generation.</p>
 
-<form method="post" action="/config/redo" style="display:inline;">
-  <button type="submit" id="redo">Redo</button>
-</form>
+    {% endif %}
 
-  <hr>
+  </section>
 
-  <!-- Dynamic Form Container -->
-  <div id="formContainer"></div>
-</section>
+  <section class="card">
+    <h2>Configuration Management</h2>
+
+    <!-- Filter -->
+    <div class="row">
+      <label>Select Type</label>
+      <select id="entityType">
+        <option value="faculty">Faculty</option>
+        <option value="room">Room</option>
+        <option value="lab">Lab</option>
+        <option value="course">Course</option>
+        <option value="conflict">Conflict</option>
+        <option value="timeslot">Time Slot</option>
+        <option value="pattern">Meeting Pattern</option>
+      </select>
+    </div>
+
+    <!-- Universal Actions -->
+    <div class="row" style="margin-top:10px;">
+      <button onclick="setMode('add')">Add</button>
+      <button onclick="setMode('remove')">Remove</button>
+      <button onclick="setMode('modify')">Modify</button>
+    </div>
+
+  <br>
+
+  <form method="post" action="/config/undo" style="display:inline;">
+    <button type="submit" id="undo">Undo</button>
+  </form>
+
+  <form method="post" action="/config/redo" style="display:inline;">
+    <button type="submit" id="redo">Redo</button>
+  </form>
+
+    <hr>
+
+    <!-- Dynamic Form Container -->
+    <div id="formContainer"></div>
+  </section>
+</div>
+
+{% if is_viewer_mode %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document
+    .querySelectorAll(".config-editor-controls input, .config-editor-controls button, .config-editor-controls select, .config-editor-controls textarea")
+    .forEach((el) => {
+      el.disabled = true;
+    });
+});
+</script>
+{% endif %}
 
 <script>
 let currentType = "faculty";
 let currentMode = "add";
+
+const configEditorState = document.getElementById("config-editor-state");
+const isConfigEditorViewerMode =
+  configEditorState?.dataset.viewerMode === "true";
 
 document.getElementById("entityType").addEventListener("change", (e) => {
   currentType = e.target.value;
@@ -325,12 +372,26 @@ document.getElementById("entityType").addEventListener("change", (e) => {
 });
 
 function setMode(mode) {
+  if (isConfigEditorViewerMode) {
+    return;
+  }
+
   currentMode = mode;
   renderForm();
 }
 
 function renderForm() {
   const container = document.getElementById("formContainer");
+
+  if (isConfigEditorViewerMode) {
+    container.innerHTML = `
+      <p class="hint">
+        Viewer Mode is active. Switch to Editor Mode to add, remove, modify,
+        undo, or redo configuration changes.
+      </p>
+    `;
+    return;
+  }
 
   let action = `/config/${currentType}/${currentMode}`;
 

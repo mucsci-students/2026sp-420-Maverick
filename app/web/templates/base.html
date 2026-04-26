@@ -47,5 +47,25 @@ Includes:
   </main>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const flashes = document.querySelectorAll(".msg");
+
+    flashes.forEach((flash) => {
+      const dismissFlash = () => {
+        flash.classList.add("fade-out");
+
+        setTimeout(() => {
+          flash.remove();
+        }, 500);
+      };
+
+      setTimeout(dismissFlash, 2500);
+
+      flash.addEventListener("click", dismissFlash);
+    });
+  });
+  </script>
 </body>
 </html>

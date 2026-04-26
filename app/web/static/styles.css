@@ -359,3 +359,61 @@ pre {
     font-size: 0.65rem;
     color: var(--muted);
 }
+
+
+/* ==========================================================================
+   Viewer / Editor Mode Badges
+   ========================================================================== */
+
+.mode-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mode-toggle-form {
+  margin: 0;
+}
+
+.mode-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mode-editor {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.mode-viewer {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+
+/* ==========================================================================
+   Flash Message Animations
+   ========================================================================== */
+
+.flash {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  cursor: pointer;
+}
+
+/* Optional styling */
+.flash.success {
+  background: #e6ffed;
+  border: 1px solid #2ecc71;
+}
+
+/* Fade-out animation */
+.flash.fade-out {
+  opacity: 0;
+  transform: translateY(-5px);
+}
