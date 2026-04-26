@@ -74,10 +74,32 @@ Extends base.html.
 
 </div>
 
+<!--
+  =========================================================
+  Viewer Mode Panel
+  =========================================================
+  This section is conditionally rendered when the config editor is in viewer mode.
+  It informs the user that editing actions are disabled and provides a summary
+  of the loaded configuration for review.
+
+  When viewer mode is active:
+    - Displays a prominent message indicating viewer mode status
+    - Summarizes the loaded configuration contents (entities, time slots, patterns)
+    - Shows detected conflicts when present
+
+  When viewer mode is inactive:
+    - This section is not rendered and editing controls are fully enabled
+    - Users can perform add/remove/modify actions and undo/redo changes 
+-->
 {% if is_viewer_mode %}
-<div class="msg warning">
-  Viewer Mode: Editing disabled.
-</div>
+<section class="card viewer-mode-panel">
+  <h2>Viewer Mode Active</h2>
+  <p>
+    Configuration editing is disabled. You can review the loaded configuration,
+    time slots, and meeting patterns, but you cannot load, save, clear, add,
+    remove, modify, undo, or redo changes until switching back to Editor Mode.
+  </p>
+</section>
 {% endif %}
 
 <div class="config-editor-controls">
@@ -250,6 +272,7 @@ Extends base.html.
         <ul>
           {% for slot in slots %}
             <li>
+              <strong>Index {{ loop.index0 }}:</strong>
               start={{ slot.start }},
               spacing={{ slot.spacing }},
               end={{ slot.end }}
@@ -261,6 +284,47 @@ Extends base.html.
   {% else %}
     <h3>Time Slots</h3>
     <p class="hint">No time slots configured.</p>
+  {% endif %}
+
+  {% if config and config.time_slot_config and config.time_slot_config.classes %}
+    <h3>Meeting Patterns</h3>
+
+    <div class="pattern-grid">
+      {% for pattern in config.time_slot_config.classes %}
+        <div class="pattern-card">
+          <div class="pattern-card-header">
+            <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
+
+            {% if pattern.disabled is defined and pattern.disabled %}
+              <span class="pattern-status disabled">Disabled</span>
+            {% else %}
+              <span class="pattern-status active">Active</span>
+            {% endif %}
+          </div>
+
+          <div class="pattern-meta">
+            <span>
+              <strong>Start:</strong>
+              {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
+            </span>
+          </div>
+
+          <div class="pattern-meetings">
+            {% for meeting in pattern.meetings %}
+              <span class="meeting-pill">
+                {{ meeting.day }} · {{ meeting.duration }} min
+                {% if meeting.lab is defined and meeting.lab %}
+                  · Lab
+                {% endif %}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <h3>Meeting Patterns</h3>
+    <p class="hint">No meeting patterns configured.</p>
   {% endif %}
 
   <!-- Meeting Pattern Summary -->
@@ -305,12 +369,17 @@ Extends base.html.
 
   </section>
 
-  <section class="card">
-    <h2>Configuration Management</h2>
+  <section class="card config-management-card">
+    <div class="section-heading-row">
+      <div>
+        <h2>Configuration Management</h2>
+        <p class="hint">Choose an entity type, then add, remove, or modify configuration data.</p>
+      </div>
+    </div>
 
     <!-- Filter -->
-    <div class="row">
-      <label>Select Type</label>
+    <div class="config-toolbar">
+      <label for="entityType">Select Type</label>
       <select id="entityType">
         <option value="faculty">Faculty</option>
         <option value="room">Room</option>
@@ -323,23 +392,23 @@ Extends base.html.
     </div>
 
     <!-- Universal Actions -->
-    <div class="row" style="margin-top:10px;">
-      <button onclick="setMode('add')">Add</button>
-      <button onclick="setMode('remove')">Remove</button>
-      <button onclick="setMode('modify')">Modify</button>
+    <div class="action-button-row">
+      <button type="button" onclick="setMode('add')">Add</button>
+      <button type="button" onclick="setMode('remove')">Remove</button>
+      <button type="button" onclick="setMode('modify')">Modify</button>
     </div>
 
-  <br>
+    <div class="history-button-row">
+      <form method="post" action="/config/undo">
+        <button type="submit" id="undo">Undo</button>
+      </form>
 
-  <form method="post" action="/config/undo" style="display:inline;">
-    <button type="submit" id="undo">Undo</button>
-  </form>
+      <form method="post" action="/config/redo">
+        <button type="submit" id="redo">Redo</button>
+      </form>
+    </div>
 
-  <form method="post" action="/config/redo" style="display:inline;">
-    <button type="submit" id="redo">Redo</button>
-  </form>
-
-    <hr>
+    <hr class="soft-divider">
 
     <!-- Dynamic Form Container -->
     <div id="formContainer"></div>
