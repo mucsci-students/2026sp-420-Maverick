@@ -299,6 +299,16 @@ Extends base.html.
     <button onclick="setMode('modify')">Modify</button>
   </div>
 
+<br>
+
+<form method="post" action="/config/undo" style="display:inline;">
+  <button type="submit" id="undo">Undo</button>
+</form>
+
+<form method="post" action="/config/redo" style="display:inline;">
+  <button type="submit" id="redo">Redo</button>
+</form>
+
   <hr>
 
   <!-- Dynamic Form Container -->

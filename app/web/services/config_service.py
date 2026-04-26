@@ -300,6 +300,24 @@ def _get_working_config():
 def _get_cgf():
     return _get_working_config()
 
+def _save_to_undo_stack():
+    """
+    Save the current state of the configuration file to the undo stack.
+    """
+    global undo_stack, redo_stack
+    
+    current_cfg = _get_working_config()
+    if current_cfg is not None:
+        # Save a deep copy to avoid mutations
+        undo_stack.append(copy.deepcopy(current_cfg))
+        
+        # Clear redo stack when a new action is performed
+        redo_stack.clear()
+
+        # Limit the undo stack size to MAX_ACTIONS
+        if len(undo_stack) > MAX_ACTIONS:
+            undo_stack.pop(0)
+
 
 def _commit_change(cfg):
 
@@ -859,24 +877,28 @@ def get_config_status():
 
 
 def add_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    _save_to_undo_stack()
     cfg = _get_cgf()
 
     faculty_list = cfg.get("config", {}).get("faculty", [])
@@ -898,6 +920,7 @@ def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str
 
 
 def remove_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     faculty_list = cfg.get("config", {}).get("faculty", [])
 
@@ -924,6 +947,7 @@ def set_faculty_day_unavailable_service(name: str, day: str):
     Mark a faculty member unavailable on a specific day by setting that
     day's time list to an empty list.
     """
+    _save_to_undo_stack()
     cfg = _get_cgf()
     faculty_list = cfg.get("config", {}).get("faculty", [])
 
@@ -945,18 +969,21 @@ def set_faculty_day_unavailable_service(name: str, day: str):
 
 
 def add_room_service(room):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_room(cfg, room)
     _commit_change(cfg)
 
 
 def remove_room_service(room):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_room(cfg, room)
     _commit_change(cfg)
 
 
 def modify_room_service(room, new_name):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_room(cfg, room, new_name)
     _commit_change(cfg)
@@ -968,18 +995,21 @@ def modify_room_service(room, new_name):
 
 
 def add_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_lab(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_lab(cfg, **kwargs)
     _commit_change(cfg)
@@ -991,6 +1021,7 @@ def modify_lab_service(**kwargs):
 
 
 def add_course_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
@@ -999,12 +1030,14 @@ def add_course_service(**kwargs):
 
 
 def remove_course_service(course_id):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_course(cfg, course_id)
     _commit_change(cfg)
 
 
 def modify_course_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
@@ -1018,18 +1051,21 @@ def modify_course_service(**kwargs):
 
 
 def add_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_conflict(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_conflict(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
     _commit_change(cfg)
@@ -1044,6 +1080,7 @@ def modify_conflict_service(**kwargs):
 # Time Slot Management
 # ==============================================================
 def add_time_slot_service(day, start, spacing, end):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1062,6 +1099,7 @@ def add_time_slot_service(day, start, spacing, end):
 
 
 def remove_time_slot_service(day, index):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1080,6 +1118,7 @@ def remove_time_slot_service(day, index):
 
 
 def modify_time_slot_service(day, index, start, spacing, end):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1263,3 +1302,48 @@ def update_schedules(cfg):
     generate_schedules_into_session(cfg)
 
     return session.get("schedules", [])
+
+# ================================================================
+# Undo / Redo
+# ================================================================
+
+undo_stack = []
+redo_stack = []
+
+# the maximum number of actions that can be undone
+MAX_ACTIONS = 50
+
+def undo():
+    """
+    Undoes the last change to the configuration file.
+    """
+    global undo_stack, redo_stack
+    
+    if not undo_stack:
+        raise ValueError("Nothing to undo")
+    
+    # Save current state of the configuration file
+    current_cfg = session.get(SESSION_CONFIG_KEY)
+    if current_cfg:
+        redo_stack.append(copy.deepcopy(current_cfg))
+    
+    # Restore the previous state from undo stack
+    previous_cfg = undo_stack.pop()
+    _commit_change(previous_cfg)
+
+def redo():
+    """
+    Redos the last undone change to the current configuration file.
+    """
+    global undo_stack, redo_stack
+    
+    if not redo_stack:
+        raise ValueError("Nothing to redo")
+    
+    current_cfg = session.get(SESSION_CONFIG_KEY)
+    if current_cfg:
+        undo_stack.append(copy.deepcopy(current_cfg))
+    
+    # Restore the next state from redo stack
+    next_cfg = redo_stack.pop()
+    _commit_change(next_cfg)

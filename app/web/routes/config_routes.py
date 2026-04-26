@@ -56,6 +56,7 @@ from app.web.services.config_service import (
     modify_pattern_service,
     modify_room_service,
     modify_time_slot_service,
+    redo,
     remove_conflict_service,
     remove_course_service,
     remove_faculty_service,
@@ -68,6 +69,7 @@ from app.web.services.config_service import (
     set_faculty_time_service,
     set_schedules_updated,
     toggle_pattern_service,
+    undo,
 )
 from app.web.services.run_service import (
     SESSION_SCHEDULES_KEY,
@@ -531,6 +533,24 @@ def pattern_toggle():
     try:
         toggle_pattern_service(**request.form.to_dict())
         flash("Meeting pattern toggled successfully.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/undo")
+def undo_route():
+    try:
+        undo()
+        flash("Undo successful.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("config.editor"))
+
+@bp.post("/redo")
+def redo_route():
+    try:
+        redo()
+        flash("Redo successful.", "success")
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
