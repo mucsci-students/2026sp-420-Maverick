@@ -712,7 +712,7 @@ async function checkGenerationProgress() {
           return;
         }
 
-        // console.log("data received:", data)
+        console.log("data received:", data)
 
         // if the generation is still in progress or the progress bar has to catch up
         if (data.running || data.progress < 100 || progress_bar_current_progress < 100) {
@@ -783,22 +783,70 @@ function updateProgressUI(current_progress) {
 
 // changes the flavor-text to show the appropriate message based on percentage loaded
 function progress_bar_flavor_text(progress) {
-    const flavor_text = document.getElementById("flavor-text"); 
-
-      if (progress == 0){
-          flavor_text.innerHTML = "Please wait";
-
-      } else if (progress == 25) {
-          flavor_text.innerHTML = "About a quarter of the way there"
-
-      } else if (progress == 50) {
-          flavor_text.innerHTML = "Halfway there"
-
-      } else if (progress == 75) {
-          flavor_text.innerHTML = "Nearly there"
-
-      } else if (progress == 100) {
-          flavor_text.innerHTML = "Generation completed. Redirecting to viewer..."
-      }
-
+  progressContext.update(progress);
 }
+
+// ===============================
+// Progress Bar State Pattern
+// ===============================
+
+class ProgressState {
+  update(context, progress) {
+    throw new Error("update is missing and must be implemented");
+  }
+}
+
+class StartingState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Please Wait");
+    if (progress >= 25) context.setState(new QuarterState());
+  }
+}
+
+class QuarterState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Quarter of the way there.");
+    if (progress >= 50) context.setState(new HalfState());
+  }
+}
+
+class HalfState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Halfway there.");
+    if (progress >= 75) context.setState(new ThreeQuarterState());
+  }
+}
+
+class ThreeQuarterState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Nearly there.");
+    if (progress >= 99) context.setState(new CompletedState());
+  }
+}
+
+class CompletedState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Generation complete. Redirecting to viewer...");
+  }
+}
+
+class ProgressContext {
+  constructor() {
+    this.state = new StartingState();
+  }
+
+  setState(state) {
+    this.state = state;
+  }
+
+  update(progress) {
+    this.state.update(this, progress);
+  }
+
+  setFlavorText(text) {
+    const flavor_text = document.getElementById("flavor-text");
+    if (flavor_text) flavor_text.innerText = text;
+  }
+}
+
+const progressContext = new ProgressContext();

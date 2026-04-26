@@ -478,3 +478,75 @@ def test_conflict_modify_failure(monkeypatch):
     )
 
     assert response.status_code == 302
+
+
+def test_undo_route_success(monkeypatch):
+    """
+    Ensures undo route calls the undo service and redirects successfully.
+    """
+    app = _make_app()
+    called = {"undo": False}
+
+    def mock_undo():
+        called["undo"] = True
+
+    monkeypatch.setattr("app.web.routes.config_routes.undo", mock_undo)
+
+    client = app.test_client()
+    response = client.post("/config/undo", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert called["undo"] is True
+
+
+def test_undo_route_failure(monkeypatch):
+    """
+    Ensures undo route handles service failure gracefully.
+    """
+    app = _make_app()
+
+    def mock_undo():
+        raise RuntimeError("Undo failed")
+
+    monkeypatch.setattr("app.web.routes.config_routes.undo", mock_undo)
+
+    client = app.test_client()
+    response = client.post("/config/undo", follow_redirects=False)
+
+    assert response.status_code == 302
+
+
+def test_redo_route_success(monkeypatch):
+    """
+    Ensures redo route calls the redo service and redirects successfully.
+    """
+    app = _make_app()
+    called = {"redo": False}
+
+    def mock_redo():
+        called["redo"] = True
+
+    monkeypatch.setattr("app.web.routes.config_routes.redo", mock_redo)
+
+    client = app.test_client()
+    response = client.post("/config/redo", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert called["redo"] is True
+
+
+def test_redo_route_failure(monkeypatch):
+    """
+    Ensures redo route handles service failure gracefully.
+    """
+    app = _make_app()
+
+    def mock_redo():
+        raise RuntimeError("Redo failed")
+
+    monkeypatch.setattr("app.web.routes.config_routes.redo", mock_redo)
+
+    client = app.test_client()
+    response = client.post("/config/redo", follow_redirects=False)
+
+    assert response.status_code == 302
