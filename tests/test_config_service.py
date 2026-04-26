@@ -25,6 +25,7 @@ from app.web.services.config_service import (
     modify_pattern_service,
     modify_room_service,
     modify_time_slot_service,
+    redo,
     remove_course_service,
     remove_faculty_service,
     remove_pattern_service,
@@ -34,6 +35,7 @@ from app.web.services.config_service import (
     save_config_from_session,
     set_faculty_day_unavailable_service,
     toggle_pattern_service,
+    undo,
     update_schedules,
     validate_config,
 )
@@ -930,3 +932,100 @@ def test_validate_config_rejects_pattern_day_without_time_slots():
 
     with pytest.raises(ValueError, match="no time slots are configured for MON"):
         validate_config(cfg)
+
+
+def test_undo_button_restores_previous_state(app_context):
+    with app_context.test_request_context():
+  
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        add_faculty_service(name="Horatio Nelson", appointment_type="Full-Time")
+
+        undo()
+
+        assert len(session[SESSION_CONFIG_KEY]["config"]["faculty"]) == 0
+
+
+def test_redo_button_restores_undone_state(app_context):
+    with app_context.test_request_context():
+
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        add_faculty_service(name="John Darktide", appointment_type="Adjunct")
+
+        undo()
+        redo()
+
+        assert len(session[SESSION_CONFIG_KEY]["config"]["faculty"]) == 1
+        assert session[SESSION_CONFIG_KEY]["config"]["faculty"][0]["name"] == "John Darktide"
+
+
+def test_undo_multiple(app_context):
+
+    with app_context.test_request_context():
+
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": [], "rooms": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        add_faculty_service(name="Belisarius", appointment_type="Full-Time")
+
+        add_room_service("Amber Room")
+
+        add_faculty_service(name="Villanova", appointment_type="Adjunct")
+
+        # Undo last addition (Villanova)
+        undo()
+        assert len(session[SESSION_CONFIG_KEY]["config"]["faculty"]) == 1
+
+        # Undo room
+        undo()
+        assert len(session[SESSION_CONFIG_KEY]["config"]["rooms"]) == 0
+
+        # Undo first faculty (Belisarius)
+        undo()
+        assert len(session[SESSION_CONFIG_KEY]["config"]["faculty"]) == 0
+
+
+def test_redo_clears_on_new_action(app_context):
+
+    with app_context.test_request_context():
+
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": [], "rooms": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        add_faculty_service(name="Neumann", appointment_type="Full-Time")
+
+        undo()
+
+        add_room_service("Room 740")
+
+        with pytest.raises(ValueError, match="Nothing to redo"):
+            redo()
+
+
+def test_undo_raises_when_stack_empty(app_context):
+
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        with pytest.raises(ValueError, match="Nothing to undo"):
+            undo()
+
+
+def test_redo_raises_when_stack_empty(app_context):
+
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        with pytest.raises(ValueError, match="Nothing to redo"):
+            redo()
