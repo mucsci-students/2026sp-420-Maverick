@@ -936,7 +936,6 @@ def test_validate_config_rejects_pattern_day_without_time_slots():
 
 def test_undo_button_restores_previous_state(app_context):
     with app_context.test_request_context():
-  
         session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
         config_service.undo_stack = []
         config_service.redo_stack = []
@@ -950,7 +949,6 @@ def test_undo_button_restores_previous_state(app_context):
 
 def test_redo_button_restores_undone_state(app_context):
     with app_context.test_request_context():
-
         session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
         config_service.undo_stack = []
         config_service.redo_stack = []
@@ -961,13 +959,15 @@ def test_redo_button_restores_undone_state(app_context):
         redo()
 
         assert len(session[SESSION_CONFIG_KEY]["config"]["faculty"]) == 1
-        assert session[SESSION_CONFIG_KEY]["config"]["faculty"][0]["name"] == "John Darktide"
+        assert (
+            session[SESSION_CONFIG_KEY]["config"]["faculty"][0]["name"]
+            == "John Darktide"
+        )
 
 
 def test_undo_multiple(app_context):
 
     with app_context.test_request_context():
-
         session[SESSION_CONFIG_KEY] = {"config": {"faculty": [], "rooms": []}}
         config_service.undo_stack = []
         config_service.redo_stack = []
@@ -994,7 +994,6 @@ def test_undo_multiple(app_context):
 def test_redo_clears_on_new_action(app_context):
 
     with app_context.test_request_context():
-
         session[SESSION_CONFIG_KEY] = {"config": {"faculty": [], "rooms": []}}
         config_service.undo_stack = []
         config_service.redo_stack = []

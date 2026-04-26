@@ -537,6 +537,7 @@ def pattern_toggle():
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
 
+
 @bp.post("/undo")
 def undo_route():
     try:
@@ -545,6 +546,7 @@ def undo_route():
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("config.editor"))
+
 
 @bp.post("/redo")
 def redo_route():

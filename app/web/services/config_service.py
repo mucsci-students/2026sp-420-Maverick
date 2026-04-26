@@ -300,17 +300,18 @@ def _get_working_config():
 def _get_cgf():
     return _get_working_config()
 
+
 def _save_to_undo_stack():
     """
     Save the current state of the configuration file to the undo stack.
     """
     global undo_stack, redo_stack
-    
+
     current_cfg = _get_working_config()
     if current_cfg is not None:
         # Save a deep copy to avoid mutations
         undo_stack.append(copy.deepcopy(current_cfg))
-        
+
         # Clear redo stack when a new action is performed
         redo_stack.clear()
 
@@ -1303,6 +1304,7 @@ def update_schedules(cfg):
 
     return session.get("schedules", [])
 
+
 # ================================================================
 # Undo / Redo
 # ================================================================
@@ -1313,37 +1315,39 @@ redo_stack = []
 # the maximum number of actions that can be undone
 MAX_ACTIONS = 50
 
+
 def undo():
     """
     Undoes the last change to the configuration file.
     """
     global undo_stack, redo_stack
-    
+
     if not undo_stack:
         raise ValueError("Nothing to undo")
-    
+
     # Save current state of the configuration file
     current_cfg = session.get(SESSION_CONFIG_KEY)
     if current_cfg:
         redo_stack.append(copy.deepcopy(current_cfg))
-    
+
     # Restore the previous state from undo stack
     previous_cfg = undo_stack.pop()
     _commit_change(previous_cfg)
+
 
 def redo():
     """
     Redos the last undone change to the current configuration file.
     """
     global undo_stack, redo_stack
-    
+
     if not redo_stack:
         raise ValueError("Nothing to redo")
-    
+
     current_cfg = session.get(SESSION_CONFIG_KEY)
     if current_cfg:
         undo_stack.append(copy.deepcopy(current_cfg))
-    
+
     # Restore the next state from redo stack
     next_cfg = redo_stack.pop()
     _commit_change(next_cfg)
