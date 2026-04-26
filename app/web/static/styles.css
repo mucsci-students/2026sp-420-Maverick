@@ -467,3 +467,135 @@ pre {
   opacity: 0;
   transform: translateX(20px);
 }
+
+
+/* ==========================================================================
+   Config Editor Viewer / Editor Mode Polish
+   ========================================================================== */
+
+.viewer-mode-panel {
+  border-left: 4px solid #d97706;
+  background: #fffaf0;
+}
+
+.viewer-mode-panel h2 {
+  margin-top: 0;
+}
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pattern-card {
+  padding: 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.pattern-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pattern-meta {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.pattern-meetings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.index-label {
+  font-weight: 700;
+  color: #374151;
+}
+
+.meeting-pill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.85rem;
+}
+
+.pattern-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pattern-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pattern-status.disabled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.config-management-card {
+  overflow: hidden;
+}
+
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.section-heading-row h2 {
+  margin-bottom: 4px;
+}
+
+.config-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.action-button-row,
+.history-button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.history-button-row form {
+  margin: 0;
+}
+
+.soft-divider {
+  border: none;
+  border-top: 1px solid #d8dee9;
+  margin: 14px 0;
+}
+
+#formContainer form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+#formContainer input,
+#formContainer select {
+  min-height: 34px;
+}
