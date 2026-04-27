@@ -1028,3 +1028,92 @@ def test_redo_raises_when_stack_empty(app_context):
 
         with pytest.raises(ValueError, match="Nothing to redo"):
             redo()
+
+
+def test_get_working_config_initializes(app_context):
+    from app.web.services.config_service import _get_working_config
+
+    with app_context.test_request_context():
+        session.clear()
+
+        cfg = _get_working_config()
+
+        assert "config" in cfg
+        assert get_unsaved() is False
+
+
+def test_undo_deep_copy_integrity(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {"config": {"faculty": []}}
+        config_service.undo_stack = []
+        config_service.redo_stack = []
+
+        add_faculty_service(name="A", appointment_type="Full-Time")
+
+        undo()
+
+        # mutate current state
+        session[SESSION_CONFIG_KEY]["config"]["faculty"].append({"name": "Injected"})
+
+        redo()
+
+        # ensure redo didn't include mutation
+        faculty = session[SESSION_CONFIG_KEY]["config"]["faculty"]
+        assert all(f["name"] != "Injected" for f in faculty)
+
+
+def test_add_time_slot_invalid_day(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {"config": {}}
+
+        with pytest.raises(ValueError, match="Invalid day"):
+            add_time_slot_service("SUN", "08:00", 60, "17:00")
+
+
+def test_remove_time_slot_invalid_index(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {
+            "config": {},
+            "time_slot_config": {"times": {"MON": []}, "classes": []},
+        }
+
+        with pytest.raises(ValueError, match="Invalid slot index"):
+            remove_time_slot_service("MON", 0)
+
+
+def test_detect_conflicts_mixed_formats():
+    cfg = {
+        "config": {
+            "faculty": ["Smith", {"name": "Smith"}],
+            "rooms": ["101", {"name": "101"}],
+            "labs": [],
+        }
+    }
+
+    conflicts = detect_conflicts(cfg)
+
+    assert any("Duplicate faculty name: Smith" in c for c in conflicts)
+    assert any("Duplicate room name: 101" in c for c in conflicts)
+
+
+def test_clear_config_resets_flags(app_context):
+    with app_context.test_request_context():
+        session[SESSION_CONFIG_KEY] = {"config": {}}
+        session["unsaved_changes"] = True
+        session["schedules_updated"] = True
+
+        clear_config()
+
+        assert session.get("unsaved_changes") is False
+        assert session.get("schedules_updated") is False
+
+
+def test_empty_config_structure():
+    from app.web.services.config_service import _empty_config
+
+    cfg = _empty_config()
+
+    assert "config" in cfg
+    assert "time_slot_config" in cfg
+    assert "times" in cfg["time_slot_config"]
+    assert "classes" in cfg["time_slot_config"]
