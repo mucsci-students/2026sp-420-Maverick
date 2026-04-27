@@ -655,3 +655,240 @@ def test_modify_course_strips_lab_before_validation():
 
     course = cfg["config"]["courses"][0]
     assert course["lab"] == ["Mac"]
+
+
+def _modify_course_branch_config():
+    """
+    Builds a focused config for modify_course branch coverage.
+    """
+    return {
+        "config": {
+            "rooms": ["Roddy 136", "Roddy 140"],
+            "labs": ["Linux", "Mac"],
+            "faculty": [
+                {
+                    "name": "Smith",
+                    "preferences": [{"course_id": "CMSC 140"}],
+                },
+                {
+                    "name": "Jones",
+                    "preferences": [],
+                },
+            ],
+            "courses": [
+                {
+                    "course_id": "CMSC 140",
+                    "credits": 3,
+                    "room": ["Roddy 136"],
+                    "lab": ["Linux"],
+                    "conflicts": ["CMSC 161"],
+                    "faculty": ["Smith"],
+                },
+                {
+                    "course_id": "CMSC 161",
+                    "credits": 4,
+                    "room": ["Roddy 140"],
+                    "lab": ["Mac"],
+                    "conflicts": ["CMSC 140"],
+                    "faculty": [],
+                },
+                {
+                    "course_id": "CMSC 330",
+                    "credits": 3,
+                    "room": ["Roddy 140"],
+                    "lab": [],
+                    "conflicts": [],
+                    "faculty": [],
+                },
+            ],
+        }
+    }
+
+
+def test_modify_course_renames_course_and_updates_conflicts_and_preferences():
+    """
+    Covers rename behavior and related updates to:
+    - course_id
+    - conflicts in other courses
+    - faculty preference course references
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(
+        cfg,
+        "CMSC 140",
+        new_course_id="CMSC 141",
+    )
+
+    renamed = cfg["config"]["courses"][0]
+    other = cfg["config"]["courses"][1]
+    faculty = cfg["config"]["faculty"][0]
+
+    assert renamed["course_id"] == "CMSC 141"
+    assert "CMSC 141" in other["conflicts"]
+    assert "CMSC 140" not in other["conflicts"]
+    assert faculty["preferences"][0]["course_id"] == "CMSC 141"
+
+
+def test_modify_course_rejects_empty_new_course_id():
+    """
+    Covers validation branch where new_course_id is empty after stripping.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="new_course_id cannot be empty"):
+        course_management.modify_course(cfg, "CMSC 140", new_course_id="   ")
+
+
+def test_modify_course_rejects_duplicate_new_course_id():
+    """
+    Covers validation branch where rename target already exists.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="already exists"):
+        course_management.modify_course(cfg, "CMSC 140", new_course_id="CMSC 161")
+
+
+def test_modify_course_rejects_non_positive_credits():
+    """
+    Covers validation branch for invalid credits.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="credits must be a positive integer"):
+        course_management.modify_course(cfg, "CMSC 140", credits=0)
+
+
+def test_modify_course_updates_credits():
+    """
+    Covers successful credits update branch.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(cfg, "CMSC 140", credits=4)
+
+    assert cfg["config"]["courses"][0]["credits"] == 4
+
+
+def test_modify_course_rejects_empty_room():
+    """
+    Covers validation branch where room is provided but empty after stripping.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="room cannot be empty"):
+        course_management.modify_course(cfg, "CMSC 140", room="   ")
+
+
+def test_modify_course_rejects_unknown_room():
+    """
+    Covers validation branch where room is not in config.rooms.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="does not exist in config.rooms"):
+        course_management.modify_course(cfg, "CMSC 140", room="Roddy 999")
+
+
+def test_modify_course_updates_room():
+    """
+    Covers successful room update branch.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(cfg, "CMSC 140", room="Roddy 140")
+
+    assert cfg["config"]["courses"][0]["room"] == ["Roddy 140"]
+
+
+def test_modify_course_rejects_unknown_lab():
+    """
+    Covers validation branch where lab is not in config.labs.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="does not exist in config.labs"):
+        course_management.modify_course(cfg, "CMSC 140", lab="Windows")
+
+
+def test_modify_course_updates_lab():
+    """
+    Covers successful lab update branch.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(cfg, "CMSC 140", lab="Mac")
+
+    assert cfg["config"]["courses"][0]["lab"] == ["Mac"]
+
+
+def test_modify_course_clears_lab_with_empty_string():
+    """
+    Covers branch where lab is provided as an empty string and clears the lab list.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(cfg, "CMSC 140", lab="   ")
+
+    assert cfg["config"]["courses"][0]["lab"] == []
+
+
+def test_modify_course_updates_faculty_list_with_cleaned_names():
+    """
+    Covers successful faculty replacement with whitespace cleanup.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(
+        cfg,
+        "CMSC 140",
+        faculty=[" Smith ", "Jones", ""],
+    )
+
+    assert cfg["config"]["courses"][0]["faculty"] == ["Smith", "Jones"]
+
+
+def test_modify_course_rejects_unknown_faculty():
+    """
+    Covers validation branch where faculty replacement references missing faculty.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="Faculty not found in config.faculty"):
+        course_management.modify_course(cfg, "CMSC 140", faculty=["Missing"])
+
+
+def test_modify_course_updates_conflicts_list_with_cleaned_values():
+    """
+    Covers successful conflicts replacement with whitespace cleanup.
+    """
+    cfg = _modify_course_branch_config()
+
+    course_management.modify_course(
+        cfg,
+        "CMSC 140",
+        conflicts=[" CMSC 161 ", "CMSC 330", ""],
+    )
+
+    assert cfg["config"]["courses"][0]["conflicts"] == ["CMSC 161", "CMSC 330"]
+
+
+def test_modify_course_rejects_unknown_conflict_course():
+    """
+    Covers validation branch where replacement conflicts include missing courses.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="Conflict course\\(s\\) do not exist"):
+        course_management.modify_course(cfg, "CMSC 140", conflicts=["CMSC 999"])
+
+
+def test_modify_course_rejects_missing_course():
+    """
+    Covers branch where the target course does not exist.
+    """
+    cfg = _modify_course_branch_config()
+
+    with pytest.raises(ValueError, match="does not exist"):
+        course_management.modify_course(cfg, "CMSC 999", credits=3)
