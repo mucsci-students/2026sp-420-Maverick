@@ -24,9 +24,11 @@ from app.web.services.schedule_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
+    _check_for_conflicts,
     _group_by,
     export_schedules_to_csv,
     get_view_data,
+    is_export_enabled,
     is_valid_file,
     next_schedule,
     prev_schedule,
@@ -216,3 +218,76 @@ def test_validation_error(app):
     with pytest.raises(ValueError) as excinfo:
         is_valid_file(bad_data)
     assert "Invalid file" in str(excinfo.value)
+
+
+def test_group_by_handles_none_and_missing_keys():
+    assignments = [
+        {"room": None},
+        {},
+        {"room": " A "},
+    ]
+
+    grouped = _group_by(assignments, "room")
+
+    assert "A" in grouped
+    assert len(grouped["A"]) == 1
+
+
+def test_group_by_skips_blank_strings():
+    assignments = [
+        {"faculty": ""},
+        {"faculty": "   "},
+        {"faculty": "Smith"},
+    ]
+
+    grouped = _group_by(assignments, "faculty")
+
+    assert "Smith" in grouped
+    assert len(grouped) == 1
+
+
+def test_no_conflict_different_days():
+    assignments = [
+        {"day": "MON", "start": "10:00", "duration": "60"},
+        {"day": "TUE", "start": "10:00", "duration": "60"},
+    ]
+
+    assert _check_for_conflicts(assignments) is False
+
+
+def test_conflict_partial_overlap():
+    assignments = [
+        {"day": "MON", "start": "10:00", "duration": "60"},
+        {"day": "MON", "start": "10:30", "duration": "60"},
+    ]
+
+    assert _check_for_conflicts(assignments) is True
+
+
+def test_conflict_invalid_time_data_graceful():
+    assignments = [
+        {"day": "MON", "start": "bad", "duration": "60"},
+        {"day": "MON", "start": "10:00", "duration": "60"},
+    ]
+
+    # Should not crash
+    result = _check_for_conflicts(assignments)
+    assert result in [True, False]
+
+
+def test_select_schedule_sets_user_selected(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{}, {}]
+
+        select_schedule(0)
+
+        assert session[SESSION_USER_SELECTED_KEY] is True
+
+
+def test_export_enabled_flag(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = []
+        assert is_export_enabled() is False
+
+        session[SESSION_SCHEDULES_KEY] = [{}]
+        assert is_export_enabled() is True
