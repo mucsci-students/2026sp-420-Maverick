@@ -40,4 +40,5 @@ build/
 configs/working_config.json
 
 # Ignores the local settings with the real AI local values (keys)
-app/local_settings.py
+#app/local_settings.py
+app/local_settings2.py

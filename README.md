@@ -398,48 +398,53 @@ app/web/services/
 ```
 Services connect Flask routes to the scheduling logic.
 
----
-
 ## Design Pattern: Command
 
-1. Command (Behavioral Pattern)
-
-Our application implements the **Command design pattern** within the AI configuration feature located in `app/web/services/ai_service.py` and `app/web/services/ai_tools.py`.
+The application implements the **Command design pattern** in the AI configuration tool execution layer located in `app/web/services/ai_tools.py`.
 
 ### Problem
 
-The AI chat tool allows users to modify the scheduler configuration using natural language (e.g., “Add course CS102” or “Remove Room A”). This creates the challenge of safely handling many different types of requests without hardcoding logic for each case or allowing unrestricted direct access to the configuration.
+The AI chat tool can request many different configuration changes, such as adding faculty, removing rooms, modifying courses, or changing conflicts. Previously, these requests were routed through function dispatch logic. While this worked functionally, it did not fully implement the Command pattern because requests were not represented as command objects.
 
 ### Pattern
 
-The **Command pattern** encapsulates a request as an object, allowing it to be parameterized and executed independently. This aligns with the definition from the course slides: encapsulating a command request as an object.
+The Command pattern encapsulates a request as an object with a common execution interface. This allows the client to execute a request without knowing the specific receiver or operation being performed.
 
 ### Implementation
 
-In our system, each user request is interpreted by the AI and mapped to a specific backend tool function:
+The implementation uses:
 
-- `add_course`
-- `remove_room`
-- `rename_course`
-- `modify_course_credits`
-
-Each of these operations represents a **command**, consisting of:
-
-- a command name (tool name)
-- arguments (parameters for the action)
-- execution logic (handled by backend functions)
-
-The `execute_tool(tool_name, args)` function acts as a dispatcher, routing each request to the correct command implementation.
+- `ToolCommand` as the shared command interface
+- `ConfigToolCommand` as the concrete command for valid AI tool requests
+- `UnsupportedToolCommand` as a safe command for unsupported requests
+- `ToolCommandFactory` to create command objects based on tool names
+- `execute_tool()` to validate input, create the command, and call `command.execute()`
 
 ### How It Solves the Problem
 
-By encapsulating user actions as commands:
+This turns AI tool requests into first-class command objects. The AI service no longer needs to know how each operation is performed; it only asks the command object to execute. This improves maintainability, supports future undo/redo or logging, and matches the course definition of Command as encapsulating a request as an object.
 
-- The system can safely control which operations are allowed
-- New commands can be added without modifying existing logic
-- The AI does not directly manipulate the configuration, improving security and maintainability
+---
 
-This approach makes the system more modular, and extensible.
+## Design Pattern: Adapter
+
+The application implements the **Adapter design pattern** in `scheduler_core/main.py`.
+
+### Problem
+
+The project uses an external scheduler package that returns schedule models through its own API. The Maverick Scheduler web app needs a different representation: flat meeting-level dictionaries that can be grouped, displayed, exported, and tested by the rest of the application.
+
+### Pattern
+
+The Adapter pattern converts the interface of an existing class or system into the interface expected by the application.
+
+### Implementation
+
+`SchedulerAdapter` wraps the external scheduler integration. It creates the external `CombinedConfig` and `Scheduler`, calls `scheduler.get_models()`, and converts each model into the flat row format expected by `run_service.py` and the schedule viewer.
+
+### How It Solves the Problem
+
+The rest of the application no longer depends directly on the external scheduler API. It depends on the adapter’s app-specific `iter_flat_schedules()` interface. This isolates external library details and makes future scheduler integration changes easier.
 
 ---
 
