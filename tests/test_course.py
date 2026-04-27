@@ -45,6 +45,7 @@ from typing import List
 import pytest
 
 from app.course_management import course_management
+from app.course_management.course_management import modify_course
 
 # ---------------------------
 # Delete Conflict
@@ -580,3 +581,77 @@ def test_remove_course_helper_removes_from_faculty_preferences(example):
     prefs = faculty.get("course_preferences")
 
     assert course_to_remove not in prefs
+
+
+# =========================================================
+# Additional coverage for course lab update branches
+# =========================================================
+
+
+def _course_lab_update_config():
+    """
+    Builds a minimal config with labs and one course for modify_course lab tests.
+    """
+    return {
+        "config": {
+            "rooms": ["Roddy 136"],
+            "labs": ["Linux", "Mac"],
+            "faculty": [],
+            "courses": [
+                {
+                    "course_id": "CMSC 140",
+                    "credits": 3,
+                    "room": ["Roddy 136"],
+                    "lab": ["Linux"],
+                    "conflicts": [],
+                    "faculty": [],
+                }
+            ],
+        }
+    }
+
+
+def test_modify_course_updates_lab_when_lab_exists():
+    """
+    Covers successful lab update path where the requested lab exists in config.labs.
+    """
+    cfg = _course_lab_update_config()
+
+    modify_course(cfg, "CMSC 140", lab="Mac")
+
+    course = cfg["config"]["courses"][0]
+    assert course["lab"] == ["Mac"]
+
+
+def test_modify_course_rejects_missing_lab_name():
+    """
+    Covers validation branch where a non-empty lab is not present in config.labs.
+    """
+    cfg = _course_lab_update_config()
+
+    with pytest.raises(ValueError, match="Lab 'Windows' does not exist in config.labs"):
+        modify_course(cfg, "CMSC 140", lab="Windows")
+
+
+def test_modify_course_clears_lab_when_empty_string_is_passed():
+    """
+    Covers branch where lab is provided as an empty string and clears course['lab'].
+    """
+    cfg = _course_lab_update_config()
+
+    modify_course(cfg, "CMSC 140", lab="")
+
+    course = cfg["config"]["courses"][0]
+    assert course["lab"] == []
+
+
+def test_modify_course_strips_lab_before_validation():
+    """
+    Covers branch where lab is normalized with strip() before validation/update.
+    """
+    cfg = _course_lab_update_config()
+
+    modify_course(cfg, "CMSC 140", lab="  Mac  ")
+
+    course = cfg["config"]["courses"][0]
+    assert course["lab"] == ["Mac"]
