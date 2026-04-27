@@ -550,3 +550,90 @@ def test_redo_route_failure(monkeypatch):
     response = client.post("/config/redo", follow_redirects=False)
 
     assert response.status_code == 302
+
+
+def test_set_mode_route_switch_to_viewer(monkeypatch):
+    app = _make_app()
+
+    monkeypatch.setattr(
+        "app.web.routes.config_routes.set_mode",
+        lambda mode: "viewer",
+    )
+
+    client = app.test_client()
+    response = client.post("/config/mode", data={"mode": "viewer"})
+
+    assert response.status_code == 302
+
+
+def test_set_mode_route_switch_to_editor(monkeypatch):
+    app = _make_app()
+
+    monkeypatch.setattr(
+        "app.web.routes.config_routes.set_mode",
+        lambda mode: "editor",
+    )
+
+    client = app.test_client()
+    response = client.post("/config/mode", data={"mode": "editor"})
+
+    assert response.status_code == 302
+
+
+def test_load_file_route_missing_file_key():
+    app = _make_app()
+    client = app.test_client()
+
+    response = client.post(
+        "/config/load_file",
+        data={},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 302
+
+
+def test_pattern_toggle_success(monkeypatch):
+    app = _make_app()
+    called = {"data": None}
+
+    def fake_toggle(**kwargs):
+        called["data"] = kwargs
+
+    monkeypatch.setattr(
+        "app.web.routes.config_routes.toggle_pattern_service",
+        fake_toggle,
+    )
+
+    client = app.test_client()
+    response = client.post("/config/pattern/toggle", data={"pattern": "MWF"})
+
+    assert response.status_code == 302
+    assert called["data"]["pattern"] == "MWF"
+
+
+def test_undo_redo_sequence(monkeypatch):
+    app = _make_app()
+
+    undo_called = {"val": False}
+    redo_called = {"val": False}
+
+    monkeypatch.setattr(
+        "app.web.routes.config_routes.undo",
+        lambda: undo_called.__setitem__("val", True),
+    )
+
+    monkeypatch.setattr(
+        "app.web.routes.config_routes.redo",
+        lambda: redo_called.__setitem__("val", True),
+    )
+
+    client = app.test_client()
+
+    r1 = client.post("/config/undo")
+    r2 = client.post("/config/redo")
+
+    assert r1.status_code == 302
+    assert r2.status_code == 302
+    assert undo_called["val"] is True
+    assert redo_called["val"] is True
