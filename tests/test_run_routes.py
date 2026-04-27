@@ -18,7 +18,10 @@ Notes:
 
 from app.web.app import create_app
 from app.web.services.config_service import SESSION_CONFIG_KEY
-from app.web.services.progress_store import generation_progress, is_running
+from app.web.services.progress_store import (
+    generation_progress,
+    is_running,
+)
 from app.web.services.run_service import (
     SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
     SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
@@ -374,3 +377,62 @@ def test_get_progress_defaults_to_zero_for_new_session():
         "running": False,
         "error": None,
     }
+
+
+def test_generate_fails_without_config():
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/generate", data={"limit": "5"})
+
+    assert response.status_code == 400
+    assert "No config loaded" in response.get_json()["error"]
+
+
+def test_complete_generation_no_schedules():
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/complete")
+
+    assert response.status_code == 409
+    assert "not completed" in response.get_json()["error"]
+
+
+def test_generator_handles_missing_optimizer_flags(monkeypatch):
+    captured = {}
+
+    def fake_render(template, **ctx):
+        captured["ctx"] = ctx
+        return "ok"
+
+    monkeypatch.setattr("app.web.routes.run_routes.render_template", fake_render)
+
+    app = create_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 5
+            # optimizer_flags missing
+        }
+
+    client.get("/run/")
+
+    assert captured["ctx"]["selected_flags"] == []
+
+
+def test_generate_persists_session_overrides(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", ImmediateThread)
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {"limit": 10}
+
+    client.post("/run/generate", data={"limit": "6", "optimizer_flags": ["A"]})
+
+    with client.session_transaction() as sess:
+        assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 6
+        assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == ["A"]
