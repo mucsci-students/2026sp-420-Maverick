@@ -2,22 +2,25 @@
 Author: Antonio Corona, Jacob Karasow
 Date: 2026-04-26
 
-Config Editor Template
-
+File: config_editor.html
 Purpose:
-    Provides the user interface for viewing, loading, and modifying
+    Provides the user interface for viewing, loading, reviewing, and modifying
     the scheduler configuration.
 
 Primary Responsibilities:
     - Load configuration from file
     - Save configuration to file
     - Clear loaded configuration from session
+    - Toggle between Viewer Mode and Editor Mode
+    - Display read-only configuration summaries in Viewer Mode
     - Perform CRUD operations for:
         * Faculty
         * Rooms
         * Labs
         * Courses
         * Conflicts
+        * Time slots
+        * Meeting patterns
 
 Template Inputs (from Controller):
     status.loaded (bool):
@@ -37,12 +40,17 @@ Template Inputs (from Controller):
         A list of detected configuration conflicts to display
         to the user when present.
 
+    config:
+        Current scheduler configuration object used to render entity summaries.
+
 Architectural Role (MVC):
     - View layer for configuration management
-    - All mutations occur via POST routes handled by Controller
-    - This template does not modify state directly
+    - All mutations occur through POST routes handled by controllers
+    - Viewer Mode disables or blocks editing from the UI and request layer
+    - This template does not directly mutate application state
 
-Extends base.html.
+Extends:
+    base.html
 -->
 
 {% extends "base.html" %}
@@ -51,6 +59,7 @@ Extends base.html.
 {% block content %}
 <h1>Config Editor</h1>
 
+<!-- Exposes mode state to client-side JavaScript without requiring inline Jinja checks everywhere. -->
 <div
   id="config-editor-state"
   data-viewer-mode="{{ 'true' if is_viewer_mode else 'false' }}"
@@ -62,6 +71,7 @@ Extends base.html.
     {{ "Viewer Mode" if is_viewer_mode else "Editor Mode" }}
   </span>
 
+  <!-- Mode toggle posts through the controller so the session-backed mode stays authoritative. -->
   <form method="post" action="{{ url_for('config.set_mode_route') }}" class="mode-toggle-form">
     {% if is_viewer_mode %}
       <input type="hidden" name="mode" value="editor">
@@ -78,18 +88,8 @@ Extends base.html.
   =========================================================
   Viewer Mode Panel
   =========================================================
-  This section is conditionally rendered when the config editor is in viewer mode.
-  It informs the user that editing actions are disabled and provides a summary
-  of the loaded configuration for review.
-
-  When viewer mode is active:
-    - Displays a prominent message indicating viewer mode status
-    - Summarizes the loaded configuration contents (entities, time slots, patterns)
-    - Shows detected conflicts when present
-
-  When viewer mode is inactive:
-    - This section is not rendered and editing controls are fully enabled
-    - Users can perform add/remove/modify actions and undo/redo changes 
+  This section is conditionally rendered when the config editor is in Viewer Mode.
+  It gives the user a clear read-only status message before the summary sections.
 -->
 {% if is_viewer_mode %}
 <section class="card viewer-mode-panel">
@@ -113,34 +113,10 @@ Extends base.html.
   <!-- ========================================================= -->
   <!-- Load / Save / Clear Section                               -->
   <!-- ========================================================= -->
-  <!--
-    This section contains the top-level file operations for the
-    configuration editor.
-
-    User actions available here:
-      - Load a config JSON from the local machine
-      - Export the current working config to the local machine
-      - Clear the currently loaded config from session
-  -->
   <section class="card">
     <h2>Load / Save</h2>
   
-    <!--
-      Load Config Form
-
-      Route:
-        POST /config/load_file
-
-      Purpose:
-        Lets the user choose a JSON configuration file from their
-        computer and upload it into the current session.
-
-      Behavior:
-        - Browser file picker restricts selection to .json files
-        - Multipart form encoding is required for file uploads
-        - On success, the controller updates session state and the
-          status panel below will reflect the loaded config
-    -->
+    <!-- Uploads a local JSON configuration file into the current session. -->
     <form method="post"
           action="/config/load_file"
           enctype="multipart/form-data"
@@ -150,40 +126,14 @@ Extends base.html.
       <button type="submit">Load</button>
     </form>
 
-    <!-- Helper text explaining what this action does -->
     <p class="hint">
       Load imports a configuration JSON from your computer into the working session.
     </p>
 
-    <!--
-      Save / Export Configuration Form
-
-      Purpose:
-        Lets the user export the current working configuration to their local
-        machine using a browser save prompt.
-
-      Behavior:
-        - Uses a suggested filename when one is available
-        - Allows the user to change the filename before export
-        - Submission is handled by JavaScript in app.js
-        - Does not directly submit to a Flask POST route
-    -->
+    <!-- JavaScript handles the export flow so the browser can download the working config. -->
     <form id="export-config-form" class="row">
       <label>Save config</label>
 
-      <!--
-        Export filename input
-
-        Source:
-          status.default_filename if present
-
-        Fallback:
-          new_config_file.json
-
-        Purpose:
-          Gives the user control over the downloaded filename used
-          during the browser export flow.
-      -->
       <input
         id="export_filename"
         name="filename"
@@ -191,34 +141,17 @@ Extends base.html.
         placeholder="new_config_file.json"
       >
 
-      <!-- Save button triggers the export flow in app.js -->
       <button type="submit">Save</button>
     </form>
 
-    <!-- Helper text explaining what this action does -->
     <p class="hint">
       Save exports the current working configuration to your computer.
     </p>
 
-    <!--
-      Confirmation message container.
-      Hidden by default and shown by JavaScript after export success/failure.
-    -->
+    <!-- Hidden feedback container updated by app.js after export attempts. -->
     <div id="save-confirmation" class="hint" style="display:none;"></div>
 
-    <!--
-      Clear Config Form
-
-      Route:
-        POST /config/clear
-
-      Purpose:
-        Removes the currently loaded configuration from session state.
-
-      Behavior:
-        - Displays the currently loaded file/path in a disabled input
-        - Clear button is disabled when no config is currently loaded
-    -->
+    <!-- Clears the loaded configuration from the server-side session. -->
     <form method="post" action="/config/clear" class="row">
       <label>Clear loaded</label>
       <input value="{{ status.path or '' }}" disabled>
@@ -229,47 +162,21 @@ Extends base.html.
   <!-- ========================================================= -->
   <!-- Configuration Status Panel                                -->
   <!-- ========================================================= -->
-  <!--
-    This section displays the current load state of the configuration.
-
-    When a config is loaded:
-      - Shows loaded status
-      - Shows the source filename/path
-      - Shows summary counts of configuration entities
-      - Shows detected conflict messages when available
-
-    When no config is loaded:
-      - Shows unloaded state
-      - Instructs the user to load a config first
-  -->
   <section class="card">
     <h2>Status</h2>
 
     {% if status.loaded %}
 
-      <!-- Indicates that a configuration is currently active in session -->
       <p><strong>Loaded Status:</strong> Yes</p>
-
-      <!-- Displays the source path or filename of the loaded config -->
       <p><strong>File Loaded:</strong> {{ status.path }}</p>
 
-      <!--
-        Summary counts list
-
-        Example contents:
-          faculty: 3
-          rooms: 5
-          courses: 8
-
-        This gives the user a quick overview of the currently loaded
-        configuration contents.
-      -->
+      <!-- Summarizes high-level configuration counts from the controller status object. -->
       <ul>
         {% for k, v in status.counts.items() %}
           <li>{{ k }}: {{ v }}</li>
         {% endfor %}
 
-        <!-- Time Slot Count -->
+        <!-- Derived count based on configured daily time slot definitions. -->
         <li>
           Time Slots:
           {% if config and config.time_slot_config and config.time_slot_config.times %}
@@ -283,7 +190,7 @@ Extends base.html.
           {% endif %}
         </li>
 
-        <!-- Meeting Pattern Count -->
+        <!-- Derived count based on configured meeting pattern definitions. -->
         <li>
           Meeting Patterns:
           {% if config and config.time_slot_config and config.time_slot_config.classes %}
@@ -550,12 +457,8 @@ Extends base.html.
       {% endif %}
 
     {% else %}
-      <!-- Indicates that no configuration is currently loaded -->
       <p><strong>File Loaded:</strong> No</p>
-
-      <!-- Helper text guiding the user toward the next required step -->
       <p class="hint">Load a config to enable schedule generation.</p>
-
     {% endif %}
 
   </section>
@@ -568,7 +471,7 @@ Extends base.html.
       </div>
     </div>
 
-    <!-- Filter -->
+    <!-- Entity selector controls which dynamic form and summary panel are displayed. -->
     <div class="config-toolbar">
       <label for="entityType">Select Type</label>
       <select id="entityType">
@@ -582,7 +485,7 @@ Extends base.html.
       </select>
     </div>
 
-    <!-- Universal Actions -->
+    <!-- Mutually exclusive action modes used by the dynamic form renderer. -->
     <div class="action-button-row">
       <button type="button" onclick="setMode('add')">Add</button>
       <button type="button" onclick="setMode('remove')">Remove</button>
@@ -601,7 +504,7 @@ Extends base.html.
 
     <hr class="soft-divider">
 
-    <!-- Dynamic Form Container -->
+    <!-- Dynamic add/remove/modify form is generated by the script below. -->
     <div id="formContainer"></div>
 
     <hr class="soft-divider">
@@ -617,6 +520,11 @@ Extends base.html.
   </section>
 
   {% if is_editor_mode %}
+  <!--
+    Hidden source summaries used by JavaScript in Editor Mode.
+    The selected summary is copied into #editor-summary-target so the editing
+    workspace can show focused context without rendering every entity section.
+  -->
   <div id="editor-summary-source" style="display: none;">
 
     <!-- Room Summary -->
@@ -854,19 +762,7 @@ Extends base.html.
       {% endif %}
     </div>
 
-    <!-- Conflict Pattern Summary -->
-    <div class="entity-summary-panel" id="summary-source-conflict">
-      <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-        <strong>Configuration Conflicts Detected:</strong>
-        <ul>
-          {% for c in status.conflicts %}
-            <li>{{ c }}</li>
-          {% endfor %}
-        </ul>
-
-      </div>
-    </div>
-
+    <!-- Conflict Summary -->
     <div class="entity-summary-panel" id="summary-source-conflict">
       {% if status.conflicts %}
         <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
@@ -890,6 +786,8 @@ Extends base.html.
 {% if is_viewer_mode %}
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  // Disable interactive editor controls client-side for immediate visual feedback.
+  // Server-side request guards still enforce Viewer Mode as the source of truth.
   document
     .querySelectorAll(".config-editor-controls input, .config-editor-controls button, .config-editor-controls select, .config-editor-controls textarea")
     .forEach((el) => {
@@ -900,6 +798,7 @@ document.addEventListener("DOMContentLoaded", () => {
 {% endif %}
 
 <script>
+// Tracks the selected configuration entity type and mutation mode for dynamic forms.
 let currentType = "faculty";
 let currentMode = "add";
 
@@ -914,6 +813,7 @@ document.getElementById("entityType").addEventListener("change", (e) => {
 });
 
 function setMode(mode) {
+  // Viewer Mode is read-only; ignore client-side attempts to switch CRUD mode.
   if (isConfigEditorViewerMode) {
     return;
   }
@@ -923,6 +823,7 @@ function setMode(mode) {
 }
 
 function updateEntitySummaryPanel() {
+  // Viewer Mode displays all summary panels directly, so no focused copy is needed.
   if (isConfigEditorViewerMode) {
     document.querySelectorAll(".entity-summary-panel").forEach((panel) => {
       panel.style.display = "";
@@ -937,6 +838,7 @@ function updateEntitySummaryPanel() {
     return;
   }
 
+  // Copy server-rendered summary markup into the visible editor context panel.
   target.innerHTML = source.innerHTML;
 }
 
@@ -960,6 +862,8 @@ function renderForm() {
   // =========================
   // FIELD DEFINITIONS
   // =========================
+  // Fields are generated from the current entity/action selection while route
+  // handlers remain responsible for validation and state mutation.
 
   if (currentType === "faculty") {
     html += `<input name="name" placeholder="Faculty Name" required>`;
@@ -1069,6 +973,7 @@ function renderForm() {
   container.innerHTML = html;
 }
 
+// Initialize the default form and summary once the template is loaded.
 renderForm();
 updateEntitySummaryPanel();
 </script>
