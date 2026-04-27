@@ -88,14 +88,19 @@ def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str, boo
 def _safe_as_csv(course_obj: Any) -> str:
     """
     Best-effort conversion to a CSV-ish line from the scheduler course model.
-    Prefer course.as_csv() (documented by the scheduler library).
+    Prefer course.as_csv() from the scheduler library.
+
+    Important:
+        Avoid repr(course_obj) because some scheduler/Pydantic objects may have
+        unsafe __repr__ implementations that can raise runtime errors.
     """
     if hasattr(course_obj, "as_csv") and callable(getattr(course_obj, "as_csv")):
         try:
             return str(course_obj.as_csv())
         except Exception:
             pass
-    return repr(course_obj)
+
+    return ""
 
 
 def _room_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
@@ -254,79 +259,57 @@ def _parse_course_line_to_flat_rows(
     return rows
 
 
+class SchedulerAdapter:
+    """
+    Adapter Design Pattern for the external scheduler package.
+
+    The external scheduler exposes models through Scheduler.get_models().
+    The Maverick Scheduler app expects flat meeting-level row dictionaries.
+
+    This adapter converts the external scheduler interface into the app-specific
+    interface used by the web service and schedule viewer.
+    """
+
+    def __init__(self, cfg: Dict[str, Any], optimize: bool):
+        self.cfg = cfg
+        self.optimize = optimize
+        self.combined = CombinedConfig(**cfg)
+        self.scheduler = Scheduler(self.combined)
+
+    def iter_flat_schedules(self, limit: int) -> Iterator[List[Dict[str, Any]]]:
+        """
+        Yield flat schedule rows in the format expected by the application.
+        """
+        if limit <= 0:
+            raise ValueError("Schedule generation limit must be greater than 0.")
+
+        schedule_count = 0
+
+        for schedule in self.scheduler.get_models():
+            schedule_count += 1
+            course_models = list(schedule)
+            schedule_rows: List[Dict[str, Any]] = []
+
+            for course in course_models:
+                schedule_rows.extend(
+                    _parse_course_line_to_flat_rows(schedule_count, course, self.cfg)
+                )
+
+            yield schedule_rows
+
+            if schedule_count >= limit:
+                break
+
+
 def generate_schedules(
     cfg: Dict[str, Any], limit: int, optimize: bool
 ) -> Iterator[List[Dict[str, Any]]]:
     """
     Runs the scheduler and yields flat meeting-level schedule rows.
 
-    Defensive behavior:
-    - Validates limit before invoking the solver.
-    - Stops exactly at the requested schedule limit.
-    - Avoids storing all solver models in memory.
-    - Keeps the optimize argument for API compatibility, even though
-      optimization is currently handled by the scheduler configuration.
+    Adapter Pattern Role:
+        Delegates external scheduler interaction to SchedulerAdapter so callers
+        depend on app-friendly flat rows instead of the external scheduler API.
     """
-
-    print("CORE 1: entered scheduler_core.generate_schedules", flush=True)
-
-    if limit <= 0:
-        raise ValueError("Schedule generation limit must be greater than 0.")
-
-    print(f"CORE 2: limit validated -> {limit}", flush=True)
-    print(f"CORE 3: optimize flag received -> {optimize}", flush=True)
-
-    print("CORE 4: building CombinedConfig", flush=True)
-    combined = CombinedConfig(**cfg)
-
-    print("CORE 5: CombinedConfig built successfully", flush=True)
-
-    print("CORE 6: creating Scheduler", flush=True)
-    scheduler = Scheduler(combined)
-
-    print("CORE 7: Scheduler created successfully", flush=True)
-
-    schedule_count = 0
-
-    print("CORE 8: about to call scheduler.get_models()", flush=True)
-
-    for schedule in scheduler.get_models():
-        print("CORE 9: scheduler yielded raw model", flush=True)
-
-        schedule_count += 1
-
-        print(f"CORE 10: processing schedule #{schedule_count}", flush=True)
-
-        course_models = list(schedule)
-
-        print(
-            f"CORE 11: converted raw schedule to course list "
-            f"with {len(course_models)} course item(s)",
-            flush=True,
-        )
-
-        schedule_rows: List[Dict[str, Any]] = []
-
-        for course in course_models:
-            print(
-                f"CORE 12: parsing course model type -> {type(course).__name__}",
-                flush=True,
-            )
-
-            schedule_rows.extend(
-                _parse_course_line_to_flat_rows(schedule_count, course, cfg)
-            )
-
-        print(
-            f"CORE 13: yielding schedule #{schedule_count} "
-            f"with {len(schedule_rows)} row(s)",
-            flush=True,
-        )
-
-        yield schedule_rows
-
-        if schedule_count >= limit:
-            print(f"CORE 14: reached requested limit -> {limit}", flush=True)
-            break
-
-    print("CORE 15: scheduler_core.generate_schedules finished", flush=True)
+    adapter = SchedulerAdapter(cfg=cfg, optimize=optimize)
+    yield from adapter.iter_flat_schedules(limit)
