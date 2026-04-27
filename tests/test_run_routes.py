@@ -19,7 +19,6 @@ Notes:
 from app.web.app import create_app
 from app.web.services.config_service import SESSION_CONFIG_KEY
 from app.web.services.progress_store import (
-    generation_errors,
     generation_progress,
     is_running,
 )
