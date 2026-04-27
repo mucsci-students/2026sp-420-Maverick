@@ -436,4 +436,3 @@ def test_generate_persists_session_overrides(monkeypatch):
     with client.session_transaction() as sess:
         assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 6
         assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == ["A"]
-
