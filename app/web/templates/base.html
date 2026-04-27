@@ -35,9 +35,9 @@ Includes:
   <main class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="messages">
+        <div class="toast-container">
           {% for category, msg in messages %}
-            <div class="msg {{ category }}">{{ msg }}</div>
+            <div class="toast {{ category }}">{{ msg }}</div>
           {% endfor %}
         </div>
       {% endif %}
@@ -47,5 +47,21 @@ Includes:
   </main>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const toasts = document.querySelectorAll(".toast");
+
+    toasts.forEach((toast) => {
+      const dismissToast = () => {
+        toast.classList.add("fade-out");
+        setTimeout(() => toast.remove(), 500);
+      };
+
+      setTimeout(dismissToast, 3000);
+      toast.addEventListener("click", dismissToast);
+    });
+  });
+  </script>
 </body>
 </html>

@@ -1,23 +1,26 @@
 <!--
 Author: Antonio Corona, Jacob Karasow
-Date: 2026-03-08
+Date: 2026-04-26
 
-Config Editor Template
-
+File: config_editor.html
 Purpose:
-    Provides the user interface for viewing, loading, and modifying
+    Provides the user interface for viewing, loading, reviewing, and modifying
     the scheduler configuration.
 
 Primary Responsibilities:
     - Load configuration from file
     - Save configuration to file
     - Clear loaded configuration from session
+    - Toggle between Viewer Mode and Editor Mode
+    - Display read-only configuration summaries in Viewer Mode
     - Perform CRUD operations for:
         * Faculty
         * Rooms
         * Labs
         * Courses
         * Conflicts
+        * Time slots
+        * Meeting patterns
 
 Template Inputs (from Controller):
     status.loaded (bool):
@@ -37,12 +40,17 @@ Template Inputs (from Controller):
         A list of detected configuration conflicts to display
         to the user when present.
 
+    config:
+        Current scheduler configuration object used to render entity summaries.
+
 Architectural Role (MVC):
     - View layer for configuration management
-    - All mutations occur via POST routes handled by Controller
-    - This template does not modify state directly
+    - All mutations occur through POST routes handled by controllers
+    - Viewer Mode disables or blocks editing from the UI and request layer
+    - This template does not directly mutate application state
 
-Extends base.html.
+Extends:
+    base.html
 -->
 
 {% extends "base.html" %}
@@ -51,699 +59,941 @@ Extends base.html.
 {% block content %}
 <h1>Config Editor</h1>
 
-<!-- ========================================================= -->
-<!-- Load / Save / Clear Section                               -->
-<!-- ========================================================= -->
-<!--
-  This section contains the top-level file operations for the
-  configuration editor.
-
-  User actions available here:
-    - Load a config JSON from the local machine
-    - Export the current working config to the local machine
-    - Clear the currently loaded config from session
--->
-<section class="card">
-  <h2>Load / Save</h2>
- 
-  <!--
-    Load Config Form
-
-    Route:
-      POST /config/load_file
-
-    Purpose:
-      Lets the user choose a JSON configuration file from their
-      computer and upload it into the current session.
-
-    Behavior:
-      - Browser file picker restricts selection to .json files
-      - Multipart form encoding is required for file uploads
-      - On success, the controller updates session state and the
-        status panel below will reflect the loaded config
-  -->
-  <form method="post"
-        action="/config/load_file"
-        enctype="multipart/form-data"
-        class="row">
-    <label>Load config</label>
-    <input type="file" name="config_file" accept=".json" required>
-    <button type="submit">Load</button>
-  </form>
-
-  <!-- Helper text explaining what this action does -->
-  <p class="hint">
-    Load imports a configuration JSON from your computer into the working session.
-  </p>
-
-  <!--
-    Save / Export Configuration Form
-
-    Purpose:
-      Lets the user export the current working configuration to their local
-      machine using a browser save prompt.
-
-    Behavior:
-      - Uses a suggested filename when one is available
-      - Allows the user to change the filename before export
-      - Submission is handled by JavaScript in app.js
-      - Does not directly submit to a Flask POST route
-  -->
-  <form id="export-config-form" class="row">
-    <label>Save config</label>
-
-    <!--
-      Export filename input
-
-      Source:
-        status.default_filename if present
-
-      Fallback:
-        new_config_file.json
-
-      Purpose:
-        Gives the user control over the downloaded filename used
-        during the browser export flow.
-    -->
-    <input
-      id="export_filename"
-      name="filename"
-      value="{{ status.default_filename or 'new_config_file.json' }}"
-      placeholder="new_config_file.json"
-    >
-
-    <!-- Save button triggers the export flow in app.js -->
-    <button type="submit">Save</button>
-  </form>
-
-  <!-- Helper text explaining what this action does -->
-  <p class="hint">
-    Save exports the current working configuration to your computer.
-  </p>
-
-  <!--
-    Confirmation message container.
-    Hidden by default and shown by JavaScript after export success/failure.
-  -->
-  <div id="save-confirmation" class="hint" style="display:none;"></div>
-
-  <!--
-    Clear Config Form
-
-    Route:
-      POST /config/clear
-
-    Purpose:
-      Removes the currently loaded configuration from session state.
-
-    Behavior:
-      - Displays the currently loaded file/path in a disabled input
-      - Clear button is disabled when no config is currently loaded
-  -->
-  <form method="post" action="/config/clear" class="row">
-    <label>Clear loaded</label>
-    <input value="{{ status.path or '' }}" disabled>
-    <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Configuration Status Panel                                -->
-<!-- ========================================================= -->
-<!--
-  This section displays the current load state of the configuration.
-
-  When a config is loaded:
-    - Shows loaded status
-    - Shows the source filename/path
-    - Shows summary counts of configuration entities
-    - Shows detected conflict messages when available
-
-  When no config is loaded:
-    - Shows unloaded state
-    - Instructs the user to load a config first
--->
-<section class="card">
-  <h2>Status</h2>
-
-  {% if status.loaded %}
-
-    <!-- Indicates that a configuration is currently active in session -->
-    <p><strong>Loaded Status:</strong> Yes</p>
-
-    <!-- Displays the source path or filename of the loaded config -->
-    <p><strong>File Loaded:</strong> {{ status.path }}</p>
-
-    <!--
-      Summary counts list
-
-      Example contents:
-        faculty: 3
-        rooms: 5
-        courses: 8
-
-      This gives the user a quick overview of the currently loaded
-      configuration contents.
-    -->
-    <ul>
-      {% for k, v in status.counts.items() %}
-        <li>{{ k }}: {{ v }}</li>
-      {% endfor %}
-    </ul>
-
-    {% if status.conflicts %}
-<div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
-  <strong>Configuration Conflicts Detected:</strong>
-  <ul>
-    {% for c in status.conflicts %}
-      <li>{{ c }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-  {% else %}
-
-    <!-- Indicates that no configuration is currently loaded -->
-    <p><strong>File Loaded:</strong> No</p>
-
-    <!-- Helper text guiding the user toward the next required step -->
-    <p class="hint">Load a config to enable schedule generation.</p>
-
-  {% endif %}
-
-</section>
-
-<!-- ========================================================= -->
-<!-- Faculty Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides faculty CRUD operations.
-
-  Supported actions:
-    - Add faculty
-    - Remove faculty
-    - Modify faculty
-
-  Current exposed inputs:
-    - Faculty name
-    - Appointment type
-
-  Notes:
-    - Appointment type likely maps to backend rules for credit limits
-      and unique course limits.
-    - More advanced faculty attributes (times/preferences) may be
-      handled later or in a different UI revision.
--->
-<section class="card">
-  <h2>Faculty Management</h2>
-
-  <!-- Input Fields -->
-  <style>
-    input, select {
-      width: 25%;
-      padding: 8px 10px;
-      margin: 4px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    select {
-      appearance: none;
-      background-color: white;
-    }
-  </style>
-
-  <!-- Add Faculty -->
-  <!-- POST /config/faculty/add -->
-  <h3>Add Faculty</h3>
-  <form method="post" action="/config/faculty/add">
-    <input name = "name" placeholder = "Faculty Name (e.g., Dr. Johnson)" required>
-    
-    <!-- Appointment Type Drop-Down Selection -->
-    <select name = "appointment_type" required>
-      <option value="" disabled selected>Appointment Type</option>
-      <option value="Full-Time">Full-Time</option>
-      <option value="Adjunct">Adjunct</option>
-    </select>
-
-    <button type="submit">Add Faculty</button>
-  </form>
-
-  <!-- Remove Faculty -->
-  <!-- POST /config/faculty/remove -->
-  <h3>Remove Faculty</h3>
-  <form method="post" action="/config/faculty/remove">
-    <input name="name" placeholder="Faculty Name (e.g., Dr. Johnson)" required>
-    <button type="submit">Remove Faculty</button>
-  </form>
-
-  <!-- Modify Faculty -->
-  <!-- POST /config/faculty/modify -->
-  <h3>Modify Faculty</h3>
-  <form method="post" action="/config/faculty/modify">
-    <input name="name" placeholder="Current Name (e.g., Dr. Johnson)" required>
-    
-    <!-- Appointment Type Drop-Down Selection -->
-    <select name="appointment_type" placeholder="New Appointment Type (e.g., Full-Time, Adjunct)">
-      <option value="" disabled selected>Appointment Type</option>
-      <option value="Full-Time">Full-Time</option>
-      <option value="Adjunct">Adjunct</option>
-    </select>
-    
-    <button type="submit">Modify Faculty</button>
-  </form>
-
-  <h3>Set Faculty Availability</h3>
-<form method="post" action="/config/faculty/set_time" class="row">
-
-  <input name="name" placeholder="Faculty Name (e.g., Dr. Smith)" required>
-
-  <select name="day" required>
-    <option value="" disabled selected>Day</option>
-    <option value="MON">MON</option>
-    <option value="TUE">TUE</option>
-    <option value="WED">WED</option>
-    <option value="THU">THU</option>
-    <option value="FRI">FRI</option>
-  </select>
-
-  <input name="start_time" placeholder="Start (08:00)" required>
-  <input name="end_time" placeholder="End (12:00)" required>
-
-  <button type="submit">Add Availability</button>
-</form>
-
-<h3>Remove Faculty Availability</h3>
-<form method="post" action="/config/faculty/remove_time" class="row">
-
-  <input name="name" placeholder="Faculty Name" required>
-
-  <select name="day" required>
-    <option value="" disabled selected>Day</option>
-    <option value="MON">MON</option>
-    <option value="TUE">TUE</option>
-    <option value="WED">WED</option>
-    <option value="THU">THU</option>
-    <option value="FRI">FRI</option>
-  </select>
-
-  <input name="start_time" placeholder="Start">
-  <input name="end_time" placeholder="End">
-
-  <button type="submit">Remove</button>
-</form>
-
-</section>
-
-<!-- ========================================================= -->
-<!-- Room Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides room CRUD operations.
-
-  Supported actions:
-    - Add room
-    - Remove room
-    - Modify room
-
-  Current exposed inputs:
-    - Room name
--->
-<section class="card">
-  <h2>Room Management</h2>
-
-  <!-- Add Room -->
-  <!-- POST /config/room/add -->
-  <h3>Add Room</h3>
-  <form method="post" action="/config/room/add">
-    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Room -->
-  <!-- POST /config/room/remove -->
-  <h3>Remove Room</h3>
-  <form method="post" action="/config/room/remove">
-    <input name="room" placeholder="Room Name (e.g., Roddy 140)" required>
-    <button type="submit">Remove Room</button>
-  </form>
-
-  <!-- Modify Room -->
-  <!-- POST /config/room/modify -->
-  <h3>Modify Room</h3>
-  <form method="post" action="/config/room/modify">
-    <input name="room" placeholder="Existing Room Name (e.g., Roddy 140)" required>
-    <input name="new_name" placeholder="New Name (e.g., Roddy 141)">
-    <button type="submit">Modify Room</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Lab Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides lab CRUD operations.
-
-  Supported actions:
-    - Add lab
-    - Remove lab
-    - Modify lab
-
-  Current exposed inputs:
-    - Lab name
--->
-<section class="card">
-  <h2>Lab Management</h2>
-
-  <!-- Add Lab -->
-  <!-- POST /config/lab/add -->
-  <h3>Add Lab</h3>
-  <form method="post" action="/config/lab/add">
-    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
-    <button type="submit">Add Lab</button>
-  </form>
-
-  <!-- Remove Lab -->
-  <!-- POST /config/lab/remove -->
-  <h3>Remove Lab</h3>
-  <form method="post" action="/config/lab/remove">
-    <input name="lab" placeholder="Lab Name (e.g., Linux Lab)" required>
-    <button type="submit">Remove Lab</button>
-  </form>
-
-  <!-- Modify Lab -->
-  <!-- POST /config/lab/modify -->
-  <h3>Modify Lab</h3>
-  <form method="post" action="/config/lab/modify">
-    <input name="lab" placeholder="Existing Lab Name (e.g., Linux Lab)" required>
-    <input name="new_name" placeholder="New Lab Name (e.g., MacLab)">
-    <button type="submit">Modify Lab</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Course Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides course CRUD operations.
-
-  Supported actions:
-    - Add course
-    - Remove course
-    - Modify course
-
-  Current exposed inputs:
-    - Course ID (e.g., CMSC 101)
-    - Number of credits
-    - Assigned room (must exist in config)
-    - New Course ID for modifications
--->
-<section class="card">
-  <h2>Course Management</h2>
-
-  <!-- Add Course -->
-  <!-- POST /config/course/add -->
-  <h3>Add Course</h3>
-  <form method="post" action="/config/course/add">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    
-    <!-- Number of Credits Drop-Down Selection -->
-    <select name="credits" required>
-      <option value="" disabled selected>Number of Credits</option>
-      <option value="0">0</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name = "room" placeholder="Room Name (Must Exist) (e.g., Roddy140)" required>
-    <button type="submit">Add Course</button>
-  </form>
-
-  <!-- Remove Course -->
-  <!-- POST /config/course/remove -->
-  <h3>Remove Course</h3>
-  <form method="post" action="/config/course/remove">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <button type="submit">Remove Course</button>
-  </form>
-
-  <!-- Modify Course -->
-  <!-- POST /config/course/modify -->
-  <h3>Modify Course</h3>
-  <form method="post" action="/config/course/modify">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-
-    <!-- Number of Credits Drop-Down Selection -->
-    <select name="credits" required>
-      <option value="" disabled selected>Number of Credits</option>
-      <option value="0">0</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="new_course_id" placeholder="New Course ID (e.g., CMSC 201)">
-
-    <button type="submit">Modify Course</button>
-  </form>
-</section>
-
-<!-- ========================================================= -->
-<!-- Conflict Management                                        -->
-<!-- ========================================================= -->
-<!--
-  This section provides conflict CRUD operations.
-
-  Supported actions:
-    - Add conflict
-    - Remove conflict
-    - Modify conflict
-
-  Current exposed inputs:
-    - Course ID
-    - Conflicting Course ID
-    - New Conflicting Course ID for modifications
--->
-  <section class="card">
-  <h2>Conflict Management</h2>
-
-  <!-- Add Conflict -->
-  <!-- POST /config/conflict/add -->
-  <h3>Add Conflict</h3>
-  <form method="post" action="/config/conflict/add">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
-    <button type="submit">Add Conflict</button>
-  </form>
-
-  <!-- Remove Conflict -->
-  <!-- POST /config/conflict/remove -->
-  <h3>Remove Conflict</h3>
-  <form method="post" action="/config/conflict/remove">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="conflict_course_id" placeholder="Conflicting Course ID (e.g., CMSC 201)" required>
-    <button type="submit">Remove Conflict</button>
-  </form>
-
-  <!-- Modify Conflict -->
-  <!-- POST /config/conflict/modify -->
-  <h3>Modify Conflict</h3>
-  <form method="post" action="/config/conflict/modify">
-    <input name="course_id" placeholder="Course ID (e.g., CMSC 101)" required>
-    <input name="old_conflict_course_id" placeholder="Old Conflicting Course ID (e.g., CMSC 201)" required>
-    <input name="new_conflict_course_id" placeholder="New Conflicting Course ID (e.g., CMSC 301)">
-    <button type="submit">Modify Conflict</button>
-  </form>
-</section>
-
-<!-- Time Slot Configuration -->
-<section class="card">
-  <h2>Time Slots</h2>
-
-  <!-- Add Time Slot -->
-  <h3>Add Time Slot</h3>
-  <form method="post" action="/config/timeslot/add">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input type="time" name="start" required>
-    <input name="spacing" type="number" min="1" placeholder="Spacing (minutes, e.g., 60)" required>
-   <input type="time" name="end" required>
-
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Time Slot -->
-  <h3>Remove Time Slot</h3>
-  <form method="post" action="/config/timeslot/remove">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
-    <button type="submit">Remove</button>
-  </form>
-
-  <!-- Modify Time Slot -->
-  <h3>Modify Time Slot</h3>
-  <form method="post" action="/config/timeslot/modify">
-    <select name="day" required>
-      <option value="" disabled selected>Select Day</option>
-      <option value="MON">MON</option>
-      <option value="TUE">TUE</option>
-      <option value="WED">WED</option>
-      <option value="THU">THU</option>
-      <option value="FRI">FRI</option>
-    </select>
-
-    <input name="index" type="number" min="0" placeholder="Slot Index (0-based)" required>
-    <input name="start" placeholder="New Start Time" required>
-    <input name="spacing" type="number" min="1" placeholder="New Spacing (minutes)" required>
-    <input name="end" placeholder="New End Time" required>
-
-    <button type="submit">Modify</button>
-  </form>
-
-  {% set tsc = config.time_slot_config if config and config.time_slot_config else {} %}
-{% set times = tsc.times if tsc and tsc.times else {} %}
-
-{% if config and config.time_slot_config %}
-  {% set times = config.time_slot_config.times if config.time_slot_config.times else {} %}
-
-  <h3>Current Time Slots</h3>
-  {% for day, slots in times.items() %}
-    <div style="margin-bottom: 1rem;">
-      <strong>{{ day }}</strong>
-      <ul>
-        {% for slot in slots %}
-          <li>
-            [{{ loop.index0 }}]
-            start={{ slot.start }},
-            spacing={{ slot.spacing }},
-            end={{ slot.end }}
-          </li>
-        {% endfor %}
-        {% if not slots %}
-          <li>No slots configured.</li>
-        {% endif %}
-      </ul>
-    </div>
-  {% endfor %}
-{% endif %}
-</section>
-
-
-
-<!-- Meeting Pattern Configuration -->
-<section class="card">
-  <h2>Meeting Patterns</h2>
-
-  <!-- Add Pattern -->
-  <h3>Add Pattern</h3>
-  <form method="post" action="/config/pattern/add">
-    <select name="credits" required>
-      <option value="" disabled selected>Credits</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="days" placeholder="Days (e.g., MON,WED,FRI)" required>
-    <input name="duration" type="number" min="1" placeholder="Duration (minutes)" required>
-    <input name="fixed_start_time" placeholder="Fixed Start Time (optional)">
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="is_lab"> Lab
-    </label>
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="enabled" checked> Enabled
-    </label>
-
-    <button type="submit">Add</button>
-  </form>
-
-  <!-- Remove Pattern -->
-  <h3>Remove Pattern</h3>
-  <form method="post" action="/config/pattern/remove">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-    <button type="submit">Remove</button>
-  </form>
-
-  <!-- Modify Pattern -->
-  <h3>Modify Pattern</h3>
-  <form method="post" action="/config/pattern/modify">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-
-    <input name="days" placeholder="Days (e.g., MON,WED)">
-    <input name="duration" type="number" min="1" placeholder="Duration (minutes)">
-    <select name="credits">
-      <option value="" disabled selected>Credits</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <input name="fixed_start_time" placeholder="Fixed Start Time">
-
-    <label style="display:flex; align-items:center; gap: 8px;">
-      <input type="checkbox" name="is_lab"> Lab
-    </label>
-
-    <button type="submit">Modify</button>
-  </form>
-
-  <!-- Toggle Pattern -->
-  <h3>Enable / Disable Pattern</h3>
-  <form method="post" action="/config/pattern/toggle">
-    <input name="index" type="number" min="0" placeholder="Pattern Index (0-based)" required>
-
-    <select name="enabled" required>
-      <option value="true">Enable</option>
-      <option value="false">Disable</option>
-    </select>
-
-    <button type="submit">Apply</button>
-  </form>
-
-{% if config and config.time_slot_config %}
-  {% set classes = config.time_slot_config.classes if config.time_slot_config.classes else [] %}
-
-  <h3>Current Meeting Patterns</h3>
-  <ul>
-    {% for pattern in classes %}
-      <li style="margin-bottom: 0.75rem;">
-        [{{ loop.index0 }}]
-        credits={{ pattern.credits }},
-        meetings={{ pattern.meetings }},
-        start_time={{ pattern.start_time if pattern.start_time is defined else "None" }},
-        disabled={{ pattern.disabled if pattern.disabled is defined else False }}
-      </li>
-    {% endfor %}
-    {% if not classes %}
-      <li>No meeting patterns configured.</li>
+<!-- Exposes mode state to client-side JavaScript without requiring inline Jinja checks everywhere. -->
+<div
+  id="config-editor-state"
+  data-viewer-mode="{{ 'true' if is_viewer_mode else 'false' }}"
+></div>
+
+<div class="mode-control">
+
+  <span class="mode-badge mode-{{ app_mode }}">
+    {{ "Viewer Mode" if is_viewer_mode else "Editor Mode" }}
+  </span>
+
+  <!-- Mode toggle posts through the controller so the session-backed mode stays authoritative. -->
+  <form method="post" action="{{ url_for('config.set_mode_route') }}" class="mode-toggle-form">
+    {% if is_viewer_mode %}
+      <input type="hidden" name="mode" value="editor">
+      <button type="submit">Switch to Editor</button>
+    {% else %}
+      <input type="hidden" name="mode" value="viewer">
+      <button type="submit">Switch to Viewer</button>
     {% endif %}
-  </ul>
-{% endif %}
-</ul>
-</section>
+  </form>
 
+</div>
+
+<!--
+  =========================================================
+  Viewer Mode Panel
+  =========================================================
+  This section is conditionally rendered when the config editor is in Viewer Mode.
+  It gives the user a clear read-only status message before the summary sections.
+-->
+{% if is_viewer_mode %}
+<section class="card viewer-mode-panel">
+  <h2>Viewer Mode Active</h2>
+  <p>
+    Configuration editing is disabled. You can review the loaded configuration,
+    time slots, and meeting patterns, but you cannot load, save, clear, add,
+    remove, modify, undo, or redo changes until switching back to Editor Mode.
+  </p>
+</section>
+{% endif %}
+
+{% if is_editor_mode %}
+<p class="hint">
+  Editor Mode active. Summary cards are hidden to keep the editing workspace focused.
+  Switch to Viewer Mode to review the full configuration summary.
+</p>
+{% endif %}
+
+<div class="config-editor-controls">
+  <!-- ========================================================= -->
+  <!-- Load / Save / Clear Section                               -->
+  <!-- ========================================================= -->
+  <section class="card">
+    <h2>Load / Save</h2>
+  
+    <!-- Uploads a local JSON configuration file into the current session. -->
+    <form method="post"
+          action="/config/load_file"
+          enctype="multipart/form-data"
+          class="row">
+      <label>Load config</label>
+      <input type="file" name="config_file" accept=".json" required>
+      <button type="submit">Load</button>
+    </form>
+
+    <p class="hint">
+      Load imports a configuration JSON from your computer into the working session.
+    </p>
+
+    <!-- JavaScript handles the export flow so the browser can download the working config. -->
+    <form id="export-config-form" class="row">
+      <label>Save config</label>
+
+      <input
+        id="export_filename"
+        name="filename"
+        value="{{ status.default_filename or 'new_config_file.json' }}"
+        placeholder="new_config_file.json"
+      >
+
+      <button type="submit">Save</button>
+    </form>
+
+    <p class="hint">
+      Save exports the current working configuration to your computer.
+    </p>
+
+    <!-- Hidden feedback container updated by app.js after export attempts. -->
+    <div id="save-confirmation" class="hint" style="display:none;"></div>
+
+    <!-- Clears the loaded configuration from the server-side session. -->
+    <form method="post" action="/config/clear" class="row">
+      <label>Clear loaded</label>
+      <input value="{{ status.path or '' }}" disabled>
+      <button type="submit" {% if not status.loaded %}disabled{% endif %}>Clear</button>
+    </form>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- Configuration Status Panel                                -->
+  <!-- ========================================================= -->
+  <section class="card">
+    <h2>Status</h2>
+
+    {% if status.loaded %}
+
+      <p><strong>Loaded Status:</strong> Yes</p>
+      <p><strong>File Loaded:</strong> {{ status.path }}</p>
+
+      <!-- Summarizes high-level configuration counts from the controller status object. -->
+      <ul>
+        {% for k, v in status.counts.items() %}
+          <li>{{ k }}: {{ v }}</li>
+        {% endfor %}
+
+        <!-- Derived count based on configured daily time slot definitions. -->
+        <li>
+          Time Slots:
+          {% if config and config.time_slot_config and config.time_slot_config.times %}
+            {{
+              config.time_slot_config.times.values()
+              | map('length')
+              | sum
+            }}
+          {% else %}
+            0
+          {% endif %}
+        </li>
+
+        <!-- Derived count based on configured meeting pattern definitions. -->
+        <li>
+          Meeting Patterns:
+          {% if config and config.time_slot_config and config.time_slot_config.classes %}
+            {{ config.time_slot_config.classes | length }}
+          {% else %}
+            0
+          {% endif %}
+        </li>
+      </ul>
+
+      {% if is_viewer_mode %}
+      <div id="entity-summary-wrapper" class="viewer-summary-mode">
+
+        <!-- Room Summary -->
+        <div class="entity-summary-panel" id="summary-room">
+          {% if config and config.config and config.config.rooms %}
+            <h3>Rooms</h3>
+            <div class="entity-pill-list">
+              {% for room in config.config.rooms %}
+                <span class="entity-pill">
+                  {{ room }}
+                </span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Rooms</h3>
+            <p class="hint">No rooms configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Lab Summary -->
+        <div class="entity-summary-panel" id="summary-lab">
+          {% if config and config.config and config.config.labs %}
+            <h3>Labs</h3>
+            <div class="entity-pill-list">
+              {% for lab in config.config.labs %}
+                <span class="entity-pill">
+                  {{ lab }}
+                </span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Labs</h3>
+            <p class="hint">No labs configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Course Summary -->
+        <div class="entity-summary-panel" id="summary-course">
+          {% if config and config.config and config.config.courses %}
+            <h3>Courses</h3>
+
+            <div class="entity-card-grid">
+              {% for course in config.config.courses %}
+                <div class="entity-card">
+                  <div class="entity-card-header">
+                    <strong>Index {{ loop.index0 }} — {{ course.course_id }}</strong>
+                    <span class="entity-status">{{ course.credits }} credits</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Rooms:</strong>
+                    <span>{{ course.room | join(", ") if course.room else "None" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Labs:</strong>
+                    <span>{{ course.lab | join(", ") if course.lab else "None" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Faculty:</strong>
+                    <span>{{ course.faculty | join(", ") if course.faculty else "Any / Unassigned" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Conflicts:</strong>
+                    <span>{{ course.conflicts | join(", ") if course.conflicts else "None" }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Courses</h3>
+            <p class="hint">No courses configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Faculty Summary -->
+        <div class="entity-summary-panel" id="summary-faculty">
+          {% if config and config.config and config.config.faculty %}
+            <h3>Faculty</h3>
+
+            <div class="entity-card-grid">
+              {% for faculty in config.config.faculty %}
+                <div class="entity-card">
+                  <div class="entity-card-header">
+                    <strong>{{ faculty.name }}</strong>
+                    <span class="entity-status">
+                      {{ faculty.minimum_credits }}–{{ faculty.maximum_credits }} credits
+                    </span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Unique Courses:</strong>
+                    <span>{{ faculty.unique_course_limit }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Max Days:</strong>
+                    <span>{{ faculty.maximum_days if faculty.maximum_days is defined else "Not set" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Mandatory Days:</strong>
+                    <span>
+                      {{ faculty.mandatory_days | join(", ") if faculty.mandatory_days is defined and faculty.mandatory_days else "None" }}
+                    </span>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Availability:</strong>
+                    <div class="mini-pill-list">
+                      {% for day, ranges in faculty.times.items() %}
+                        <span class="mini-pill">
+                          {{ day }}:
+                          {{ ranges | join(", ") if ranges else "Unavailable" }}
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Course Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.course_preferences %}
+                        {% for course_id, weight in faculty.course_preferences.items() %}
+                          <span class="mini-pill">{{ course_id }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Room Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.room_preferences %}
+                        {% for room, weight in faculty.room_preferences.items() %}
+                          <span class="mini-pill">{{ room }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Lab Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.lab_preferences %}
+                        {% for lab, weight in faculty.lab_preferences.items() %}
+                          <span class="mini-pill">{{ lab }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Faculty</h3>
+            <p class="hint">No faculty configured.</p>
+          {% endif %}
+        </div>
+        
+        <!-- Time Slot Summary -->
+        <div class="entity-summary-panel" id="summary-timeslot">
+          {% if config and config.time_slot_config and config.time_slot_config.times %}
+            <h3>Time Slots</h3>
+            {% for day, slots in config.time_slot_config.times.items() %}
+              <div style="margin-bottom: 8px;">
+                <strong>{{ day }}</strong>: {{ slots|length }} slots
+                <ul>
+                  {% for slot in slots %}
+                    <li>
+                      <strong>Index {{ loop.index0 }}:</strong>
+                      start={{ slot.start }},
+                      spacing={{ slot.spacing }},
+                      end={{ slot.end }}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+          {% else %}
+            <h3>Time Slots</h3>
+            <p class="hint">No time slots configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Meeting Pattern Summary -->
+        <div class="entity-summary-panel" id="summary-pattern">
+          {% if config and config.time_slot_config and config.time_slot_config.classes %}
+            <h3>Meeting Patterns</h3>
+
+            <div class="pattern-grid">
+              {% for pattern in config.time_slot_config.classes %}
+                <div class="pattern-card">
+                  <div class="pattern-card-header">
+                    <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
+
+                    {% if pattern.disabled is defined and pattern.disabled %}
+                      <span class="pattern-status disabled">Disabled</span>
+                    {% else %}
+                      <span class="pattern-status active">Active</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="pattern-meta">
+                    <span>
+                      <strong>Start:</strong>
+                      {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
+                    </span>
+                  </div>
+
+                  <div class="pattern-meetings">
+                    {% for meeting in pattern.meetings %}
+                      <span class="meeting-pill">
+                        {{ meeting.day }} · {{ meeting.duration }} min
+                        {% if meeting.lab is defined and meeting.lab %}
+                          · Lab
+                        {% endif %}
+                      </span>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Meeting Patterns</h3>
+            <p class="hint">No meeting patterns configured.</p>
+          {% endif %}
+        </div>
+
+        {% if status.conflicts %}
+        <div class="entity-summary-panel" id="summary-conflict">
+          <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+            <strong>Configuration Conflicts Detected:</strong>
+            <ul>
+              {% for c in status.conflicts %}
+                <li>{{ c }}</li>
+              {% endfor %}
+            </ul>
+
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+      {% endif %}
+
+    {% else %}
+      <p><strong>File Loaded:</strong> No</p>
+      <p class="hint">Load a config to enable schedule generation.</p>
+    {% endif %}
+
+  </section>
+
+  <section class="card config-management-card">
+    <div class="section-heading-row">
+      <div>
+        <h2>Configuration Management</h2>
+        <p class="hint">Choose an entity type, then add, remove, or modify configuration data.</p>
+      </div>
+    </div>
+
+    <!-- Entity selector controls which dynamic form and summary panel are displayed. -->
+    <div class="config-toolbar">
+      <label for="entityType">Select Type</label>
+      <select id="entityType">
+        <option value="faculty">Faculty</option>
+        <option value="room">Room</option>
+        <option value="lab">Lab</option>
+        <option value="course">Course</option>
+        <option value="conflict">Conflict</option>
+        <option value="timeslot">Time Slot</option>
+        <option value="pattern">Meeting Pattern</option>
+      </select>
+    </div>
+
+    <!-- Mutually exclusive action modes used by the dynamic form renderer. -->
+    <div class="action-button-row">
+      <button type="button" onclick="setMode('add')">Add</button>
+      <button type="button" onclick="setMode('remove')">Remove</button>
+      <button type="button" onclick="setMode('modify')">Modify</button>
+    </div>
+
+    <div class="history-button-row">
+      <form method="post" action="/config/undo">
+        <button type="submit" id="undo">Undo</button>
+      </form>
+
+      <form method="post" action="/config/redo">
+        <button type="submit" id="redo">Redo</button>
+      </form>
+    </div>
+
+    <hr class="soft-divider">
+
+    <!-- Dynamic add/remove/modify form is generated by the script below. -->
+    <div id="formContainer"></div>
+
+    <hr class="soft-divider">
+
+    <div class="editor-selected-summary">
+      <h3>Selected Type Summary</h3>
+      <p class="hint">
+        This summary updates based on the selected configuration type above.
+      </p>
+
+      <div id="editor-summary-target"></div>
+    </div>    
+  </section>
+
+  {% if is_editor_mode %}
+  <!--
+    Hidden source summaries used by JavaScript in Editor Mode.
+    The selected summary is copied into #editor-summary-target so the editing
+    workspace can show focused context without rendering every entity section.
+  -->
+  <div id="editor-summary-source" style="display: none;">
+
+    <!-- Room Summary -->
+    <div class="entity-summary-panel" id="summary-source-room">
+        {% if config and config.config and config.config.rooms %}
+          <h3>Rooms</h3>
+          <div class="entity-pill-list">
+            {% for room in config.config.rooms %}
+              <span class="entity-pill">
+                {{ room }}
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <h3>Rooms</h3>
+          <p class="hint">No rooms configured.</p>
+        {% endif %}
+    </div>
+
+    <!-- Lab Summary -->
+    <div class="entity-summary-panel" id="summary-source-lab">
+      {% if config and config.config and config.config.labs %}
+        <h3>Labs</h3>
+        <div class="entity-pill-list">
+          {% for lab in config.config.labs %}
+            <span class="entity-pill">
+              {{ lab }}
+            </span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Labs</h3>
+        <p class="hint">No labs configured.</p>
+      {% endif %}
+    </div>
+
+    <!-- Course Summary -->
+    <div class="entity-summary-panel" id="summary-source-course">
+      {% if config and config.config and config.config.courses %}
+        <h3>Courses</h3>
+
+        <div class="entity-card-grid">
+          {% for course in config.config.courses %}
+            <div class="entity-card">
+              <div class="entity-card-header">
+                <strong>Index {{ loop.index0 }} — {{ course.course_id }}</strong>
+                <span class="entity-status">{{ course.credits }} credits</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Rooms:</strong>
+                <span>{{ course.room | join(", ") if course.room else "None" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Labs:</strong>
+                <span>{{ course.lab | join(", ") if course.lab else "None" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Faculty:</strong>
+                <span>{{ course.faculty | join(", ") if course.faculty else "Any / Unassigned" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Conflicts:</strong>
+                <span>{{ course.conflicts | join(", ") if course.conflicts else "None" }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Courses</h3>
+        <p class="hint">No courses configured.</p>
+      {% endif %}
+    </div>
+
+    <!-- Faculty Summary -->
+    <div class="entity-summary-panel" id="summary-source-faculty">
+      {% if config and config.config and config.config.faculty %}
+        <h3>Faculty</h3>
+
+        <div class="entity-card-grid">
+          {% for faculty in config.config.faculty %}
+            <div class="entity-card">
+              <div class="entity-card-header">
+                <strong>{{ faculty.name }}</strong>
+                <span class="entity-status">
+                  {{ faculty.minimum_credits }}–{{ faculty.maximum_credits }} credits
+                </span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Unique Courses:</strong>
+                <span>{{ faculty.unique_course_limit }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Max Days:</strong>
+                <span>{{ faculty.maximum_days if faculty.maximum_days is defined else "Not set" }}</span>
+              </div>
+
+              <div class="entity-detail-row">
+                <strong>Mandatory Days:</strong>
+                <span>
+                  {{ faculty.mandatory_days | join(", ") if faculty.mandatory_days is defined and faculty.mandatory_days else "None" }}
+                </span>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Availability:</strong>
+                <div class="mini-pill-list">
+                  {% for day, ranges in faculty.times.items() %}
+                    <span class="mini-pill">
+                      {{ day }}:
+                      {{ ranges | join(", ") if ranges else "Unavailable" }}
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Course Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.course_preferences %}
+                    {% for course_id, weight in faculty.course_preferences.items() %}
+                      <span class="mini-pill">{{ course_id }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Room Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.room_preferences %}
+                    {% for room, weight in faculty.room_preferences.items() %}
+                      <span class="mini-pill">{{ room }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="entity-detail-row stacked">
+                <strong>Lab Preferences:</strong>
+                <div class="mini-pill-list">
+                  {% if faculty.lab_preferences %}
+                    {% for lab, weight in faculty.lab_preferences.items() %}
+                      <span class="mini-pill">{{ lab }}: {{ weight }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="hint">None</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Faculty</h3>
+        <p class="hint">No faculty configured.</p>
+      {% endif %}
+    </div>
+
+    <!-- Time Slot Summary -->
+    <div class="entity-summary-panel" id="summary-source-timeslot">
+      {% if config and config.time_slot_config and config.time_slot_config.times %}
+        <h3>Time Slots</h3>
+        {% for day, slots in config.time_slot_config.times.items() %}
+          <div style="margin-bottom: 8px;">
+            <strong>{{ day }}</strong>: {{ slots|length }} slots
+            <ul>
+              {% for slot in slots %}
+                <li>
+                  <strong>Index {{ loop.index0 }}:</strong>
+                  start={{ slot.start }},
+                  spacing={{ slot.spacing }},
+                  end={{ slot.end }}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      {% else %}
+        <h3>Time Slots</h3>
+        <p class="hint">No time slots configured.</p>
+      {% endif %}
+    </div>
+
+    <!-- Meeting Pattern Summary -->
+    <div class="entity-summary-panel" id="summary-source-pattern">
+      {% if config and config.time_slot_config and config.time_slot_config.classes %}
+        <h3>Meeting Patterns</h3>
+
+        <div class="pattern-grid">
+          {% for pattern in config.time_slot_config.classes %}
+            <div class="pattern-card">
+              <div class="pattern-card-header">
+                <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
+
+                {% if pattern.disabled is defined and pattern.disabled %}
+                  <span class="pattern-status disabled">Disabled</span>
+                {% else %}
+                  <span class="pattern-status active">Active</span>
+                {% endif %}
+              </div>
+
+              <div class="pattern-meta">
+                <span>
+                  <strong>Start:</strong>
+                  {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
+                </span>
+              </div>
+
+              <div class="pattern-meetings">
+                {% for meeting in pattern.meetings %}
+                  <span class="meeting-pill">
+                    {{ meeting.day }} · {{ meeting.duration }} min
+                    {% if meeting.lab is defined and meeting.lab %}
+                      · Lab
+                    {% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <h3>Meeting Patterns</h3>
+        <p class="hint">No meeting patterns configured.</p>
+      {% endif %}
+    </div>
+
+    <!-- Conflict Summary -->
+    <div class="entity-summary-panel" id="summary-source-conflict">
+      {% if status.conflicts %}
+        <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+          <strong>Configuration Conflicts Detected:</strong>
+          <ul>
+            {% for c in status.conflicts %}
+              <li>{{ c }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <h3>Conflicts</h3>
+        <p class="hint">No configuration conflicts detected.</p>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endif %}
+</div>
+
+{% if is_viewer_mode %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Disable interactive editor controls client-side for immediate visual feedback.
+  // Server-side request guards still enforce Viewer Mode as the source of truth.
+  document
+    .querySelectorAll(".config-editor-controls input, .config-editor-controls button, .config-editor-controls select, .config-editor-controls textarea")
+    .forEach((el) => {
+      el.disabled = true;
+    });
+});
+</script>
+{% endif %}
+
+<!-- ========================================================= --> 
+<!-- Builder Pattern                                           -->
+<!-- ========================================================= --> 
+<script>
+// Tracks the selected configuration entity type and mutation mode for dynamic forms.
+let currentType = "faculty";
+let currentMode = "add";
+
+const configEditorState = document.getElementById("config-editor-state");
+const isConfigEditorViewerMode =
+  configEditorState?.dataset.viewerMode === "true";
+
+class FormBuilder {
+  constructor(type, mode) {
+    this.type = type;
+    this.mode = mode;
+    this.html = "";
+    this.action = `/config/${type}/${mode}`;
+  }
+
+  build() {
+    if (isConfigEditorViewerMode) {
+      return `
+        <p class="hint">
+          Viewer Mode is active. Switch to Editor Mode to add, remove, modify,
+          undo, or redo configuration changes.
+        </p>
+      `;
+    }
+
+    this.html = `<form method="post" action="${this.action}">`;
+
+    this.buildFields();
+
+    this.html += `<button type="submit">${this.mode.toUpperCase()}</button>`;
+    this.html += `</form>`;
+
+    return this.html;
+  }
+
+  buildFields() {
+    const t = this.type;
+
+    if (t === "faculty") this.faculty();
+    if (t === "room") this.room();
+    if (t === "lab") this.lab();
+    if (t === "course") this.course();
+    if (t === "conflict") this.conflict();
+    if (t === "timeslot") this.timeslot();
+    if (t === "pattern") this.pattern();
+  }
+
+  faculty() {
+    this.html += `<input name="name" placeholder="Faculty Name" required>`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <select name="appointment_type">
+          <option value="">Appointment Type</option>
+          <option value="Full-Time">Full-Time</option>
+          <option value="Adjunct">Adjunct</option>
+        </select>`;
+    }
+  }
+
+  room() {
+    this.html += `<input name="room" placeholder="Room Name" required>`;
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_name" placeholder="New Name">`;
+    }
+  }
+
+  lab() {
+    this.html += `<input name="lab" placeholder="Lab Name" required>`;
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_name" placeholder="New Name">`;
+    }
+  }
+
+  course() {
+    this.html += `<input name="course_id" placeholder="Course ID" required>`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>`;
+    }
+
+    if (this.mode === "add") {
+      this.html += `<input name="room" placeholder="Room Name">`;
+    }
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_course_id" placeholder="New Course ID">`;
+    }
+  }
+
+  conflict() {
+    this.html += `<input name="course_id" placeholder="Course ID" required>`;
+    this.html += `<input name="conflict_course_id" placeholder="Conflicting Course ID" required>`;
+
+    if (this.mode === "modify") {
+      this.html += `<input name="new_conflict_course_id" placeholder="New Conflict">`;
+    }
+  }
+
+  timeslot() {
+    this.html += `
+      <select name="day">
+        <option value="MON">MON</option>
+        <option value="TUE">TUE</option>
+        <option value="WED">WED</option>
+        <option value="THU">THU</option>
+        <option value="FRI">FRI</option>
+      </select>`;
+
+    if (this.mode === "add") {
+      this.html += `
+        <input type="time" name="start">
+        <input type="number" name="spacing" placeholder="Spacing">
+        <input type="time" name="end">
+      `;
+    }
+
+    if (this.mode !== "add") {
+      this.html += `<input name="index" type="number" placeholder="Index">`;
+    }
+  }
+
+  pattern() {
+    this.html += `<input name="index" type="number" placeholder="Pattern Index">`;
+
+    if (this.mode !== "remove") {
+      this.html += `
+        <input name="days" placeholder="Days (MON,WED)">
+        <input name="duration" type="number" placeholder="Duration">
+        <select name="credits">
+          <option value="">Credits</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>`;
+    }
+  }
+}
+
+document.getElementById("entityType").addEventListener("change", (e) => {
+  currentType = e.target.value;
+  renderForm();
+  updateEntitySummaryPanel();
+});
+
+function setMode(mode) {
+  // Viewer Mode is read-only; ignore client-side attempts to switch CRUD mode.
+  if (isConfigEditorViewerMode) {
+    return;
+  }
+
+  currentMode = mode;
+  renderForm();
+}
+
+function renderForm() {
+  const builder = new FormBuilder(currentType, currentMode);
+  document.getElementById("formContainer").innerHTML = builder.build();
+}
+
+function updateEntitySummaryPanel() {
+  // Viewer Mode displays all summary panels directly, so no focused copy is needed.
+  if (isConfigEditorViewerMode) {
+    document.querySelectorAll(".entity-summary-panel").forEach((panel) => {
+      panel.style.display = "";
+    });
+    return;
+  }
+
+  const target = document.getElementById("editor-summary-target");
+  const source = document.getElementById(`summary-source-${currentType}`);
+
+  if (!target || !source) {
+    return;
+  }
+
+  // Copy server-rendered summary markup into the visible editor context panel.
+  target.innerHTML = source.innerHTML;
+}
+
+// Initialize the default form and summary once the template is loaded.
+renderForm();
+updateEntitySummaryPanel();
+</script>
 {% endblock %}

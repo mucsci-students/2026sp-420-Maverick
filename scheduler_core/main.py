@@ -12,7 +12,8 @@ Responsibilities:
   ready for CSV/JSON export.
 
 Flat row schema (required + optional):
-  schedule_id, course_id, day, start, room, faculty, lab, duration, credits, meeting_index
+  schedule_id, course_id, day, start,
+  room, faculty, lab, duration, credits, meeting_index
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from __future__ import annotations
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Tuple, Iterator
+from typing import Any, Dict, Iterator, List, Tuple
 
 from scheduler import Scheduler
 from scheduler.config import CombinedConfig
@@ -87,14 +88,19 @@ def _explode_meetings(meetings_field: str) -> List[Tuple[str, str, str, str, boo
 def _safe_as_csv(course_obj: Any) -> str:
     """
     Best-effort conversion to a CSV-ish line from the scheduler course model.
-    Prefer course.as_csv() (documented by the scheduler library).
+    Prefer course.as_csv() from the scheduler library.
+
+    Important:
+        Avoid repr(course_obj) because some scheduler/Pydantic objects may have
+        unsafe __repr__ implementations that can raise runtime errors.
     """
     if hasattr(course_obj, "as_csv") and callable(getattr(course_obj, "as_csv")):
         try:
             return str(course_obj.as_csv())
         except Exception:
             pass
-    return repr(course_obj)
+
+    return ""
 
 
 def _room_for_course(course_id: str, cfg: Dict[str, Any]) -> str:
@@ -253,41 +259,57 @@ def _parse_course_line_to_flat_rows(
     return rows
 
 
+class SchedulerAdapter:
+    """
+    Adapter Design Pattern for the external scheduler package.
+
+    The external scheduler exposes models through Scheduler.get_models().
+    The Maverick Scheduler app expects flat meeting-level row dictionaries.
+
+    This adapter converts the external scheduler interface into the app-specific
+    interface used by the web service and schedule viewer.
+    """
+
+    def __init__(self, cfg: Dict[str, Any], optimize: bool):
+        self.cfg = cfg
+        self.optimize = optimize
+        self.combined = CombinedConfig(**cfg)
+        self.scheduler = Scheduler(self.combined)
+
+    def iter_flat_schedules(self, limit: int) -> Iterator[List[Dict[str, Any]]]:
+        """
+        Yield flat schedule rows in the format expected by the application.
+        """
+        if limit <= 0:
+            raise ValueError("Schedule generation limit must be greater than 0.")
+
+        schedule_count = 0
+
+        for schedule in self.scheduler.get_models():
+            schedule_count += 1
+            course_models = list(schedule)
+            schedule_rows: List[Dict[str, Any]] = []
+
+            for course in course_models:
+                schedule_rows.extend(
+                    _parse_course_line_to_flat_rows(schedule_count, course, self.cfg)
+                )
+
+            yield schedule_rows
+
+            if schedule_count >= limit:
+                break
+
+
 def generate_schedules(
     cfg: Dict[str, Any], limit: int, optimize: bool
 ) -> Iterator[List[Dict[str, Any]]]:
     """
-    Runs the scheduler and returns flat meeting-level rows.
+    Runs the scheduler and yields flat meeting-level schedule rows.
 
-    IMPORTANT:
-    - limit is the number of SCHEDULES (models) to produce, not number of rows.
-    - optimize flag is passed through for future use (core optimization can be added later).
+    Adapter Pattern Role:
+        Delegates external scheduler interaction to SchedulerAdapter so callers
+        depend on app-friendly flat rows instead of the external scheduler API.
     """
-    combined = CombinedConfig(**cfg)
-    s = Scheduler(combined)
-
-    for schedule_id, schedule in enumerate(s.get_models(), start=1):
-        course_models = list(schedule)
-
-        print(f"\n=== RAW SCHEDULER OUTPUT: schedule {schedule_id} ===")
-        for course in course_models:
-            print(_safe_as_csv(course))
-
-        schedule_rows: List[Dict[str, Any]] = []
-        for course in course_models:
-            schedule_rows.extend(
-                _parse_course_line_to_flat_rows(schedule_id, course, cfg)
-            )
-
-        print(
-            f"\n================ PROCESSED OUTPUT (Schedule {schedule_id}) ================"
-        )
-        for row in schedule_rows:
-            print(
-                f"{row['course_id']} | {row['day']} {row['start']} | room={row['room']}"
-            )
-
-        yield schedule_rows
-
-        if schedule_id >= limit:
-            break
+    adapter = SchedulerAdapter(cfg=cfg, optimize=optimize)
+    yield from adapter.iter_flat_schedules(limit)

@@ -18,11 +18,31 @@ Notes:
 
 from app.web.app import create_app
 from app.web.services.config_service import SESSION_CONFIG_KEY
-from app.web.services.progress_store import generation_progress, is_running
-from app.web.services.run_service import (
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+from app.web.services.progress_store import (
+    generation_progress,
+    is_running,
 )
+from app.web.services.run_service import (
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
+)
+
+
+class ImmediateThread:
+    """
+    Test replacement for threading.Thread.
+
+    Runs the background target immediately so async route behavior can be
+    tested deterministically without starting a real thread.
+    """
+
+    def __init__(self, target, args=(), daemon=False):
+        self.target = target
+        self.args = args
+        self.daemon = daemon
+
+    def start(self):
+        self.target(*self.args)
 
 
 def _get_flashes(client):
@@ -121,83 +141,63 @@ def test_generator_uses_config_defaults_and_session_overrides(monkeypatch):
     assert "mystery_flag" in captured["context"]["available_flags"]
 
 
-def test_generate_rejects_limit_below_one(monkeypatch):
+def test_generate_rejects_limit_below_one():
     """
-    Ensures generation rejects limit values below 1 and does not call the service.
-    Covers the early validation failure branch.
+    Ensures generation rejects limit values below 1 before starting async work.
     """
-    service_called = {"called": False}
-
-    def fake_generate_schedules_into_session(*args, **kwargs):
-        service_called["called"] = True
-        return 99
-
-    monkeypatch.setattr(
-        "app.web.routes.run_routes.generate_schedules_into_session",
-        fake_generate_schedules_into_session,
-    )
-
     app = create_app()
     client = app.test_client()
 
     response = client.post("/run/generate", data={"limit": "0"})
 
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/run/")
-    assert service_called["called"] is False
-    assert ("error", "Limit must be at least 1.") in _get_flashes(client)
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Limit must be at least 1."}
 
 
-def test_generate_rejects_non_integer_limit(monkeypatch):
+def test_generate_rejects_non_integer_limit():
     """
-    Ensures generation rejects non-integer limit values.
-    Covers the ValueError branch.
+    Ensures generation rejects non-integer limit values before starting async work.
     """
-    service_called = {"called": False}
-
-    def fake_generate_schedules_into_session(*args, **kwargs):
-        service_called["called"] = True
-        return 99
-
-    monkeypatch.setattr(
-        "app.web.routes.run_routes.generate_schedules_into_session",
-        fake_generate_schedules_into_session,
-    )
-
     app = create_app()
     client = app.test_client()
 
     response = client.post("/run/generate", data={"limit": "abc"})
 
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/run/")
-    assert service_called["called"] is False
-    assert ("error", "Limit must be an integer.") in _get_flashes(client)
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Limit must be an integer."}
 
 
-def test_generate_success_persists_overrides_and_returns_204(monkeypatch):
+def test_generate_success_persists_overrides_and_returns_202(monkeypatch):
     """
-    Ensures a successful generation:
-    - parses submitted values
+    Ensures successful generation:
+    - parses submitted override values
     - stores override values in session
-    - calls the service layer
-    - flashes success
-    - returns HTTP 204 for JS-driven redirect handling
+    - starts the async generation job
+    - returns HTTP 202 for progress polling
     """
     observed = {}
 
-    def fake_generate_schedules_into_session(limit, optimizer_flags):
+    def fake_run_generation_job(session_id, cfg, limit, optimizer_flags):
+        observed["session_id"] = session_id
+        observed["cfg"] = cfg
         observed["limit"] = limit
         observed["optimizer_flags"] = optimizer_flags
-        return 3
 
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", ImmediateThread)
     monkeypatch.setattr(
-        "app.web.routes.run_routes.generate_schedules_into_session",
-        fake_generate_schedules_into_session,
+        "app.web.routes.run_routes._run_generation_job",
+        fake_run_generation_job,
     )
 
     app = create_app()
     client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 100,
+            "optimizer_flags": ["same_room"],
+            "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        }
 
     response = client.post(
         "/run/generate",
@@ -207,12 +207,13 @@ def test_generate_success_persists_overrides_and_returns_204(monkeypatch):
         },
     )
 
-    assert response.status_code == 204
-    assert response.data == b""
-    assert observed == {
-        "limit": 9,
-        "optimizer_flags": ["faculty_course", "pack_rooms"],
-    }
+    assert response.status_code == 202
+    assert response.get_json() == {"status": "started"}
+
+    assert observed["limit"] == 9
+    assert observed["optimizer_flags"] == ["faculty_course", "pack_rooms"]
+    assert observed["cfg"]["limit"] == 9
+    assert observed["cfg"]["optimizer_flags"] == ["faculty_course", "pack_rooms"]
 
     with client.session_transaction() as sess:
         assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 9
@@ -221,78 +222,76 @@ def test_generate_success_persists_overrides_and_returns_204(monkeypatch):
             "pack_rooms",
         ]
 
-    assert ("success", "Generated 3 schedule(s).") in _get_flashes(client)
-
 
 def test_generate_allows_empty_optimizer_flags(monkeypatch):
     """
-    Ensures generation still succeeds when no optimizer flags are selected.
-    Covers the branch where request.form.getlist(...) returns an empty list.
+    Ensures async generation starts when no optimizer flags are selected.
     """
     observed = {}
 
-    def fake_generate_schedules_into_session(limit, optimizer_flags):
+    def fake_run_generation_job(session_id, cfg, limit, optimizer_flags):
         observed["limit"] = limit
         observed["optimizer_flags"] = optimizer_flags
-        return 1
+        observed["cfg"] = cfg
 
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", ImmediateThread)
     monkeypatch.setattr(
-        "app.web.routes.run_routes.generate_schedules_into_session",
-        fake_generate_schedules_into_session,
+        "app.web.routes.run_routes._run_generation_job",
+        fake_run_generation_job,
     )
 
     app = create_app()
     client = app.test_client()
 
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 100,
+            "optimizer_flags": ["same_room"],
+            "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        }
+
     response = client.post("/run/generate", data={"limit": "5"})
 
-    assert response.status_code == 204
-    assert observed == {"limit": 5, "optimizer_flags": []}
+    assert response.status_code == 202
+    assert observed["limit"] == 5
+    assert observed["optimizer_flags"] == []
+    assert observed["cfg"]["optimizer_flags"] == []
 
     with client.session_transaction() as sess:
         assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == []
 
-    assert ("success", "Generated 1 schedule(s).") in _get_flashes(client)
 
-
-def test_generate_exception_resets_progress_and_redirects(monkeypatch):
+def test_generation_job_exception_records_error_and_clears_running(monkeypatch):
     """
-    Ensures an exception during generation:
-    - resets progress state
-    - clears running state
-    - flashes an error
-    - redirects back to the generator
-
-    This test avoids depending on the exact Flask-Session sid value by
-    monkeypatching the route module's progress dictionaries.
+    Ensures background generation exceptions are stored for /run/progress
+    and running state is cleared.
     """
-    observed_progress = {}
-    observed_running = {}
 
-    def fake_generate_schedules_into_session(*args, **kwargs):
+    def fake_build_schedules_from_config(*args, **kwargs):
         raise RuntimeError("scheduler exploded")
 
     monkeypatch.setattr(
-        "app.web.routes.run_routes.generate_schedules_into_session",
-        fake_generate_schedules_into_session,
+        "app.web.services.run_service.build_schedules_from_config",
+        fake_build_schedules_from_config,
     )
-    monkeypatch.setattr(
-        "app.web.routes.run_routes.generation_progress", observed_progress
+
+    from app.web.routes.run_routes import _run_generation_job
+    from app.web.services.progress_store import generation_errors
+
+    session_id = "test-session-error"
+
+    is_running[session_id] = True
+    generation_progress[session_id] = 1
+
+    _run_generation_job(
+        session_id=session_id,
+        cfg={"config": {"faculty": [], "rooms": [], "labs": [], "courses": []}},
+        limit=5,
+        optimizer_flags=[],
     )
-    monkeypatch.setattr("app.web.routes.run_routes.is_running", observed_running)
 
-    app = create_app()
-    client = app.test_client()
-
-    response = client.post("/run/generate", data={"limit": "5"})
-
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/run/")
-    assert len(observed_progress) == 1
-    assert len(observed_running) == 1
-    assert list(observed_progress.values()) == [0]
-    assert list(observed_running.values()) == [False]
-    assert ("error", "Generate failed: scheduler exploded") in _get_flashes(client)
+    assert is_running[session_id] is False
+    assert generation_errors[session_id] == "scheduler exploded"
 
 
 def test_reset_clears_overrides_and_progress_state():
@@ -355,7 +354,11 @@ def test_get_progress_returns_current_session_progress(monkeypatch):
     response = client.get("/run/progress")
 
     assert response.status_code == 200
-    assert response.get_json() == {"progress": 42}
+    assert response.get_json() == {
+        "progress": 42,
+        "running": False,
+        "error": None,
+    }
 
 
 def test_get_progress_defaults_to_zero_for_new_session():
@@ -369,4 +372,129 @@ def test_get_progress_defaults_to_zero_for_new_session():
     response = client.get("/run/progress")
 
     assert response.status_code == 200
-    assert response.get_json() == {"progress": 0}
+    assert response.get_json() == {
+        "progress": 0,
+        "running": False,
+        "error": None,
+    }
+
+
+def test_generate_fails_without_config():
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/generate", data={"limit": "5"})
+
+    assert response.status_code == 400
+    assert "No config loaded" in response.get_json()["error"]
+
+
+def test_complete_generation_no_schedules():
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/complete")
+
+    assert response.status_code == 409
+    assert "not completed" in response.get_json()["error"]
+
+
+def test_generator_handles_missing_optimizer_flags(monkeypatch):
+    captured = {}
+
+    def fake_render(template, **ctx):
+        captured["ctx"] = ctx
+        return "ok"
+
+    monkeypatch.setattr("app.web.routes.run_routes.render_template", fake_render)
+
+    app = create_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 5
+            # optimizer_flags missing
+        }
+
+    client.get("/run/")
+
+    assert captured["ctx"]["selected_flags"] == []
+
+
+def test_generate_persists_session_overrides(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", ImmediateThread)
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {"limit": 10}
+
+    client.post("/run/generate", data={"limit": "6", "optimizer_flags": ["A"]})
+
+    with client.session_transaction() as sess:
+        assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 6
+        assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == ["A"]
+
+
+def test_generate_with_no_session_config_but_valid_input(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post(
+        "/run/generate",
+        data={"limit": "5", "optimizer_flags": ["faculty_course"]},
+    )
+
+    assert response.status_code == 400
+    assert "No config loaded" in response.get_json()["error"]
+
+
+def test_reset_handles_missing_session_id_gracefully(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/reset")
+
+    assert response.status_code in (200, 302)
+
+
+def test_generate_single_optimizer_flag_as_string(monkeypatch):
+    observed = {}
+
+    def fake_thread(target, args=(), daemon=False):
+        class T:
+            def start(self_inner):
+                target(*args)
+
+        return T()
+
+    def fake_job(session_id, cfg, limit, optimizer_flags):
+        observed["optimizer_flags"] = optimizer_flags
+
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", fake_thread)
+    monkeypatch.setattr(
+        "app.web.routes.run_routes._run_generation_job",
+        fake_job,
+    )
+
+    app = create_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 10,
+            "optimizer_flags": [],
+            "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        }
+
+    client.post(
+        "/run/generate",
+        data={
+            "limit": "5",
+            "optimizer_flags": "faculty_course",  # string instead of list
+        },
+    )
+
+    assert observed["optimizer_flags"] == ["faculty_course"]

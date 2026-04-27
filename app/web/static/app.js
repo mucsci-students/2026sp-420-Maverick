@@ -662,32 +662,31 @@ function initConfigExport() {
 
 // starts the generation process
 async function startGenerationProgress() {
+  const form = document.getElementById("generate");
+  const barObject = document.getElementById("is-progress-bar-hidden");
+  const progressBar = document.getElementById("progress-bar");
 
-    const form = document.getElementById("generate")
-    const bar_object = document.getElementById("is-progress-bar-hidden");
-    const progress_bar = document.getElementById("progress-bar");
+  barObject.style.display = "block";
+  progressBar.value = 0;
+  progress_bar_current_progress = 0;
+  updateProgressUI(0);
 
-    // Displays the progress bar
-    bar_object.style.display = "block";
-    // Resets the progress bar value
-    progress_bar.value = 0;
+  await fetch("/run/reset", {
+    method: "POST",
+    redirect: "manual",
+  });
 
-    // resets the progress 
-    await fetch("/run/reset", {method: "POST"});
+  const res = await fetch("/run/generate", {
+    method: "POST",
+    body: new FormData(form),
+  });
 
-    // begins checking for updates to send to the progress bar object
-    checkGenerationProgress();
+  if (!res.ok) {
+    console.error("Generation failed");
+    return;
+  }
 
-    // starts the generation process
-    const res = await fetch("/run/generate", {
-      method: "POST",
-      body: new FormData(form)
-    });
-
-    // if generation fails
-    if (!res.ok) {
-      console.error("Generation failed");
-    }
+  checkGenerationProgress();
 }
 
 // keeps track of the current progress of the progress bar
@@ -701,10 +700,22 @@ async function checkGenerationProgress() {
         const res = await fetch("/run/progress");
         const data = await res.json();
 
-        // console.log("data received:", data)
+        if (data.error) {
+          console.error("Schedule generation error:", data.error);
+          updateProgressUI(0);
+
+          const flavorText = document.getElementById("flavor-text");
+          if (flavorText) {
+            flavorText.innerHTML = `Generation failed: ${data.error}`;
+          }
+
+          return;
+        }
+
+        console.log("data received:", data)
 
         // if the generation is still in progress or the progress bar has to catch up
-        if (data.progress < 100 || progress_bar_current_progress < 100) {
+        if (data.running || data.progress < 100 || progress_bar_current_progress < 100) {
           
             // Periodically checks for schedule progress updates
             incrementProgressBar(data.progress)
@@ -717,6 +728,15 @@ async function checkGenerationProgress() {
               progress_bar_current_progress = 0;
 
               // Redirects the user to the viewer page after a very short period
+              const completeRes = await fetch("/run/complete", {
+                method: "POST",
+              });
+
+              if (!completeRes.ok) {
+                console.error("Generation completed, but results could not be saved.");
+                return;
+              }
+
               setTimeout(() => (window.location.href = "/viewer"), 1200);
         }
     // Catches any error thay may be thrown
@@ -763,22 +783,70 @@ function updateProgressUI(current_progress) {
 
 // changes the flavor-text to show the appropriate message based on percentage loaded
 function progress_bar_flavor_text(progress) {
-    const flavor_text = document.getElementById("flavor-text"); 
-
-      if (progress == 0){
-          flavor_text.innerHTML = "Please wait";
-
-      } else if (progress == 25) {
-          flavor_text.innerHTML = "About a quarter of the way there"
-
-      } else if (progress == 50) {
-          flavor_text.innerHTML = "Halfway there"
-
-      } else if (progress == 75) {
-          flavor_text.innerHTML = "Nearly there"
-
-      } else if (progress == 100) {
-          flavor_text.innerHTML = "Generation completed. Redirecting to viewer..."
-      }
-
+  progressContext.update(progress);
 }
+
+// ===============================
+// Progress Bar State Pattern
+// ===============================
+
+class ProgressState {
+  update(context, progress) {
+    throw new Error("update is missing and must be implemented");
+  }
+}
+
+class StartingState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Please Wait");
+    if (progress >= 25) context.setState(new QuarterState());
+  }
+}
+
+class QuarterState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Quarter of the way there.");
+    if (progress >= 50) context.setState(new HalfState());
+  }
+}
+
+class HalfState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Halfway there.");
+    if (progress >= 75) context.setState(new ThreeQuarterState());
+  }
+}
+
+class ThreeQuarterState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Nearly there.");
+    if (progress >= 99) context.setState(new CompletedState());
+  }
+}
+
+class CompletedState extends ProgressState {
+  update(context, progress) {
+    context.setFlavorText("Generation complete. Redirecting to viewer...");
+  }
+}
+
+class ProgressContext {
+  constructor() {
+    this.state = new StartingState();
+  }
+
+  setState(state) {
+    this.state = state;
+  }
+
+  update(progress) {
+    this.state.update(this, progress);
+  }
+
+  setFlavorText(text) {
+    const flavor_text = document.getElementById("flavor-text");
+    if (flavor_text) flavor_text.innerText = text;
+  }
+}
+
+const progressContext = new ProgressContext();

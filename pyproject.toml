@@ -13,9 +13,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
+    "pytest>=9.0.3",
     "pytest-cov>=7.0.0",
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=1.2.2",
     "ruff",
     "mypy",
     "ty",

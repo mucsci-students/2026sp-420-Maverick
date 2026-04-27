@@ -43,21 +43,33 @@ High-Level Flow:
 # Imports
 # ==================================================
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask import session  # Session access for checking loaded config defaults
-from app.web.services.run_service import (
-    generate_schedules_into_session,
-    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+from copy import deepcopy
+from threading import Thread
+
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,  # Session access for checking loaded config defaults
+    url_for,
 )
+
 from app.web.services.config_service import (
     SESSION_CONFIG_KEY,
 )  # Where the loaded config is stored
 from app.web.services.progress_store import (
+    generation_errors,
     generation_progress,
-    progress_lock,
+    generation_results,
     is_running,
+    progress_lock,
+)
+from app.web.services.run_service import (
+    KNOWN_OPTIMIZER_FLAGS,  # Shared list of valid optimizer flags for UI + validation
+    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
+    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
 )
 
 # ==================================================
@@ -69,6 +81,21 @@ from app.web.services.progress_store import (
 #   - URL Prefix: /run
 #   - All generator-related routes are grouped under this namespace.
 bp = Blueprint("run", __name__, url_prefix="/run")
+
+
+# ==================================================
+# Helper function
+# ==================================================
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
 
 
 # ==================================================
@@ -149,72 +176,95 @@ def generator():
 # ==================================================
 # Route: Generate Schedules (POST)
 # ==================================================
-@bp.post("/generate")
-def generate():
+def _run_generation_job(session_id, cfg, limit, optimizer_flags):
     """
-    Purpose:
-        Handles schedule generation requests from the Generator UI.
+    Runs schedule generation in a background thread.
 
-    Validations:
-        - limit must be an integer >= 1
-        - optimizer_flags may be empty (valid case)
-
-    Flow:
-        1. Parse + validate user input.
-        2. Persist overrides in session.
-        3. Delegate generation to Service layer.
-        4. Redirect to Viewer on success.
-        5. Flash user-facing error messages on failure.
+    Flask session should not be modified directly inside this thread.
+    Results are temporarily stored in generation_results and later moved into
+    the user session by /run/complete.
     """
-
-    # ----------------------------------------
-    # 1. Parse + Validate User Overrides
-    # ----------------------------------------
+    print("BACKGROUND GENERATION STARTED:", session_id)
 
     try:
-        # Limit override: required to be a positive integer
-        limit = int(request.form.get("limit", "5"))
+        from app.web.services.run_service import build_schedules_from_config
 
-        if limit < 1:
-            flash("Limit must be at least 1.", "error")
-            return redirect(url_for("run.generator"))
-
-        # Optimization override: multi-select checkbox list
-        # NOTE: This can be empty if user unchecks all flags.
-        optimizer_flags = request.form.getlist("optimizer_flags")
-
-    except ValueError:
-        flash("Limit must be an integer.", "error")
-        return redirect(url_for("run.generator"))
-
-    # ----------------------------------------
-    # 2. Generate Schedules via Service Layer
-    # ----------------------------------------
-
-    session_id = session.sid
-
-    try:
-        # Persist Generator overrides so the UI stays consistent after generating
-        session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
-        session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
-
-        count = generate_schedules_into_session(
-            limit=limit, optimizer_flags=optimizer_flags
+        schedules = build_schedules_from_config(
+            cfg=cfg,
+            limit=limit,
+            optimizer_flags=optimizer_flags,
+            session_id=session_id,
         )
 
-        flash(f"Generated {count} schedule(s).", "success")
-
-        # lets the js handle the redirect
-        return ("", 204)
-
-    except Exception as e:
-        # Catch-all so UI doesn't crash on user-facing errors
         with progress_lock:
+            generation_results[session_id] = schedules
+            generation_progress[session_id] = 100
+            is_running[session_id] = False
+
+    except Exception as exc:
+        with progress_lock:
+            generation_errors[session_id] = str(exc)
             generation_progress[session_id] = 0
             is_running[session_id] = False
 
-        flash(f"Generate failed: {e}", "error")
-        return redirect(url_for("run.generator"))
+
+@bp.post("/generate")
+def generate():
+    """
+    Starts schedule generation asynchronously.
+
+    Returns immediately so the frontend can poll /run/progress while the
+    scheduler runs in a background thread.
+    """
+    print("RUN FORM DATA:", request.form.to_dict(flat=False), flush=True)
+
+    try:
+        limit = int(request.form.get("limit", "5"))
+
+        if limit < 1:
+            return {"error": "Limit must be at least 1."}, 400
+
+        optimizer_flags = request.form.getlist("optimizer_flags")
+
+    except ValueError:
+        return {"error": "Limit must be an integer."}, 400
+
+    print(
+        f"RUN OVERRIDES: limit={limit}, optimizer_flags={optimizer_flags}",
+        flush=True,
+    )
+
+    cfg = session.get(SESSION_CONFIG_KEY)
+
+    if not cfg:
+        return {"error": "No config loaded. Load a config first."}, 400
+
+    run_cfg = deepcopy(cfg)
+    run_cfg["limit"] = limit
+    run_cfg["optimizer_flags"] = optimizer_flags
+
+    session_id = _get_session_id()
+
+    with progress_lock:
+        if is_running.get(session_id, False):
+            return {"error": "Generation already in progress."}, 409
+
+        is_running[session_id] = True
+        generation_progress[session_id] = 1
+        generation_errors.pop(session_id, None)
+        generation_results.pop(session_id, None)
+
+    session[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] = limit
+    session[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] = optimizer_flags
+
+    thread = Thread(
+        target=_run_generation_job,
+        args=(session_id, run_cfg, limit, optimizer_flags),
+        daemon=True,
+    )
+    thread.start()
+
+    return {"status": "started"}, 202
 
 
 # ==================================================
@@ -240,10 +290,12 @@ def reset():
     session.pop(SESSION_GENERATOR_LIMIT_OVERRIDE_KEY, None)
     session.pop(SESSION_GENERATOR_FLAGS_OVERRIDE_KEY, None)
 
+    session_id = _get_session_id()
+
     # clears the session progress
     with progress_lock:
-        generation_progress[session.sid] = 0
-        is_running[session.sid] = False
+        generation_progress[session_id] = 0
+        is_running[session_id] = False
 
     flash("Reset Generator settings to config defaults.", "success")
     return redirect(url_for("run.generator"))
@@ -257,9 +309,47 @@ def get_progress():
     """
     Returns the current generation progress (from 0 -> 100)
     """
-    session_id = session.sid
+    session_id = _get_session_id()
 
     with progress_lock:
         progress = generation_progress.get(session_id, 0)
 
-    return {"progress": progress}
+    error = generation_errors.get(session_id)
+
+    return {
+        "progress": progress,
+        "running": is_running.get(session_id, False),
+        "error": error,
+    }
+
+
+@bp.post("/complete")
+def complete_generation():
+    """
+    Moves completed background generation results into Flask session state.
+
+    This finalizes generation after the browser sees progress reach 100%.
+    """
+    session_id = _get_session_id()
+
+    with progress_lock:
+        error = generation_errors.pop(session_id, None)
+        schedules = generation_results.pop(session_id, None)
+
+    if error:
+        return {"error": error}, 500
+
+    if schedules is None:
+        return {"error": "Generation has not completed yet."}, 409
+
+    from app.web.services.run_service import (
+        SESSION_SCHEDULES_KEY,
+        SESSION_SELECTED_INDEX_KEY,
+        SESSION_USER_SELECTED_KEY,
+    )
+
+    session[SESSION_SCHEDULES_KEY] = schedules
+    session[SESSION_SELECTED_INDEX_KEY] = 0
+    session[SESSION_USER_SELECTED_KEY] = False
+
+    return {"status": "complete", "count": len(schedules)}

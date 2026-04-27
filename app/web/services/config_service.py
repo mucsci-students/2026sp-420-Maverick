@@ -36,46 +36,46 @@ Notes:
 
 # Standard library imports used for JSON parsing, file path handling,
 # and safe deep-copying of configuration dictionaries.
+import copy
 import json
 import os
-import copy
 import re
+from os import PathLike
+from typing import Any, cast
 
 # Flask session stores the user's active working configuration,
 # editor state, and related UI flags.
 from flask import session
 
-from os import PathLike
+# Course + conflict management operations from the domain/application layer.
+from app.course_management.course_management import (
+    add_conflict,
+    add_course,
+    modify_conflict,
+    modify_course,
+    remove_conflict,
+    remove_course,
+)
 
 # Faculty management operations from the domain/application layer.
 from app.faculty_management.faculty_management import (
     add_faculty,
-    remove_faculty,
     modify_faculty,
-)
-
-# Course + conflict management operations from the domain/application layer.
-from app.course_management.course_management import (
-    add_course,
-    remove_course,
-    modify_course,
-    add_conflict,
-    remove_conflict,
-    modify_conflict,
-)
-
-# Room management operations.
-from app.room_management.room_management import (
-    add_room,
-    remove_room,
-    modify_room,
+    remove_faculty,
 )
 
 # Lab management operations.
 from app.lab_management.lab_management import (
     add_lab,
-    remove_lab,
     modify_lab,
+    remove_lab,
+)
+
+# Room management operations.
+from app.room_management.room_management import (
+    add_room,
+    modify_room,
+    remove_room,
 )
 
 # ================================================================
@@ -237,8 +237,8 @@ def detect_conflicts(cfg):
 
         room_names.add(name)
 
-    for l in config.get("labs", []):
-        name = l if isinstance(l, str) else l.get("name")
+    for lab in config.get("labs", []):
+        name = lab if isinstance(lab, str) else lab.get("name")
 
         if not name:
             conflicts.append("Lab with missing name.")
@@ -299,6 +299,25 @@ def _get_working_config():
 
 def _get_cgf():
     return _get_working_config()
+
+
+def _save_to_undo_stack():
+    """
+    Save the current state of the configuration file to the undo stack.
+    """
+    global undo_stack, redo_stack
+
+    current_cfg = _get_working_config()
+    if current_cfg is not None:
+        # Save a deep copy to avoid mutations
+        undo_stack.append(copy.deepcopy(current_cfg))
+
+        # Clear redo stack when a new action is performed
+        redo_stack.clear()
+
+        # Limit the undo stack size to MAX_ACTIONS
+        if len(undo_stack) > MAX_ACTIONS:
+            undo_stack.pop(0)
 
 
 def _commit_change(cfg):
@@ -421,9 +440,10 @@ def load_config_into_session(source):
         # Use filename for tracking instead of a filesystem path
         loaded_path = getattr(source, "filename", None)
 
-    # ------------------------------------------------------------------------------------------------------
-    # Continue with existing logic (Apply defaults, store in session, write working_config.json, etc.)
-    # ------------------------------------------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # Continue with existing logic
+    # (Apply defaults, store in session, write working_config.json, etc.)
+    # -----------------------------------------------------------------------
     # Work on a copy so imported data can be normalized safely.
     working_copy = apply_timeslot_defaults(copy.deepcopy(loaded_config))
 
@@ -516,7 +536,8 @@ def get_default_export_filename() -> str:
 
     Rules:
       - If a real config was loaded, suggest its basename.
-      - If nothing loaded (or only working_config.json exists), suggest new_config_file.json.
+      - If nothing loaded (or only working_config.json exists),
+        suggest new_config_file.json.
     """
     path = session.get(SESSION_CONFIG_PATH_KEY)
     if not path:
@@ -524,7 +545,8 @@ def get_default_export_filename() -> str:
 
     base = os.path.basename(str(path))
 
-    # If the "loaded path" is the internal working file, treat it like "no loaded config"
+    # If the "loaded path" is the internal working file,
+    # treat it like "no loaded config"
     if os.path.abspath(str(path)) == os.path.abspath(WORKING_PATH):
         return "new_config_file.json"
 
@@ -651,13 +673,17 @@ def _validate_time_slot_config(cfg):
             spacing = slot.get("spacing")
 
             if start is None or end is None or spacing is None:
-                raise ValueError(f"Each time slot in {day} must include start, spacing, and end.")
+                raise ValueError(
+                    f"Each time slot in {day} must include start, spacing, and end."
+                )
 
             start_mins = _minutes_from_hhmm(str(start))
             end_mins = _minutes_from_hhmm(str(end))
 
             if end_mins <= start_mins:
-                raise ValueError(f"Time slot end must be after start in {day}: {start} - {end}")
+                raise ValueError(
+                    f"Time slot end must be after start in {day}: {start} - {end}"
+                )
 
             if not isinstance(spacing, int) or spacing <= 0:
                 raise ValueError(f"Invalid spacing in {day}: {spacing}")
@@ -667,8 +693,10 @@ def _validate_time_slot_config(cfg):
         if not isinstance(klass, dict):
             raise ValueError(f"Pattern at index {idx} must be an object.")
 
-        credits = klass.get("credits")
-        meetings = klass.get("meetings")
+        klass_dict = cast(dict[str, Any], klass)
+
+        credits = klass_dict.get("credits")
+        meetings = klass_dict.get("meetings")
 
         if not isinstance(credits, int) or credits <= 0:
             raise ValueError(f"Pattern {idx} has invalid credits: {credits}")
@@ -676,26 +704,68 @@ def _validate_time_slot_config(cfg):
         if not isinstance(meetings, list) or not meetings:
             raise ValueError(f"Pattern {idx} must have at least one meeting.")
 
-        for meeting in meetings:
+        for meeting_index, meeting in enumerate(meetings):
             if not isinstance(meeting, dict):
-                raise ValueError(f"Pattern {idx} contains an invalid meeting object.")
-
-            day = meeting.get("day")
-            duration = meeting.get("duration")
-
-            if day not in VALID_DAYS:
-                raise ValueError(f"Pattern {idx} contains invalid day: {day}")
-
-            if not isinstance(duration, int) or duration <= 0:
-                raise ValueError(f"Pattern {idx} contains invalid duration: {duration}")
-
-            # Meeting day must have at least one time range configured
-            if day not in times or not times.get(day):
                 raise ValueError(
-                    f"Pattern {idx} uses {day}, but no time slots are configured for {day}."
+                    f"Pattern {idx}, meeting {meeting_index} must be an object."
                 )
 
-        start_time = klass.get("start_time")
+            meeting_dict = cast(dict[str, Any], meeting)
+
+            meeting_day = meeting_dict.get("day")
+            duration = meeting_dict.get("duration")
+
+            if not isinstance(meeting_day, str) or not meeting_day:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index}must include a valid 'day'."
+                )
+
+            if meeting_day not in VALID_DAYS:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} contains invalid day: "
+                    f"{meeting_day}"
+                )
+
+            if meeting_day not in times or not times.get(meeting_day):
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} uses {meeting_day}, "
+                    f"but no time slots are configured for {meeting_day}."
+                )
+
+            if duration is None:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} must include a duration."
+                )
+
+            try:
+                duration_value = int(duration)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} has invalid duration "
+                    f"'{duration}'."
+                ) from None
+
+            if duration_value <= 0:
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} has invalid duration "
+                    f"'{duration}'."
+                )
+
+            lab = meeting_dict.get("lab", False)
+
+            if not isinstance(lab, bool):
+                raise ValueError(
+                    f"Pattern {idx}, meeting {meeting_index} field 'lab' must be "
+                    f"true or false."
+                )
+
+            fixed_start = meeting_dict.get("fixed_start")
+
+            if fixed_start is not None:
+                _minutes_from_hhmm(str(fixed_start))
+
+        start_time = klass_dict.get("start_time")
+
         if start_time is not None:
             _minutes_from_hhmm(str(start_time))
 
@@ -723,7 +793,7 @@ def validate_config(cfg):
 
     room_names = [r if isinstance(r, str) else r.get("name") for r in rooms]
 
-    lab_names = [l if isinstance(l, str) else l.get("name") for l in labs]
+    lab_names = [lab if isinstance(lab, str) else lab.get("name") for lab in labs]
 
     for course in courses:
         cid = course.get("course_id")
@@ -740,9 +810,9 @@ def validate_config(cfg):
             if r not in room_names:
                 raise ValueError(f"Invalid room '{r}' in course {cid}")
 
-        for l in course.get("lab", []):
-            if l not in lab_names:
-                raise ValueError(f"Invalid lab '{l}' in course {cid}")
+        for lab in course.get("lab", []):
+            if lab not in lab_names:
+                raise ValueError(f"Invalid lab '{lab}' in course {cid}")
 
         for f in course.get("faculty", []):
             if f not in faculty_names:
@@ -753,7 +823,7 @@ def validate_config(cfg):
                 raise ValueError(f"Invalid conflict '{conflict}' in course {cid}")
 
     _validate_time_slot_config(cfg)
-    
+
 
 # ================================================================
 # Status
@@ -808,24 +878,28 @@ def get_config_status():
 
 
 def add_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_faculty_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_faculty(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    _save_to_undo_stack()
     cfg = _get_cgf()
 
     faculty_list = cfg.get("config", {}).get("faculty", [])
@@ -847,6 +921,7 @@ def set_faculty_time_service(name: str, day: str, start_time: str, end_time: str
 
 
 def remove_faculty_time_service(name: str, day: str, start_time: str, end_time: str):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     faculty_list = cfg.get("config", {}).get("faculty", [])
 
@@ -873,6 +948,7 @@ def set_faculty_day_unavailable_service(name: str, day: str):
     Mark a faculty member unavailable on a specific day by setting that
     day's time list to an empty list.
     """
+    _save_to_undo_stack()
     cfg = _get_cgf()
     faculty_list = cfg.get("config", {}).get("faculty", [])
 
@@ -894,18 +970,21 @@ def set_faculty_day_unavailable_service(name: str, day: str):
 
 
 def add_room_service(room):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_room(cfg, room)
     _commit_change(cfg)
 
 
 def remove_room_service(room):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_room(cfg, room)
     _commit_change(cfg)
 
 
 def modify_room_service(room, new_name):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_room(cfg, room, new_name)
     _commit_change(cfg)
@@ -917,18 +996,21 @@ def modify_room_service(room, new_name):
 
 
 def add_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_lab(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_lab(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_lab_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_lab(cfg, **kwargs)
     _commit_change(cfg)
@@ -940,6 +1022,7 @@ def modify_lab_service(**kwargs):
 
 
 def add_course_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
@@ -948,12 +1031,14 @@ def add_course_service(**kwargs):
 
 
 def remove_course_service(course_id):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_course(cfg, course_id)
     _commit_change(cfg)
 
 
 def modify_course_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     if "credits" in kwargs and kwargs["credits"]:
         kwargs["credits"] = int(kwargs["credits"])
@@ -967,18 +1052,21 @@ def modify_course_service(**kwargs):
 
 
 def add_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     add_conflict(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def remove_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     remove_conflict(cfg, **kwargs)
     _commit_change(cfg)
 
 
 def modify_conflict_service(**kwargs):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     modify_conflict(cfg, **kwargs)
     _commit_change(cfg)
@@ -993,6 +1081,7 @@ def modify_conflict_service(**kwargs):
 # Time Slot Management
 # ==============================================================
 def add_time_slot_service(day, start, spacing, end):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1011,6 +1100,7 @@ def add_time_slot_service(day, start, spacing, end):
 
 
 def remove_time_slot_service(day, index):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1029,6 +1119,7 @@ def remove_time_slot_service(day, index):
 
 
 def modify_time_slot_service(day, index, start, spacing, end):
+    _save_to_undo_stack()
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
@@ -1059,28 +1150,28 @@ def modify_time_slot_service(day, index, start, spacing, end):
 # ================================================================
 # Meeting Pattern Management
 # ================================================================
-def _parse_meetings(days: str, duration: str, is_lab=False):
+def _parse_meetings(
+    days: str | list[str],
+    duration: int | str,
+    is_lab: bool = False,
+) -> list[dict[str, Any]]:
     """
-    Convert a comma-separated day string into canonical meeting objects.
-    Example:
-        days="MON,WED,FRI", duration="50", is_lab=False
-        -> [
-            {"day": "MON", "duration": 50},
-            {"day": "WED", "duration": 50},
-            {"day": "FRI", "duration": 50},
-        ]
+    Convert day input into canonical meeting objects.
     """
-    duration = int(duration)
+    duration_str = str(int(duration))
+
+    if isinstance(days, str):
+        parsed_days = [day.strip().upper() for day in days.split(",") if day.strip()]
+    else:
+        parsed_days = [day.strip().upper() for day in days if day.strip()]
+
     is_lab = str(is_lab).lower() in ["true", "on", "1"]
 
-    meetings = []
-    for day in str(days).split(","):
-        clean_day = day.strip().upper()
-        if not clean_day:
-            continue
-        meeting = {
-            "day": clean_day,
-            "duration": duration,
+    meetings: list[dict[str, Any]] = []
+    for day in parsed_days:
+        meeting: dict[str, Any] = {
+            "days": [day],
+            "duration": duration_str,
         }
         if is_lab:
             meeting["lab"] = True
@@ -1092,14 +1183,23 @@ def _parse_meetings(days: str, duration: str, is_lab=False):
     return meetings
 
 
-def add_pattern_service(credits, days, duration, is_lab=False, fixed_start_time=None, enabled=True, **kwargs):
+def add_pattern_service(
+    credits: int | str,
+    days: str | list[str],
+    duration: int | str,
+    is_lab: bool | str = False,
+    fixed_start_time: str | None = None,
+    enabled: bool | str = True,
+    **kwargs,
+):
     cfg = _get_cgf()
     _ensure_time_slot_defaults(cfg)
 
     enabled = str(enabled).lower() in ["true", "on", "1"]
-    pattern = {
+    is_lab_bool = str(is_lab).lower() in ["true", "on", "1"]
+    pattern: dict[str, Any] = {
         "credits": int(credits),
-        "meetings": _parse_meetings(days, duration, is_lab),
+        "meetings": _parse_meetings(days, duration, is_lab_bool),
     }
 
     fixed_start_time = (fixed_start_time or "").strip()
@@ -1203,3 +1303,51 @@ def update_schedules(cfg):
     generate_schedules_into_session(cfg)
 
     return session.get("schedules", [])
+
+
+# ================================================================
+# Undo / Redo
+# ================================================================
+
+undo_stack = []
+redo_stack = []
+
+# the maximum number of actions that can be undone
+MAX_ACTIONS = 50
+
+
+def undo():
+    """
+    Undoes the last change to the configuration file.
+    """
+    global undo_stack, redo_stack
+
+    if not undo_stack:
+        raise ValueError("Nothing to undo")
+
+    # Save current state of the configuration file
+    current_cfg = session.get(SESSION_CONFIG_KEY)
+    if current_cfg:
+        redo_stack.append(copy.deepcopy(current_cfg))
+
+    # Restore the previous state from undo stack
+    previous_cfg = undo_stack.pop()
+    _commit_change(previous_cfg)
+
+
+def redo():
+    """
+    Redos the last undone change to the current configuration file.
+    """
+    global undo_stack, redo_stack
+
+    if not redo_stack:
+        raise ValueError("Nothing to redo")
+
+    current_cfg = session.get(SESSION_CONFIG_KEY)
+    if current_cfg:
+        undo_stack.append(copy.deepcopy(current_cfg))
+
+    # Restore the next state from redo stack
+    next_cfg = redo_stack.pop()
+    _commit_change(next_cfg)

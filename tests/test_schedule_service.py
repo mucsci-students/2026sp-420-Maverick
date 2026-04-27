@@ -17,21 +17,25 @@ These are base-case tests designed to:
 """
 
 import pytest
-import io
+from flask import session
+
 from app.web.app import create_app
 from app.web.services.schedule_service import (
-    _group_by,
-    get_view_data,
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
+    _check_for_conflicts,
+    _group_by,
+    export_schedules_to_csv,
+    get_schedules_for_export,
+    get_view_data,
+    import_schedules_from_file,
+    is_export_enabled,
+    is_valid_file,
     next_schedule,
     prev_schedule,
     select_schedule,
-    export_schedules_to_csv,
-    is_valid_file,
 )
-from flask import session
 
 
 def test_group_by_basic():
@@ -216,3 +220,153 @@ def test_validation_error(app):
     with pytest.raises(ValueError) as excinfo:
         is_valid_file(bad_data)
     assert "Invalid file" in str(excinfo.value)
+
+
+def test_group_by_handles_none_and_missing_keys():
+    assignments = [
+        {"room": None},
+        {},
+        {"room": " A "},
+    ]
+
+    grouped = _group_by(assignments, "room")
+
+    assert "A" in grouped
+    assert len(grouped["A"]) == 1
+
+
+def test_group_by_skips_blank_strings():
+    assignments = [
+        {"faculty": ""},
+        {"faculty": "   "},
+        {"faculty": "Smith"},
+    ]
+
+    grouped = _group_by(assignments, "faculty")
+
+    assert "Smith" in grouped
+    assert len(grouped) == 1
+
+
+def test_no_conflict_different_days():
+    assignments = [
+        {"day": "MON", "start": "10:00", "duration": "60"},
+        {"day": "TUE", "start": "10:00", "duration": "60"},
+    ]
+
+    assert _check_for_conflicts(assignments) is False
+
+
+def test_conflict_partial_overlap():
+    assignments = [
+        {"day": "MON", "start": "10:00", "duration": "60"},
+        {"day": "MON", "start": "10:30", "duration": "60"},
+    ]
+
+    assert _check_for_conflicts(assignments) is True
+
+
+def test_conflict_invalid_time_data_graceful():
+    assignments = [
+        {"day": "MON", "start": "bad", "duration": "60"},
+        {"day": "MON", "start": "10:00", "duration": "60"},
+    ]
+
+    # Should not crash
+    result = _check_for_conflicts(assignments)
+    assert result in [True, False]
+
+
+def test_select_schedule_sets_user_selected(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{}, {}]
+
+        select_schedule(0)
+
+        assert session[SESSION_USER_SELECTED_KEY] is True
+
+
+def test_export_enabled_flag(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = []
+        assert is_export_enabled() is False
+
+        session[SESSION_SCHEDULES_KEY] = [{}]
+        assert is_export_enabled() is True
+
+
+def test_next_schedule_no_session_key(app):
+    with app.test_request_context():
+        session.clear()
+
+        next_schedule()
+
+        assert SESSION_SELECTED_INDEX_KEY not in session
+
+
+def test_prev_schedule_no_session_key(app):
+    with app.test_request_context():
+        session.clear()
+
+        prev_schedule()
+
+        assert SESSION_SELECTED_INDEX_KEY not in session
+
+
+def test_group_by_faculty_multiple_groups():
+    assignments = [
+        {"faculty": "Smith"},
+        {"faculty": "Jones"},
+        {"faculty": "Smith"},
+    ]
+
+    grouped = _group_by(assignments, "faculty")
+
+    assert len(grouped) == 2
+    assert len(grouped["Smith"]) == 2
+
+
+def test_select_schedule_exact_index(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{}, {}, {}]
+
+        select_schedule(1)
+
+        assert session[SESSION_SELECTED_INDEX_KEY] == 1
+
+
+def test_conflict_with_missing_fields(app):
+    with app.test_request_context():
+        schedule = {
+            "meta": {},
+            "assignments": [
+                {"day": "MON"},
+                {"start": "10:00"},
+            ],
+        }
+
+        session[SESSION_SCHEDULES_KEY] = [schedule]
+        session[SESSION_SELECTED_INDEX_KEY] = 0
+
+        result = get_view_data()
+
+        assert "has_conflicts" in result
+
+
+def test_import_invalid_json(app, tmp_path):
+    file_path = tmp_path / "bad.json"
+    file_path.write_text("not json")
+
+    with app.test_request_context():
+        with pytest.raises(ValueError):
+            import_schedules_from_file(str(file_path))
+
+
+def test_get_schedules_for_export(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{"meta": {}}]
+
+        result = get_schedules_for_export()
+
+        assert isinstance(result, list)
+        assert len(result) == 1

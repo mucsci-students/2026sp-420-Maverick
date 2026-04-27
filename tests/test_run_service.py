@@ -20,17 +20,17 @@ These are base-case tests intended to:
 from flask import Flask, session
 
 from app.web.services.config_service import SESSION_CONFIG_KEY
+from app.web.services.progress_store import generation_progress, is_running
 from app.web.services.run_service import (
     KNOWN_OPTIMIZER_FLAGS,
-    SESSION_GENERATOR_FLAGS_OVERRIDE_KEY,
-    SESSION_GENERATOR_LIMIT_OVERRIDE_KEY,
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
+    _get_session_id,
     _to_int,
+    build_schedules_from_config,
     generate_schedules_into_session,
 )
-from app.web.services.progress_store import generation_progress, is_running
 
 
 def _make_app():
@@ -65,7 +65,7 @@ def test_generate_schedules_into_session_raises_without_config():
     app = _make_app()
 
     with app.test_request_context("/"):
-        session.sid = "test-session-missing-config"
+        session["_test_sid"] = "test-session-missing-config"
 
         try:
             generate_schedules_into_session(limit=5)
@@ -74,8 +74,9 @@ def test_generate_schedules_into_session_raises_without_config():
             assert "No config loaded" in str(exc)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_blocks_concurrent_generation():
@@ -85,8 +86,8 @@ def test_generate_schedules_into_session_blocks_concurrent_generation():
     app = _make_app()
 
     with app.test_request_context("/"):
-        session.sid = "test-session-concurrent"
-        is_running[session.sid] = True
+        session["_test_sid"] = "test-session-concurrent"
+        is_running[session["_test_sid"]] = True
 
         try:
             generate_schedules_into_session(limit=5)
@@ -95,8 +96,9 @@ def test_generate_schedules_into_session_blocks_concurrent_generation():
             assert "already in progress" in str(exc)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_stores_schedules(monkeypatch):
@@ -166,7 +168,7 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-store"
+        session["_test_sid"] = "test-session-store"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         count = generate_schedules_into_session(limit=1)
@@ -187,8 +189,9 @@ def test_generate_schedules_into_session_stores_schedules(monkeypatch):
         assert session[SESSION_USER_SELECTED_KEY] is False
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeypatch):
@@ -232,7 +235,7 @@ def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeyp
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-flags"
+        session["_test_sid"] = "test-session-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(
@@ -249,8 +252,9 @@ def test_generate_schedules_into_session_filters_unknown_optimizer_flags(monkeyp
         assert all(flag in KNOWN_OPTIMIZER_FLAGS for flag in used_flags)
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
@@ -296,7 +300,7 @@ def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-default-flags"
+        session["_test_sid"] = "test-session-default-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(limit=1, optimizer_flags=None)
@@ -307,8 +311,9 @@ def test_generate_schedules_into_session_uses_config_flags_when_none_passed(
         assert used_flags == ["faculty_room", "pack_rooms"]
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
 
 
 def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
@@ -352,7 +357,7 @@ def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
     )
 
     with app.test_request_context("/"):
-        session.sid = "test-session-empty-flags"
+        session["_test_sid"] = "test-session-empty-flags"
         session[SESSION_CONFIG_KEY] = fake_cfg
 
         generate_schedules_into_session(limit=1, optimizer_flags=[])
@@ -363,5 +368,180 @@ def test_generate_schedules_into_session_handles_empty_flag_list(monkeypatch):
         assert used_flags == []
 
         # Cleanup shared progress globals after test
-        generation_progress.pop(session.sid, None)
-        is_running.pop(session.sid, None)
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_releases_running_flag_on_error(monkeypatch):
+    """
+    Ensures the generator lock is released even when scheduler generation fails.
+
+    This protects the app from getting stuck in a permanent
+    'Generation already in progress' state after an exception.
+    """
+    app = _make_app()
+
+    fake_cfg = {
+        "config": {
+            "rooms": ["Room A"],
+            "labs": [],
+            "courses": [],
+            "faculty": [],
+        },
+        "optimizer_flags": [],
+    }
+
+    def broken_generate_schedules(cfg, limit, optimize):
+        raise RuntimeError("Scheduler failed")
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        broken_generate_schedules,
+    )
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-session-error-cleanup"
+        session[SESSION_CONFIG_KEY] = fake_cfg
+
+        try:
+            generate_schedules_into_session(limit=1)
+            assert False, "Expected scheduler failure"
+        except RuntimeError:
+            pass
+
+        assert is_running[session["_test_sid"]] is False
+
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_rejects_zero_limit():
+    """
+    Ensures generation rejects invalid limits before invoking the scheduler.
+    """
+    app = _make_app()
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-session-zero-limit"
+        session[SESSION_CONFIG_KEY] = {
+            "config": {
+                "rooms": [],
+                "labs": [],
+                "courses": [],
+                "faculty": [],
+            }
+        }
+
+        try:
+            generate_schedules_into_session(limit=0)
+            assert False, "Expected ValueError for zero limit"
+        except ValueError as exc:
+            assert "limit must be greater than 0" in str(exc)
+
+        session_id = session["_test_sid"]
+        generation_progress.pop(session_id, None)
+        is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_empty_result(monkeypatch):
+    app = _make_app()
+
+    def fake_generate(cfg, limit, optimize):
+        yield from []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "empty-case"
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"rooms": [], "labs": [], "courses": [], "faculty": []}
+        }
+
+        count = generate_schedules_into_session(limit=1)
+
+        assert count == 0
+        assert session[SESSION_SCHEDULES_KEY] == []
+
+
+def test_build_schedules_filters_invalid_flags(monkeypatch):
+    cfg = {
+        "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
+        "optimizer_flags": ["faculty_course", "bad_flag"],
+    }
+
+    def fake_generate(cfg, limit, optimize):
+        yield []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    schedules = build_schedules_from_config(
+        cfg,
+        limit=1,
+        optimizer_flags=["faculty_course", "fake_flag"],
+        session_id="x",
+    )
+
+    # No schedules, but still validates filtering path
+    assert schedules == []
+
+
+def test_optimize_flag_true_when_flags_present(monkeypatch):
+    cfg = {"config": {"rooms": [], "labs": [], "courses": [], "faculty": []}}
+
+    observed = {}
+
+    def fake_generate(cfg, limit, optimize):
+        observed["optimize"] = optimize
+        yield []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    build_schedules_from_config(cfg, 1, ["faculty_course"], "x")
+
+    assert observed["optimize"] is True
+
+
+def test_row_defaults_when_missing_fields(monkeypatch):
+    cfg = {"config": {"rooms": [], "labs": [], "courses": [], "faculty": []}}
+
+    def fake_generate(cfg, limit, optimize):
+        yield [{}]
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    schedules = build_schedules_from_config(cfg, 1, [], "x")
+
+    row = schedules[0]["assignments"][0]
+    assert row["course_id"] == ""
+    assert row["time"] == ""
+
+
+def test_get_session_id_from_flask_sid(app):
+    with app.test_request_context("/"):
+        setattr(session, "sid", "real-session-id")
+        assert _get_session_id() == "real-session-id"
+
+
+def test_get_session_id_from_test_sid(app):
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-id"
+        assert _get_session_id() == "test-id"
+
+
+def test_get_session_id_fallback_default(app):
+    with app.test_request_context("/"):
+        assert _get_session_id() == "default-session"

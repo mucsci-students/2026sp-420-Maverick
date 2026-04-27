@@ -24,18 +24,19 @@ High-Level Flow:
 # Imports
 # ------------------------------
 
-from flask import session  # Session storage for per-user state
 from copy import deepcopy  # Prevent mutation of loaded config
 from datetime import datetime  # Timestamp metadata for schedules
 from typing import Any, Dict, List, Optional  # Type hints for clarity
-from app.web.services.config_service import SESSION_CONFIG_KEY
-from scheduler_core.main import generate_schedules  # Core solver engine
+
+from flask import session  # Session storage for per-user state
+
 from app.web.services.config_service import SESSION_CONFIG_KEY, validate_config
 from app.web.services.progress_store import (
     generation_progress,
-    progress_lock,
     is_running,
+    progress_lock,
 )
+from scheduler_core.main import generate_schedules  # Core solver engine
 
 # ----------------------------------
 # Session Keys (Key Sources of Date)
@@ -91,6 +92,129 @@ def _to_int(x: Any, default: int = 0) -> int:
         return default
 
 
+def build_schedules_from_config(
+    cfg: Dict[str, Any],
+    limit: int,
+    optimizer_flags: Optional[List[str]],
+    session_id: str,
+) -> List[Dict[str, Any]]:
+    """
+    Builds generated schedule objects from a config dictionary.
+
+    This function is safe for background generation because it does not read
+    from or write to Flask session directly.
+    """
+
+    print("CHECKPOINT 1: entered build_schedules_from_config", flush=True)
+
+    if limit <= 0:
+        raise ValueError("Schedule generation limit must be greater than 0.")
+
+    print("CHECKPOINT 2: limit validated", flush=True)
+
+    run_cfg = deepcopy(cfg)
+    print("CHECKPOINT 3: config copied", flush=True)
+
+    validate_config(run_cfg)
+    print("CHECKPOINT 4: config validated", flush=True)
+
+    run_cfg["limit"] = limit
+    print(f"CHECKPOINT 5: limit applied -> {limit}", flush=True)
+
+    if optimizer_flags is None:
+        optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+
+    print(f"CHECKPOINT 6: raw optimizer flags -> {optimizer_flags}", flush=True)
+
+    optimizer_flags = [
+        flag for flag in optimizer_flags if flag in KNOWN_OPTIMIZER_FLAGS
+    ]
+
+    print(f"CHECKPOINT 7: filtered optimizer flags -> {optimizer_flags}", flush=True)
+
+    run_cfg["optimizer_flags"] = optimizer_flags
+    optimize = len(optimizer_flags) > 0
+
+    print(f"CHECKPOINT 8: optimize flag -> {optimize}", flush=True)
+
+    grouped: Dict[int, List[Dict[str, Any]]] = {}
+    schedules_generated = 0
+
+    with progress_lock:
+        generation_progress[session_id] = 5
+
+    print("CHECKPOINT 9: progress set to 5%", flush=True)
+    print("CHECKPOINT 10: about to call scheduler_core.generate_schedules", flush=True)
+
+    for schedule_rows in generate_schedules(run_cfg, limit=limit, optimize=optimize):
+        print("CHECKPOINT 11: scheduler yielded one schedule", flush=True)
+
+        schedules_generated += 1
+
+        percent = min(int((schedules_generated / limit) * 100), 99)
+
+        with progress_lock:
+            generation_progress[session_id] = percent
+
+        print(
+            f"CHECKPOINT 12: progress updated -> {percent}% "
+            f"after {schedules_generated} schedule(s)",
+            flush=True,
+        )
+
+        for row in schedule_rows:
+            sid = _to_int(row.get("schedule_id"), default=1)
+
+            grouped.setdefault(sid, []).append(
+                {
+                    "schedule_id": sid,
+                    "course_id": row.get("course_id", ""),
+                    "day": row.get("day", ""),
+                    "start": row.get("start", ""),
+                    "room": row.get("room", ""),
+                    "faculty": row.get("faculty", ""),
+                    "lab": row.get("lab", ""),
+                    "duration": row.get("duration", ""),
+                    "credits": row.get("credits", ""),
+                    "meeting_index": row.get("meeting_index", ""),
+                    "time": f"{row.get('day', '')} {row.get('start', '')}".strip(),
+                }
+            )
+
+    print("CHECKPOINT 13: scheduler loop finished", flush=True)
+
+    schedules: List[Dict[str, Any]] = []
+
+    for sid in sorted(grouped.keys()):
+        schedules.append(
+            {
+                "meta": {
+                    "schedule_id": sid,
+                    "generated_at": datetime.now().isoformat(timespec="seconds"),
+                    "optimizer_flags": optimizer_flags,
+                    "row_count": len(grouped[sid]),
+                },
+                "assignments": grouped[sid],
+            }
+        )
+
+    print(f"CHECKPOINT 14: built {len(schedules)} final schedule(s)", flush=True)
+
+    return schedules
+
+
+def _get_session_id() -> str:
+    sid = getattr(session, "sid", None)
+    if isinstance(sid, str) and sid:
+        return sid
+
+    test_sid = session.get("_test_sid")
+    if isinstance(test_sid, str) and test_sid:
+        return test_sid
+
+    return "default-session"
+
+
 # ------------------------------
 # Core Service Function
 # ------------------------------
@@ -127,7 +251,7 @@ def generate_schedules_into_session(
     """
 
     # sets the session id
-    session_id = session.sid
+    session_id = _get_session_id()
 
     # prevents concurrent generations
     with progress_lock:
@@ -137,147 +261,157 @@ def generate_schedules_into_session(
         is_running[session_id] = True
         generation_progress[session_id] = 0
 
-    # ----------------------------------------
-    # 1. Retrieve Configuration
-    # ----------------------------------------
-    # Get loaded config
+    try:
+        # ----------------------------------------
+        # 1. Retrieve Configuration
+        # ----------------------------------------
+        # Get loaded config
 
-    cfg = session.get(SESSION_CONFIG_KEY)
+        cfg = session.get(SESSION_CONFIG_KEY)
 
-    if not cfg:
-        # Explicit error instead of silent failure
-        raise ValueError("No config loaded. Load a config first in Config Editor.")
+        if not cfg:
+            # Explicit error instead of silent failure
+            raise ValueError("No config loaded. Load a config first in Config Editor.")
 
-    # ----------------------------------
-    # 2. Protect Original Configuration
-    # ----------------------------------
-    # Copy so we don't mutate saved config
-    # Use deepcopy to ensure overrides do not modify the saved configuration.
-    # the saved configuration stored in session.
+        if limit <= 0:
+            raise ValueError("Schedule generation limit must be greater than 0.")
 
-    run_cfg = deepcopy(cfg)
-    validate_config(run_cfg)
+        # ----------------------------------
+        # 2. Protect Original Configuration
+        # ----------------------------------
+        # Copy so we don't mutate saved config
+        # Use deepcopy to ensure overrides do not modify the saved configuration.
+        # the saved configuration stored in session.
 
-    # ----------------------------------------
-    # 3. Apply Per-Run Overrides (Generator UI)
-    # ----------------------------------------
+        run_cfg = deepcopy(cfg)
+        validate_config(run_cfg)
 
-    # Override schedule generation limit
-    # (Ensures consistency between config and solver call)
-    run_cfg["limit"] = limit
+        # ----------------------------------------
+        # 3. Apply Per-Run Overrides (Generator UI)
+        # ----------------------------------------
 
-    # ----------------------------------------------------
-    # Optimization Flag Override Logic
-    # ----------------------------------------------------
-    # Behavior:
-    #   - If UI did not submit flags (None), default to
-    #     JSON configuration values.
-    #   - If UI submitted flags (including empty list),
-    #     use exactly what user selected.
-    #   - Validate against KNOWN_OPTIMIZER_FLAGS for safety.
-    # ----------------------------------------------------
-    if optimizer_flags is None:
-        # No UI override → use JSON defaults
-        optimizer_flags = run_cfg.get("optimizer_flags", []) or []
+        # Override schedule generation limit
+        # (Ensures consistency between config and solver call)
+        run_cfg["limit"] = limit
 
-    # Filter out any unknown flags (defensive validation)
-    optimizer_flags = [
-        flag for flag in optimizer_flags if flag in KNOWN_OPTIMIZER_FLAGS
-    ]
+        # ----------------------------------------------------
+        # Optimization Flag Override Logic
+        # ----------------------------------------------------
+        # Behavior:
+        #   - If UI did not submit flags (None), default to
+        #     JSON configuration values.
+        #   - If UI submitted flags (including empty list),
+        #     use exactly what user selected.
+        #   - Validate against KNOWN_OPTIMIZER_FLAGS for safety.
+        # ----------------------------------------------------
+        if optimizer_flags is None:
+            # No UI override → use JSON defaults
+            optimizer_flags = run_cfg.get("optimizer_flags", []) or []
 
-    # Apply override to in-memory config
-    run_cfg["optimizer_flags"] = optimizer_flags
+        # Filter out any unknown flags (defensive validation)
+        optimizer_flags = [
+            flag for flag in optimizer_flags if flag in KNOWN_OPTIMIZER_FLAGS
+        ]
 
-    # Core currently doesn't use optimize bool, but kept it for future compatibility
-    optimize = len(optimizer_flags) > 0
+        # Apply override to in-memory config
+        run_cfg["optimizer_flags"] = optimizer_flags
 
-    # sets the intial progress when generation starts
-    with progress_lock:
-        generation_progress[session_id] = 0
+        # Core currently doesn't use optimize bool, but kept it for future compatibility
+        optimize = len(optimizer_flags) > 0
 
-    # Sets the initial counter
-    schedules_generated = 0
+        # # sets the intial progress when generation starts
+        # with progress_lock:
+        #     generation_progress[session_id] = 0
 
-    # Group rows by schedule_id for Viewer to navigate
-    grouped: Dict[int, List[Dict[str, Any]]] = {}
+        # Sets the initial counter
+        schedules_generated = 0
 
-    # --------------------------------
-    # 4. Invoke Core Scheduler Engine
-    # --------------------------------
+        # Group rows by schedule_id for Viewer to navigate
+        grouped: Dict[int, List[Dict[str, Any]]] = {}
 
-    # --- REAL SCHEDULER CALL ---
-    # The scheduler returns a flat list of assignment rows.
-    # Each row corresponds to one meeting instance.
-    for schedule_rows in generate_schedules(run_cfg, limit=limit, optimize=optimize):
-        # the number of schedule that have been generated so fat
-        schedules_generated += 1
-
-        # updates the progress of the generation
-        percent = int((schedules_generated / limit) * 100)
+        # --------------------------------
+        # 4. Invoke Core Scheduler Engine
+        # --------------------------------
 
         with progress_lock:
-            generation_progress[session_id] = percent
+            generation_progress[session_id] = 5
 
-        # print ("PERCENTAGE: ", int((schedules_generated /  limit) * 100))
-        # print("SCHEUDLE GENERATED:", schedules_generated)
-        # --------------------------------------------
-        # 5. Transform Flat Rows -> Grouped Schedules
-        # --------------------------------------------
-        for row in schedule_rows:
-            sid = _to_int(row.get("schedule_id"), default=1)
+        # --- REAL SCHEDULER CALL ---
+        # The scheduler returns a flat list of assignment rows.
+        # Each row corresponds to one meeting instance.
+        for schedule_rows in generate_schedules(
+            run_cfg, limit=limit, optimize=optimize
+        ):
+            # the number of schedule that have been generated so fat
+            schedules_generated += 1
 
-            grouped.setdefault(sid, []).append(
+            # updates the progress of the generation
+            percent = int((schedules_generated / limit) * 100)
+
+            with progress_lock:
+                generation_progress[session_id] = percent
+
+            # print ("PERCENTAGE: ", int((schedules_generated /  limit) * 100))
+            # print("SCHEUDLE GENERATED:", schedules_generated)
+            # --------------------------------------------
+            # 5. Transform Flat Rows -> Grouped Schedules
+            # --------------------------------------------
+            for row in schedule_rows:
+                sid = _to_int(row.get("schedule_id"), default=1)
+
+                grouped.setdefault(sid, []).append(
+                    {
+                        # fields returned by scheduler_core
+                        "schedule_id": sid,
+                        "course_id": row.get("course_id", ""),
+                        "day": row.get("day", ""),
+                        "start": row.get("start", ""),
+                        "room": row.get("room", ""),
+                        "faculty": row.get("faculty", ""),
+                        "lab": row.get("lab", ""),
+                        "duration": row.get("duration", ""),
+                        "credits": row.get("credits", ""),
+                        "meeting_index": row.get("meeting_index", ""),
+                        # Convenience field for UI display
+                        "time": f"{row.get('day', '')} {row.get('start', '')}".strip(),
+                    }
+                )
+
+        # --------------------------------
+        # 6. Build Final Schedule Objects
+        # --------------------------------
+
+        schedules: List[Dict[str, Any]] = []
+
+        for sid in sorted(grouped.keys()):
+            schedules.append(
                 {
-                    # fields returned by scheduler_core
-                    "schedule_id": sid,
-                    "course_id": row.get("course_id", ""),
-                    "day": row.get("day", ""),
-                    "start": row.get("start", ""),
-                    "room": row.get("room", ""),
-                    "faculty": row.get("faculty", ""),
-                    "lab": row.get("lab", ""),
-                    "duration": row.get("duration", ""),
-                    "credits": row.get("credits", ""),
-                    "meeting_index": row.get("meeting_index", ""),
-                    # Convenience field for UI display
-                    "time": f"{row.get('day', '')} {row.get('start', '')}".strip(),
+                    "meta": {
+                        "schedule_id": sid,
+                        "generated_at": datetime.now().isoformat(timespec="seconds"),
+                        "optimizer_flags": optimizer_flags,  # Store actual flags used
+                        "row_count": len(grouped[sid]),
+                    },
+                    "assignments": grouped[sid],
                 }
             )
 
-    # --------------------------------
-    # 6. Build Final Schedule Objects
-    # --------------------------------
+        # ----------------------------------------
+        # 7. Persist in Session for Viewer Layer
+        # ----------------------------------------
+        # Store for Viewer navigation
 
-    schedules: List[Dict[str, Any]] = []
-
-    for sid in sorted(grouped.keys()):
-        schedules.append(
-            {
-                "meta": {
-                    "schedule_id": sid,
-                    "generated_at": datetime.now().isoformat(timespec="seconds"),
-                    "optimizer_flags": optimizer_flags,  # Store actual flags used
-                    "row_count": len(grouped[sid]),
-                },
-                "assignments": grouped[sid],
-            }
+        session[SESSION_SCHEDULES_KEY] = schedules
+        session[SESSION_SELECTED_INDEX_KEY] = 0  # Reset navigation to first schedule
+        session[SESSION_USER_SELECTED_KEY] = (
+            False  # show "Select Schedule" placeholder initially
         )
 
-    # ----------------------------------------
-    # 7. Persist in Session for Viewer Layer
-    # ----------------------------------------
-    # Store for Viewer navigation
+        return len(schedules)
 
-    session[SESSION_SCHEDULES_KEY] = schedules
-    session[SESSION_SELECTED_INDEX_KEY] = 0  # Reset navigation to first schedule
-    session[SESSION_USER_SELECTED_KEY] = (
-        False  # show "Select Schedule" placeholder initially
-    )
-
-    # sets the progress to 100 when generation is complete
-    # and allow for a new generation to be run
-    with progress_lock:
-        generation_progress[session_id] = 100
-        is_running[session_id] = False
-
-    return len(schedules)
+    finally:
+        # sets the progress to 100 when generation is complete
+        # and allow for a new generation to be run
+        with progress_lock:
+            generation_progress[session_id] = 100
+            is_running[session_id] = False

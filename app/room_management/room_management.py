@@ -14,7 +14,6 @@ Related User Stories:
 
 from typing import Any, Dict, List
 
-
 # -----------------------------
 # Internal Helpers
 # -----------------------------
@@ -34,7 +33,10 @@ def get_room_list(cfg: Dict[str, Any]) -> List[str]:
 
 
 """
-Description: find_room_index takes a list of rooms and returns if the room was found in the list or not.
+Description: 
+    find_room_index takes a list of rooms 
+    and returns if the room was found in the list or not.
+
 Parameters :
            room_list -> the list of rooms.
            room_name -> the name of the room.

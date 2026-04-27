@@ -19,7 +19,8 @@ from typing import Any, Dict, List, Optional
 # JSON config gets loaded in a Python dict via (cfg).
 # The courses are found at/live at: cfg["config"]["courses"]
 #
-# This helper function ensures that the path exists and returns the list of course dicts.
+# This helper function ensures that the path exists
+# and returns the list of course dicts.
 def get_course_list(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     # .setdefault ensures it exists or creates it
     return cfg.setdefault("config", {}).setdefault("courses", [])
@@ -220,7 +221,9 @@ def remove_course(cfg: Dict[str, Any], course: str) -> None:
 
 
 """
-Description: remove_course_helper removes the course from faculty -> 'course_preferences'.
+Description: remove_course_helper removes the course from 
+faculty -> 'course_preferences'.
+
 Parameters :
            cfg -> the config file.
            course -> the course to remove.
@@ -444,13 +447,15 @@ def modify_conflict(
     old_idx = find_conflict_index(conflicts, old_conflict_course_id)
     if old_idx == -1:
         raise ValueError(
-            f"Conflict '{old_conflict_course_id}' does not exist in course '{course_id}'."
+            f"Conflict '{old_conflict_course_id}' does not exist in course "
+            f"'{course_id}'."
         )
 
     # prevent duplicates
     if find_conflict_index(conflicts, new_conflict_course_id) != -1:
         raise ValueError(
-            f"Conflict '{new_conflict_course_id}' already exists in course '{course_id}'."
+            f"Conflict '{new_conflict_course_id}' already exists in course "
+            f"'{course_id}'."
         )
 
     # replace in place (keeps list order stable)
