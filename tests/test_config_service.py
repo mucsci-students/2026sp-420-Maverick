@@ -7,6 +7,7 @@ import pytest
 from flask import session
 
 import app.web.services.config_service as config_service
+from app.web.app import create_app
 from app.web.services.config_service import (
     SESSION_CONFIG_KEY,
     add_course_service,
@@ -19,7 +20,9 @@ from app.web.services.config_service import (
     detect_conflicts,
     export_config_bytes,
     get_config_status,
+    get_conflicts,
     get_unsaved,
+    has_conflicts,
     load_config_into_session,
     modify_faculty_service,
     modify_pattern_service,
@@ -33,6 +36,7 @@ from app.web.services.config_service import (
     remove_time_slot_service,
     sanitize_export_filename,
     save_config_from_session,
+    set_conflicts,
     set_faculty_day_unavailable_service,
     toggle_pattern_service,
     undo,
@@ -1117,3 +1121,363 @@ def test_empty_config_structure():
     assert "time_slot_config" in cfg
     assert "times" in cfg["time_slot_config"]
     assert "classes" in cfg["time_slot_config"]
+
+
+def _base_valid_config():
+    """
+    Builds a minimal valid config using the current supported time-slot format.
+    """
+    return {
+        "config": {
+            "faculty": [],
+            "rooms": [],
+            "labs": [],
+            "courses": [],
+        },
+        "time_slot_config": {
+            "times": {
+                "MON": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
+                "TUE": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
+                "WED": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
+                "THU": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
+                "FRI": [{"start": "09:00", "spacing": 60, "end": "17:00"}],
+            },
+            "classes": [
+                {
+                    "credits": 3,
+                    "meetings": [
+                        {"day": "MON", "duration": 50, "lab": False},
+                        {"day": "WED", "duration": 50, "lab": False},
+                    ],
+                }
+            ],
+        },
+    }
+
+
+def test_validate_config_rejects_invalid_time_format():
+    """
+    Covers invalid HH:MM format validation for time-slot start/end values.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"][0]["start"] = "9AM"
+
+    with pytest.raises(ValueError, match="Invalid time format"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_time_value():
+    """
+    Covers invalid time values such as impossible hours/minutes.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"][0]["start"] = "25:00"
+
+    with pytest.raises(ValueError, match="Invalid time value"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_dictionary_time_slots():
+    """
+    Covers validation branch where time_slot_config.times is not a dictionary.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"] = []
+
+    with pytest.raises(ValueError, match="time_slot_config.times must be a dictionary"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_list_classes():
+    """
+    Covers validation branch where time_slot_config.classes is not a list.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"] = {}
+
+    with pytest.raises(ValueError, match="time_slot_config.classes must be a list"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_time_slot_day():
+    """
+    Covers invalid day names in time_slot_config.times.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["SAT"] = [
+        {"start": "09:00", "spacing": 60, "end": "12:00"}
+    ]
+
+    with pytest.raises(ValueError, match="Invalid time-slot day 'SAT'"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_list_day_slots():
+    """
+    Covers validation branch where a day's time slots are not a list.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"] = {"start": "09:00"}
+
+    with pytest.raises(
+        ValueError, match=r"time_slot_config.times\['MON'\] must be a list"
+    ):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_object_slot():
+    """
+    Covers validation branch where an individual time slot is not an object.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"] = ["09:00-17:00"]
+
+    with pytest.raises(ValueError, match="Invalid slot in MON; expected an object"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_missing_slot_fields():
+    """
+    Covers missing start/spacing/end validation.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"] = [{"start": "09:00", "end": "17:00"}]
+
+    with pytest.raises(ValueError, match="must include start, spacing, and end"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_end_before_start():
+    """
+    Covers branch where time-slot end is not after start.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"][0]["start"] = "17:00"
+    cfg["time_slot_config"]["times"]["MON"][0]["end"] = "09:00"
+
+    with pytest.raises(ValueError, match="Time slot end must be after start"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_spacing():
+    """
+    Covers invalid spacing branch.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"][0]["spacing"] = 0
+
+    with pytest.raises(ValueError, match="Invalid spacing in MON"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_object_pattern():
+    """
+    Covers validation branch where class pattern is not an object.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"] = ["bad-pattern"]
+
+    with pytest.raises(ValueError, match="Pattern at index 0 must be an object"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_pattern_credits():
+    """
+    Covers invalid class pattern credits.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["credits"] = 0
+
+    with pytest.raises(ValueError, match="Pattern 0 has invalid credits"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_missing_pattern_meetings():
+    """
+    Covers missing/empty meetings list validation.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = []
+
+    with pytest.raises(ValueError, match="Pattern 0 must have at least one meeting"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_object_meeting():
+    """
+    Covers validation branch where meeting entry is not an object.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = ["MON 09:00"]
+
+    with pytest.raises(ValueError, match="Pattern 0, meeting 0 must be an object"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_missing_meeting_day():
+    """
+    Covers validation branch where meeting day is missing.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [{"duration": 50}]
+
+    with pytest.raises(ValueError, match="must include a valid 'day'"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_meeting_day():
+    """
+    Covers validation branch where meeting day is outside VALID_DAYS.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [{"day": "SAT", "duration": 50}]
+
+    with pytest.raises(ValueError, match="contains invalid day"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_meeting_day_without_slots():
+    """
+    Covers branch where a meeting references a valid day with no configured slots.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["times"]["MON"] = []
+
+    with pytest.raises(ValueError, match="no time slots are configured for MON"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_missing_duration():
+    """
+    Covers validation branch where meeting duration is missing.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [{"day": "MON"}]
+
+    with pytest.raises(ValueError, match="must include a duration"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_numeric_duration():
+    """
+    Covers invalid duration conversion branch.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [
+        {"day": "MON", "duration": "abc"}
+    ]
+
+    with pytest.raises(ValueError, match="has invalid duration"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_positive_duration():
+    """
+    Covers duration <= 0 branch.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [{"day": "MON", "duration": 0}]
+
+    with pytest.raises(ValueError, match="has invalid duration"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_non_boolean_lab_flag():
+    """
+    Covers validation branch where meeting lab flag is not boolean.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [
+        {"day": "MON", "duration": 50, "lab": "yes"}
+    ]
+
+    with pytest.raises(ValueError, match="field 'lab' must be true or false"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_fixed_start_time():
+    """
+    Covers fixed_start validation branch.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [
+        {"day": "MON", "duration": 50, "fixed_start": "bad"}
+    ]
+
+    with pytest.raises(ValueError, match="Invalid time format"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_pattern_start_time():
+    """
+    Covers pattern-level start_time validation branch.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["start_time"] = "bad"
+
+    with pytest.raises(ValueError, match="Invalid time format"):
+        validate_config(cfg)
+
+
+def test_conflict_helpers_store_and_report_session_conflicts():
+    """
+    Covers set_conflicts, get_conflicts, and has_conflicts session helpers.
+    """
+    app = create_app()
+
+    with app.test_request_context("/config"):
+        set_conflicts(["Duplicate room: Roddy 140"])
+
+        assert get_conflicts() == ["Duplicate room: Roddy 140"]
+        assert has_conflicts() is True
+
+
+def test_conflict_helpers_default_to_empty_list():
+    """
+    Covers default conflict helper behavior when no conflicts are stored.
+    """
+    app = create_app()
+
+    with app.test_request_context("/config"):
+        assert get_conflicts() == []
+        assert has_conflicts() is False
+
+
+def test_detect_conflicts_reports_missing_and_duplicate_entities():
+    """
+    Covers conflict detection branches for missing and duplicate names.
+    """
+    cfg = {
+        "config": {
+            "faculty": [
+                {"name": "Smith"},
+                {"name": "Smith"},
+                {},
+            ],
+            "rooms": [
+                "Roddy 140",
+                "Roddy 140",
+                {},
+            ],
+            "labs": [
+                "Linux",
+                "Linux",
+                {},
+            ],
+            "courses": [
+                {"course_id": "CS101"},
+                {"course_id": "CS101"},
+                {},
+            ],
+        }
+    }
+
+    conflicts = detect_conflicts(cfg)
+
+    assert "Duplicate faculty name: Smith" in conflicts
+    assert "Faculty member with missing name." in conflicts
+    assert "Duplicate room name: Roddy 140" in conflicts
+    assert "Room with missing name." in conflicts
+    assert "Duplicate lab name: Linux" in conflicts
+    assert "Lab with missing name." in conflicts
+    assert "Course with missing course_id." in conflicts
