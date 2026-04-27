@@ -1481,3 +1481,123 @@ def test_detect_conflicts_reports_missing_and_duplicate_entities():
     assert "Duplicate lab name: Linux" in conflicts
     assert "Lab with missing name." in conflicts
     assert "Course with missing course_id." in conflicts
+
+
+# =========================================================
+# Additional targeted config_service coverage
+# =========================================================
+
+
+def test_validate_config_accepts_valid_current_time_slot_config():
+    """
+    Covers the successful validation path for the current supported
+    time_slot_config format.
+    """
+    cfg = _base_valid_config()
+
+    validate_config(cfg)
+
+
+def test_validate_config_accepts_meeting_with_lab_true_fixed_start_and_pattern_time():
+    """
+    Covers successful branches for:
+    - lab=True
+    - meeting-level fixed_start
+    - pattern-level start_time
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0] = {
+        "credits": 4,
+        "start_time": "09:00",
+        "meetings": [
+            {
+                "day": "MON",
+                "duration": 110,
+                "lab": True,
+                "fixed_start": "10:00",
+            }
+        ],
+    }
+
+    validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_fixed_start_value():
+    """
+    Covers invalid HH:MM value for meeting-level fixed_start.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["meetings"] = [
+        {
+            "day": "MON",
+            "duration": 50,
+            "fixed_start": "99:99",
+        }
+    ]
+
+    with pytest.raises(ValueError, match="Invalid time value"):
+        validate_config(cfg)
+
+
+def test_validate_config_rejects_invalid_start_time_value():
+    """
+    Covers invalid HH:MM value for pattern-level start_time.
+    """
+    cfg = _base_valid_config()
+    cfg["time_slot_config"]["classes"][0]["start_time"] = "99:99"
+
+    with pytest.raises(ValueError, match="Invalid time value"):
+        validate_config(cfg)
+
+
+def test_detect_conflicts_accepts_string_and_object_entities_without_conflicts():
+    """
+    Covers normal paths where faculty, rooms, and labs can be represented
+    as strings or objects without producing conflict messages.
+    """
+    cfg = {
+        "config": {
+            "faculty": [
+                "Smith",
+                {"name": "Jones"},
+            ],
+            "rooms": [
+                "Roddy 136",
+                {"name": "Roddy 140"},
+            ],
+            "labs": [
+                "Linux",
+                {"name": "Mac"},
+            ],
+            "courses": [
+                {"course_id": "CMSC 140"},
+                {"course_id": "CMSC 161"},
+            ],
+        }
+    }
+
+    conflicts = detect_conflicts(cfg)
+
+    assert conflicts == []
+
+
+def test_detect_conflicts_handles_missing_config_section():
+    """
+    Covers detect_conflicts fallback behavior when cfg does not include
+    a config section.
+    """
+    conflicts = detect_conflicts({})
+
+    assert conflicts == []
+
+
+def test_has_conflicts_returns_false_after_clearing_conflicts():
+    """
+    Covers has_conflicts after explicitly storing an empty conflict list.
+    """
+    app = create_app()
+
+    with app.test_request_context("/config"):
+        set_conflicts([])
+        assert get_conflicts() == []
+        assert has_conflicts() is False
