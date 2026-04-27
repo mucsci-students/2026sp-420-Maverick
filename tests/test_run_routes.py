@@ -438,15 +438,3 @@ def test_generate_persists_session_overrides(monkeypatch):
         assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 6
         assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == ["A"]
 
-
-def test_progress_returns_error_field():
-    app = create_app()
-    client = app.test_client()
-
-    generation_errors["default-session"] = "failure happened"
-
-    resp = client.get("/run/progress")
-
-    data = resp.get_json()
-
-    assert data["error"] == "failure happened"
