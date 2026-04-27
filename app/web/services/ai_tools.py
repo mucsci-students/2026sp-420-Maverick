@@ -36,7 +36,6 @@ from app.web.services.config_service import (
     set_faculty_day_unavailable_service,
 )
 
-
 # ================================================================
 # Validation
 # ================================================================
@@ -576,43 +575,53 @@ class ToolCommandFactory:
     """
     Factory for creating concrete command objects from AI tool requests.
 
-    The factory keeps command selection centralized while execute_tool()
-    depends only on the ToolCommand interface.
+    Important testing/design note:
+        This factory stores handler names instead of direct function references.
+        That allows pytest monkeypatching to still work because handlers are
+        resolved dynamically at command creation time.
     """
 
-    _handlers: dict[str, Callable[[dict], dict]] = {
-        "add_faculty": add_faculty_tool,
-        "remove_faculty": remove_faculty_tool,
-        "modify_faculty": modify_faculty_tool,
-        "set_faculty_day_unavailable": set_faculty_day_unavailable_tool,
-        "add_room": add_room_tool,
-        "remove_room": remove_room_tool,
-        "modify_room": modify_room_tool,
-        "add_lab": add_lab_tool,
-        "remove_lab": remove_lab_tool,
-        "modify_lab": modify_lab_tool,
-        "add_course": add_course_tool,
-        "remove_course": remove_course_tool,
-        "rename_course": rename_course_tool,
-        "modify_course_credits": modify_course_credits_tool,
-        "modify_course_room": modify_course_room_tool,
-        "modify_course_lab": modify_course_lab_tool,
-        "remove_course_lab": remove_course_lab_tool,
-        "modify_course_faculty": modify_course_faculty_tool,
-        "modify_course_conflicts": modify_course_conflicts_tool,
-        "add_conflict": add_conflict_tool,
-        "remove_conflict": remove_conflict_tool,
-        "modify_conflict": modify_conflict_tool,
+    _handler_names: dict[str, str] = {
+        "add_faculty": "add_faculty_tool",
+        "remove_faculty": "remove_faculty_tool",
+        "modify_faculty": "modify_faculty_tool",
+        "set_faculty_day_unavailable": "set_faculty_day_unavailable_tool",
+        "add_room": "add_room_tool",
+        "remove_room": "remove_room_tool",
+        "modify_room": "modify_room_tool",
+        "add_lab": "add_lab_tool",
+        "remove_lab": "remove_lab_tool",
+        "modify_lab": "modify_lab_tool",
+        "add_course": "add_course_tool",
+        "remove_course": "remove_course_tool",
+        "rename_course": "rename_course_tool",
+        "modify_course_credits": "modify_course_credits_tool",
+        "modify_course_room": "modify_course_room_tool",
+        "modify_course_lab": "modify_course_lab_tool",
+        "remove_course_lab": "remove_course_lab_tool",
+        "modify_course_faculty": "modify_course_faculty_tool",
+        "modify_course_conflicts": "modify_course_conflicts_tool",
+        "add_conflict": "add_conflict_tool",
+        "remove_conflict": "remove_conflict_tool",
+        "modify_conflict": "modify_conflict_tool",
     }
 
     @classmethod
     def create(cls, tool_name: str, args: dict) -> ToolCommand:
         """
         Create a command object for a supported tool name.
-        """
-        handler = cls._handlers.get(tool_name)
 
-        if handler is None:
+        Handler lookup is dynamic so tests and future runtime extensions can
+        replace tool functions without rebuilding the command registry.
+        """
+        handler_name = cls._handler_names.get(tool_name)
+
+        if handler_name is None:
+            return UnsupportedToolCommand(tool_name)
+
+        handler = globals().get(handler_name)
+
+        if handler is None or not callable(handler):
             return UnsupportedToolCommand(tool_name)
 
         return ConfigToolCommand(
@@ -620,11 +629,12 @@ class ToolCommandFactory:
             args=args,
             handler=handler,
         )
-    
+
 
 # ---------------------------------------------------
 # TOOL DEFINITIONS (WHAT AI CAN DO)
 # ---------------------------------------------------
+
 
 def get_tool_definitions():
     """
