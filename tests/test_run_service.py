@@ -27,7 +27,9 @@ from app.web.services.run_service import (
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
     _to_int,
+    build_schedules_from_config,
     generate_schedules_into_session,
+    _get_session_id,
 )
 
 
@@ -441,3 +443,130 @@ def test_generate_schedules_into_session_rejects_zero_limit():
         session_id = session["_test_sid"]
         generation_progress.pop(session_id, None)
         is_running.pop(session_id, None)
+
+
+def test_generate_schedules_into_session_empty_result(monkeypatch):
+    app = _make_app()
+
+    def fake_generate(cfg, limit, optimize):
+        yield from []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    with app.test_request_context("/"):
+        session["_test_sid"] = "empty-case"
+        session[SESSION_CONFIG_KEY] = {
+            "config": {"rooms": [], "labs": [], "courses": [], "faculty": []}
+        }
+
+        count = generate_schedules_into_session(limit=1)
+
+        assert count == 0
+        assert session[SESSION_SCHEDULES_KEY] == []
+
+
+def test_build_schedules_filters_invalid_flags(monkeypatch):
+    cfg = {
+        "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
+        "optimizer_flags": ["faculty_course", "bad_flag"],
+    }
+
+    def fake_generate(cfg, limit, optimize):
+        yield []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    schedules = build_schedules_from_config(
+        cfg,
+        limit=1,
+        optimizer_flags=["faculty_course", "fake_flag"],
+        session_id="x",
+    )
+
+    # No schedules, but still validates filtering path
+    assert schedules == []
+
+
+def test_optimize_flag_true_when_flags_present(monkeypatch):
+    cfg = {"config": {"rooms": [], "labs": [], "courses": [], "faculty": []}}
+
+    observed = {}
+
+    def fake_generate(cfg, limit, optimize):
+        observed["optimize"] = optimize
+        yield []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    build_schedules_from_config(cfg, 1, ["faculty_course"], "x")
+
+    assert observed["optimize"] is True
+
+
+def test_row_defaults_when_missing_fields(monkeypatch):
+    cfg = {"config": {"rooms": [], "labs": [], "courses": [], "faculty": []}}
+
+    def fake_generate(cfg, limit, optimize):
+        yield [{}]
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    schedules = build_schedules_from_config(cfg, 1, [], "x")
+
+    row = schedules[0]["assignments"][0]
+    assert row["course_id"] == ""
+    assert row["time"] == ""
+
+
+def test_build_schedules_filters_invalid_flags(monkeypatch):
+    cfg = {
+        "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
+        "optimizer_flags": ["faculty_course", "bad_flag"],
+    }
+
+    def fake_generate(cfg, limit, optimize):
+        yield []
+
+    monkeypatch.setattr(
+        "app.web.services.run_service.generate_schedules",
+        fake_generate,
+    )
+
+    schedules = build_schedules_from_config(
+        cfg,
+        limit=1,
+        optimizer_flags=["faculty_course", "fake_flag"],
+        session_id="x",
+    )
+
+    # No schedules, but still validates filtering path
+    assert schedules == []
+
+
+def test_get_session_id_from_flask_sid(app):
+    with app.test_request_context("/"):
+        session.sid = "real-session-id"
+        assert _get_session_id() == "real-session-id"
+
+
+def test_get_session_id_from_test_sid(app):
+    with app.test_request_context("/"):
+        session["_test_sid"] = "test-id"
+        assert _get_session_id() == "test-id"
+
+
+def test_get_session_id_fallback_default(app):
+    with app.test_request_context("/"):
+        assert _get_session_id() == "default-session"
