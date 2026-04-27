@@ -102,6 +102,13 @@ Extends base.html.
 </section>
 {% endif %}
 
+{% if is_editor_mode %}
+<p class="hint">
+  Editor Mode active. Summary cards are hidden to keep the editing workspace focused.
+  Switch to Viewer Mode to review the full configuration summary.
+</p>
+{% endif %}
+
 <div class="config-editor-controls">
   <!-- ========================================================= -->
   <!-- Load / Save / Clear Section                               -->
@@ -261,24 +268,376 @@ Extends base.html.
         {% for k, v in status.counts.items() %}
           <li>{{ k }}: {{ v }}</li>
         {% endfor %}
+
+        <!-- Time Slot Count -->
+        <li>
+          Time Slots:
+          {% if config and config.time_slot_config and config.time_slot_config.times %}
+            {{
+              config.time_slot_config.times.values()
+              | map('length')
+              | sum
+            }}
+          {% else %}
+            0
+          {% endif %}
+        </li>
+
+        <!-- Meeting Pattern Count -->
+        <li>
+          Meeting Patterns:
+          {% if config and config.time_slot_config and config.time_slot_config.classes %}
+            {{ config.time_slot_config.classes | length }}
+          {% else %}
+            0
+          {% endif %}
+        </li>
       </ul>
 
-      <!-- Room Summary -->
-      {% if config and config.config and config.config.rooms %}
-        <h3>Rooms</h3>
-        <div class="entity-pill-list">
-          {% for room in config.config.rooms %}
-            <span class="entity-pill">
-              {{ room }}
-            </span>
-          {% endfor %}
+      {% if is_viewer_mode %}
+      <div id="entity-summary-wrapper" class="viewer-summary-mode">
+
+        <!-- Room Summary -->
+        <div class="entity-summary-panel" id="summary-room">
+          {% if config and config.config and config.config.rooms %}
+            <h3>Rooms</h3>
+            <div class="entity-pill-list">
+              {% for room in config.config.rooms %}
+                <span class="entity-pill">
+                  {{ room }}
+                </span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Rooms</h3>
+            <p class="hint">No rooms configured.</p>
+          {% endif %}
         </div>
-      {% else %}
-        <h3>Rooms</h3>
-        <p class="hint">No rooms configured.</p>
+
+        <!-- Lab Summary -->
+        <div class="entity-summary-panel" id="summary-lab">
+          {% if config and config.config and config.config.labs %}
+            <h3>Labs</h3>
+            <div class="entity-pill-list">
+              {% for lab in config.config.labs %}
+                <span class="entity-pill">
+                  {{ lab }}
+                </span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Labs</h3>
+            <p class="hint">No labs configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Course Summary -->
+        <div class="entity-summary-panel" id="summary-course">
+          {% if config and config.config and config.config.courses %}
+            <h3>Courses</h3>
+
+            <div class="entity-card-grid">
+              {% for course in config.config.courses %}
+                <div class="entity-card">
+                  <div class="entity-card-header">
+                    <strong>Index {{ loop.index0 }} — {{ course.course_id }}</strong>
+                    <span class="entity-status">{{ course.credits }} credits</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Rooms:</strong>
+                    <span>{{ course.room | join(", ") if course.room else "None" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Labs:</strong>
+                    <span>{{ course.lab | join(", ") if course.lab else "None" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Faculty:</strong>
+                    <span>{{ course.faculty | join(", ") if course.faculty else "Any / Unassigned" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Conflicts:</strong>
+                    <span>{{ course.conflicts | join(", ") if course.conflicts else "None" }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Courses</h3>
+            <p class="hint">No courses configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Faculty Summary -->
+        <div class="entity-summary-panel" id="summary-faculty">
+          {% if config and config.config and config.config.faculty %}
+            <h3>Faculty</h3>
+
+            <div class="entity-card-grid">
+              {% for faculty in config.config.faculty %}
+                <div class="entity-card">
+                  <div class="entity-card-header">
+                    <strong>{{ faculty.name }}</strong>
+                    <span class="entity-status">
+                      {{ faculty.minimum_credits }}–{{ faculty.maximum_credits }} credits
+                    </span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Unique Courses:</strong>
+                    <span>{{ faculty.unique_course_limit }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Max Days:</strong>
+                    <span>{{ faculty.maximum_days if faculty.maximum_days is defined else "Not set" }}</span>
+                  </div>
+
+                  <div class="entity-detail-row">
+                    <strong>Mandatory Days:</strong>
+                    <span>
+                      {{ faculty.mandatory_days | join(", ") if faculty.mandatory_days is defined and faculty.mandatory_days else "None" }}
+                    </span>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Availability:</strong>
+                    <div class="mini-pill-list">
+                      {% for day, ranges in faculty.times.items() %}
+                        <span class="mini-pill">
+                          {{ day }}:
+                          {{ ranges | join(", ") if ranges else "Unavailable" }}
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Course Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.course_preferences %}
+                        {% for course_id, weight in faculty.course_preferences.items() %}
+                          <span class="mini-pill">{{ course_id }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Room Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.room_preferences %}
+                        {% for room, weight in faculty.room_preferences.items() %}
+                          <span class="mini-pill">{{ room }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="entity-detail-row stacked">
+                    <strong>Lab Preferences:</strong>
+                    <div class="mini-pill-list">
+                      {% if faculty.lab_preferences %}
+                        {% for lab, weight in faculty.lab_preferences.items() %}
+                          <span class="mini-pill">{{ lab }}: {{ weight }}</span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="hint">None</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Faculty</h3>
+            <p class="hint">No faculty configured.</p>
+          {% endif %}
+        </div>
+        
+        <!-- Time Slot Summary -->
+        <div class="entity-summary-panel" id="summary-timeslot">
+          {% if config and config.time_slot_config and config.time_slot_config.times %}
+            <h3>Time Slots</h3>
+            {% for day, slots in config.time_slot_config.times.items() %}
+              <div style="margin-bottom: 8px;">
+                <strong>{{ day }}</strong>: {{ slots|length }} slots
+                <ul>
+                  {% for slot in slots %}
+                    <li>
+                      <strong>Index {{ loop.index0 }}:</strong>
+                      start={{ slot.start }},
+                      spacing={{ slot.spacing }},
+                      end={{ slot.end }}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+          {% else %}
+            <h3>Time Slots</h3>
+            <p class="hint">No time slots configured.</p>
+          {% endif %}
+        </div>
+
+        <!-- Meeting Pattern Summary -->
+        <div class="entity-summary-panel" id="summary-pattern">
+          {% if config and config.time_slot_config and config.time_slot_config.classes %}
+            <h3>Meeting Patterns</h3>
+
+            <div class="pattern-grid">
+              {% for pattern in config.time_slot_config.classes %}
+                <div class="pattern-card">
+                  <div class="pattern-card-header">
+                    <strong>Index {{ loop.index0 }}: {{ pattern.credits }} Credit Pattern</strong>
+
+                    {% if pattern.disabled is defined and pattern.disabled %}
+                      <span class="pattern-status disabled">Disabled</span>
+                    {% else %}
+                      <span class="pattern-status active">Active</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="pattern-meta">
+                    <span>
+                      <strong>Start:</strong>
+                      {{ pattern.start_time if pattern.start_time is defined and pattern.start_time else "Flexible" }}
+                    </span>
+                  </div>
+
+                  <div class="pattern-meetings">
+                    {% for meeting in pattern.meetings %}
+                      <span class="meeting-pill">
+                        {{ meeting.day }} · {{ meeting.duration }} min
+                        {% if meeting.lab is defined and meeting.lab %}
+                          · Lab
+                        {% endif %}
+                      </span>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <h3>Meeting Patterns</h3>
+            <p class="hint">No meeting patterns configured.</p>
+          {% endif %}
+        </div>
+
+        {% if status.conflicts %}
+        <div class="entity-summary-panel" id="summary-conflict">
+          <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+            <strong>Configuration Conflicts Detected:</strong>
+            <ul>
+              {% for c in status.conflicts %}
+                <li>{{ c }}</li>
+              {% endfor %}
+            </ul>
+
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
       {% endif %}
 
-      <!-- Lab Summary -->
+    {% else %}
+      <!-- Indicates that no configuration is currently loaded -->
+      <p><strong>File Loaded:</strong> No</p>
+
+      <!-- Helper text guiding the user toward the next required step -->
+      <p class="hint">Load a config to enable schedule generation.</p>
+
+    {% endif %}
+
+  </section>
+
+  <section class="card config-management-card">
+    <div class="section-heading-row">
+      <div>
+        <h2>Configuration Management</h2>
+        <p class="hint">Choose an entity type, then add, remove, or modify configuration data.</p>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="config-toolbar">
+      <label for="entityType">Select Type</label>
+      <select id="entityType">
+        <option value="faculty">Faculty</option>
+        <option value="room">Room</option>
+        <option value="lab">Lab</option>
+        <option value="course">Course</option>
+        <option value="conflict">Conflict</option>
+        <option value="timeslot">Time Slot</option>
+        <option value="pattern">Meeting Pattern</option>
+      </select>
+    </div>
+
+    <!-- Universal Actions -->
+    <div class="action-button-row">
+      <button type="button" onclick="setMode('add')">Add</button>
+      <button type="button" onclick="setMode('remove')">Remove</button>
+      <button type="button" onclick="setMode('modify')">Modify</button>
+    </div>
+
+    <div class="history-button-row">
+      <form method="post" action="/config/undo">
+        <button type="submit" id="undo">Undo</button>
+      </form>
+
+      <form method="post" action="/config/redo">
+        <button type="submit" id="redo">Redo</button>
+      </form>
+    </div>
+
+    <hr class="soft-divider">
+
+    <!-- Dynamic Form Container -->
+    <div id="formContainer"></div>
+
+    <hr class="soft-divider">
+
+    <div class="editor-selected-summary">
+      <h3>Selected Type Summary</h3>
+      <p class="hint">
+        This summary updates based on the selected configuration type above.
+      </p>
+
+      <div id="editor-summary-target"></div>
+    </div>    
+  </section>
+
+  {% if is_editor_mode %}
+  <div id="editor-summary-source" style="display: none;">
+
+    <!-- Room Summary -->
+    <div class="entity-summary-panel" id="summary-source-room">
+        {% if config and config.config and config.config.rooms %}
+          <h3>Rooms</h3>
+          <div class="entity-pill-list">
+            {% for room in config.config.rooms %}
+              <span class="entity-pill">
+                {{ room }}
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <h3>Rooms</h3>
+          <p class="hint">No rooms configured.</p>
+        {% endif %}
+    </div>
+
+    <!-- Lab Summary -->
+    <div class="entity-summary-panel" id="summary-source-lab">
       {% if config and config.config and config.config.labs %}
         <h3>Labs</h3>
         <div class="entity-pill-list">
@@ -292,8 +651,10 @@ Extends base.html.
         <h3>Labs</h3>
         <p class="hint">No labs configured.</p>
       {% endif %}
+    </div>
 
-      <!-- Course Summary -->
+    <!-- Course Summary -->
+    <div class="entity-summary-panel" id="summary-source-course">
       {% if config and config.config and config.config.courses %}
         <h3>Courses</h3>
 
@@ -331,8 +692,10 @@ Extends base.html.
         <h3>Courses</h3>
         <p class="hint">No courses configured.</p>
       {% endif %}
+    </div>
 
-      <!-- Faculty Summary -->
+    <!-- Faculty Summary -->
+    <div class="entity-summary-panel" id="summary-source-faculty">
       {% if config and config.config and config.config.faculty %}
         <h3>Faculty</h3>
 
@@ -420,8 +783,10 @@ Extends base.html.
         <h3>Faculty</h3>
         <p class="hint">No faculty configured.</p>
       {% endif %}
-      
-      <!-- Time Slot Summary -->
+    </div>
+
+    <!-- Time Slot Summary -->
+    <div class="entity-summary-panel" id="summary-source-timeslot">
       {% if config and config.time_slot_config and config.time_slot_config.times %}
         <h3>Time Slots</h3>
         {% for day, slots in config.time_slot_config.times.items() %}
@@ -443,8 +808,10 @@ Extends base.html.
         <h3>Time Slots</h3>
         <p class="hint">No time slots configured.</p>
       {% endif %}
+    </div>
 
-      <!-- Meeting Pattern Summary -->
+    <!-- Meeting Pattern Summary -->
+    <div class="entity-summary-panel" id="summary-source-pattern">
       {% if config and config.time_slot_config and config.time_slot_config.classes %}
         <h3>Meeting Patterns</h3>
 
@@ -485,8 +852,10 @@ Extends base.html.
         <h3>Meeting Patterns</h3>
         <p class="hint">No meeting patterns configured.</p>
       {% endif %}
+    </div>
 
-      {% if status.conflicts %}
+    <!-- Conflict Pattern Summary -->
+    <div class="entity-summary-panel" id="summary-source-conflict">
       <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
         <strong>Configuration Conflicts Detected:</strong>
         <ul>
@@ -496,63 +865,26 @@ Extends base.html.
         </ul>
 
       </div>
+    </div>
+
+    <div class="entity-summary-panel" id="summary-source-conflict">
+      {% if status.conflicts %}
+        <div style="margin-top:10px; padding:10px; border:1px solid red; background:#ffecec;">
+          <strong>Configuration Conflicts Detected:</strong>
+          <ul>
+            {% for c in status.conflicts %}
+              <li>{{ c }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <h3>Conflicts</h3>
+        <p class="hint">No configuration conflicts detected.</p>
       {% endif %}
-
-    {% else %}
-      <!-- Indicates that no configuration is currently loaded -->
-      <p><strong>File Loaded:</strong> No</p>
-
-      <!-- Helper text guiding the user toward the next required step -->
-      <p class="hint">Load a config to enable schedule generation.</p>
-
-    {% endif %}
-
-  </section>
-
-  <section class="card config-management-card">
-    <div class="section-heading-row">
-      <div>
-        <h2>Configuration Management</h2>
-        <p class="hint">Choose an entity type, then add, remove, or modify configuration data.</p>
-      </div>
     </div>
 
-    <!-- Filter -->
-    <div class="config-toolbar">
-      <label for="entityType">Select Type</label>
-      <select id="entityType">
-        <option value="faculty">Faculty</option>
-        <option value="room">Room</option>
-        <option value="lab">Lab</option>
-        <option value="course">Course</option>
-        <option value="conflict">Conflict</option>
-        <option value="timeslot">Time Slot</option>
-        <option value="pattern">Meeting Pattern</option>
-      </select>
-    </div>
-
-    <!-- Universal Actions -->
-    <div class="action-button-row">
-      <button type="button" onclick="setMode('add')">Add</button>
-      <button type="button" onclick="setMode('remove')">Remove</button>
-      <button type="button" onclick="setMode('modify')">Modify</button>
-    </div>
-
-    <div class="history-button-row">
-      <form method="post" action="/config/undo">
-        <button type="submit" id="undo">Undo</button>
-      </form>
-
-      <form method="post" action="/config/redo">
-        <button type="submit" id="redo">Redo</button>
-      </form>
-    </div>
-
-    <hr class="soft-divider">
-
-    <!-- Dynamic Form Container -->
-    <div id="formContainer"></div>
-  </section>
+  </div>
+  {% endif %}
 </div>
 
 {% if is_viewer_mode %}
@@ -578,6 +910,7 @@ const isConfigEditorViewerMode =
 document.getElementById("entityType").addEventListener("change", (e) => {
   currentType = e.target.value;
   renderForm();
+  updateEntitySummaryPanel();
 });
 
 function setMode(mode) {
@@ -587,6 +920,24 @@ function setMode(mode) {
 
   currentMode = mode;
   renderForm();
+}
+
+function updateEntitySummaryPanel() {
+  if (isConfigEditorViewerMode) {
+    document.querySelectorAll(".entity-summary-panel").forEach((panel) => {
+      panel.style.display = "";
+    });
+    return;
+  }
+
+  const target = document.getElementById("editor-summary-target");
+  const source = document.getElementById(`summary-source-${currentType}`);
+
+  if (!target || !source) {
+    return;
+  }
+
+  target.innerHTML = source.innerHTML;
 }
 
 function renderForm() {
@@ -719,5 +1070,6 @@ function renderForm() {
 }
 
 renderForm();
+updateEntitySummaryPanel();
 </script>
 {% endblock %}

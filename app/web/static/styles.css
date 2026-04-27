@@ -686,3 +686,15 @@ pre {
   border: 1px solid #e2e8f0;
   font-size: 0.82rem;
 }
+
+.entity-summary-panel {
+  margin-top: 12px;
+}
+
+.editor-selected-summary {
+  margin-top: 14px;
+}
+
+.editor-selected-summary h3 {
+  margin-bottom: 4px;
+}
