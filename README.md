@@ -473,7 +473,7 @@ Details:
 
 ---
 
-### Design Pattern: State
+## Design Pattern: State
 
 3. State (Behavoiral Pattern)
 
@@ -499,6 +499,116 @@ states:
 - Completed at 100%, redirects the user automatically to the viewer page.
 
 - When it encounters and error, show an error message instead of progressing. Allows for retrying.
+
+---
+
+## Design Pattern: Template Method
+
+4. Template Method (Behavioral Pattern)
+
+Our application implements the **Template Method design pattern** within the configuration routes located in `app/web/routes/config_routes.py`.
+
+### Problem
+
+The configuration editor includes many routes for modifying system data, such as adding, removing, and modifying faculty, courses, rooms, labs, timeslots, and meeting patterns.
+
+Each route followed the same workflow:
+    - Call a service-layer function
+    - Handle exceptions
+    - Display a success or error message
+    - Redirect back to the editor
+
+This resulted in significant code duplication, making the file harder to maintain and more error-prone when changes are needed. 
+
+### Pattern
+
+The **Template Method pattern** defines the skeleton of an algorithm in one place while allowing specific steps to vary.
+
+In this case, the shared algoritm is:
+    - Execute an action
+    - Handle errors
+    - Display feedback
+    - Redirect to the editor
+    
+The vary parts are:
+    - Which service function is executed 
+    - What success message is shown
+    
+### Implementation
+
+The pattern is implemented using helper functions that standarize route behavior:
+    - handle_action(service_fn, success_msg, *args, **kwargs)
+    - handle_form_action(service_fn, success_msg)
+
+These functions define the common workflow for all routes.
+Each route now delegates its logic instead of reimplementing it.
+The helper function executes the service, handles errors, flashes a message, and redirects.
+
+### How It Solves the Problem
+
+By applying the Template Method pattern:
+    - Duplicate code is eliminated across all route handlers
+    - Route behavior is consistent and centralized 
+    - Chnages to error handling or messaging only need to be made in one place
+    - New routes can be added with minimal code 
+
+This approach improves maintainability, readability, and scalability of the controller layer.
+
+---
+
+## Design Pattern: Builder
+
+5. Builder (Creational Pattern)
+
+Our application implements the **Builder design pattern** within the configuration editor interface located in `app/web/templates/config_editor.html`.
+
+### Problem
+
+The configuraton editor allows users to dynamically create and modify many different types of entities (faculty, rooms, labs, courses, conflicts, time slots, and meeting patterns). Each entity supports multiple operations such as add, remove, modify, resulting in a large number of possible form variations. 
+
+### Pattern
+
+The Builder pattern constructs a complex object step-by-step while separating the construction logic from the final representation. In this case, the "complex object" is the dynamically generated HTML form.
+    
+### Implementation
+
+In our system, the FormBuilder class is responsible for constructing HTML forms based on the selected entity type and operation mode. 
+
+Each form is built incrementally:
+    - The builder is initialized with:
+        - Entity type (e.g., faculty, course, room)
+        - Operation mode (add, remove, modify)
+    - The builder constructs the form in steps:
+        - Initializes the <form> with the correct action route
+        - Adds input fields specific to the entity type
+        - Adjusts fields based on the operation mode 
+        - Finalizes the form with a submit button
+
+Key structure:
+    - FormBuilder (builder class)
+    - build() method
+    - Specialized methods:
+        - faculty()
+        - course()
+        - room()
+        - lab()
+        - timeslot()
+        - pattern()
+
+The renderForm() function acts as the director by 
+    - Creating a builder instance 
+    - Calling build()
+    - Rendering the resulting HTML into the page
+
+### How It Solves the Problem
+
+By applying the Builder pattern:
+    - Complex form construction logic is centralized in one class
+    - The large conditional structure is eliminated, improving readability
+    - New entity types or fields can be added without modifying existing logic
+    - The UI becomes easier to maintain and extend
+
+This approach improves modularity and keeps the form-generaton logic cleanly separated from the rest of the view code, making the system more scalable and easier to evolve. 
 
 ---
 
