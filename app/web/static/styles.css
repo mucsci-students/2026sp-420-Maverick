@@ -359,3 +359,342 @@ pre {
     font-size: 0.65rem;
     color: var(--muted);
 }
+
+
+/* ==========================================================================
+   Viewer / Editor Mode Badges
+   ========================================================================== */
+
+.mode-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mode-toggle-form {
+  margin: 0;
+}
+
+.mode-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mode-editor {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.mode-viewer {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+
+/* ==========================================================================
+   Flash Message Animations
+   ========================================================================== */
+
+.flash {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  cursor: pointer;
+}
+
+/* Optional styling */
+.flash.success {
+  background: #e6ffed;
+  border: 1px solid #2ecc71;
+}
+
+/* Fade-out animation */
+.flash.fade-out {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.toast.success {
+  background: #e6ffed;
+  border: 1px solid #2ecc71;
+  color: #14532d;
+}
+
+.toast.error {
+  background: #ffecec;
+  border: 1px solid #e74c3c;
+  color: #7f1d1d;
+}
+
+.toast.warning {
+  background: #fff8e1;
+  border: 1px solid #f1c40f;
+  color: #7a4f00;
+}
+
+.toast.fade-out {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+
+/* ==========================================================================
+   Config Editor Viewer / Editor Mode Polish
+   ========================================================================== */
+
+.viewer-mode-panel {
+  border-left: 4px solid #d97706;
+  background: #fffaf0;
+}
+
+.viewer-mode-panel h2 {
+  margin-top: 0;
+}
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pattern-card {
+  padding: 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.pattern-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pattern-meta {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.pattern-meetings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meeting-pill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.85rem;
+}
+
+.pattern-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pattern-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pattern-status.disabled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.config-management-card {
+  overflow: hidden;
+}
+
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.section-heading-row h2 {
+  margin-bottom: 4px;
+}
+
+.config-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.action-button-row,
+.history-button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.history-button-row form {
+  margin: 0;
+}
+
+.soft-divider {
+  border: none;
+  border-top: 1px solid #d8dee9;
+  margin: 14px 0;
+}
+
+#formContainer form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+#formContainer input,
+#formContainer select {
+  min-height: 34px;
+}
+
+
+/* ==========================================================================
+   Config Entity Summary Cards
+   ========================================================================== */
+
+.entity-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 18px;
+}
+
+.entity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.index-label {
+  font-weight: 700;
+  color: #334155;
+}
+
+.entity-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin: 10px 0 22px;
+}
+
+.entity-card {
+  padding: 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.entity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.entity-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.entity-detail-row {
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 0.92rem;
+}
+
+.entity-detail-row.stacked {
+  display: block;
+}
+
+.entity-detail-row.stacked strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.mini-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mini-pill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.82rem;
+}
+
+.entity-summary-panel {
+  margin-top: 12px;
+}
+
+.editor-selected-summary {
+  margin-top: 14px;
+}
+
+.editor-selected-summary h3 {
+  margin-bottom: 4px;
+}

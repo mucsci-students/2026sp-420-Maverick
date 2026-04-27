@@ -1,5 +1,5 @@
 # Author: Antonio Corona, Jacob Karasow
-# Date: 2026-04-05
+# Date: 2026-04-26
 """
 Configuration Routes
 
@@ -71,6 +71,7 @@ from app.web.services.config_service import (
     toggle_pattern_service,
     undo,
 )
+from app.web.services.mode_service import is_viewer, set_mode
 from app.web.services.run_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
@@ -494,3 +495,48 @@ def undo_route():
 @bp.post("/redo")
 def redo_route():
     return handle_action(redo, "Redo successful.")
+
+
+@bp.post("/mode")
+def set_mode_route():
+    """
+    Switches the Config Editor between Viewer Mode and Editor Mode.
+
+    Viewer Mode keeps the Config Editor read-only.
+    Editor Mode enables the existing configuration editing controls.
+    """
+    mode = request.form.get("mode", "editor")
+    selected = set_mode(mode)
+
+    if selected == "viewer":
+        flash("Viewer Mode enabled. Config editing is now disabled.", "success")
+    else:
+        flash("Editor Mode enabled. Config editing is now available.", "success")
+
+    return redirect(url_for("config.editor"))
+
+
+@bp.before_request
+def block_config_mutations_in_viewer_mode():
+    """
+    Blocks Config Editor mutations while Viewer Mode is active.
+
+    This keeps the restriction scoped only to the Config Editor instead of the
+    entire application.
+    """
+    if not is_viewer():
+        return None
+
+    allowed_endpoints = {
+        "config.editor",
+        "config.set_mode_route",
+    }
+
+    if request.method == "POST" and request.endpoint not in allowed_endpoints:
+        flash(
+            "Viewer Mode is read-only. Switch to Editor Mode to make changes.",
+            "error",
+        )
+        return redirect(url_for("config.editor"))
+
+    return None
