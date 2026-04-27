@@ -436,3 +436,65 @@ def test_generate_persists_session_overrides(monkeypatch):
     with client.session_transaction() as sess:
         assert sess[SESSION_GENERATOR_LIMIT_OVERRIDE_KEY] == 6
         assert sess[SESSION_GENERATOR_FLAGS_OVERRIDE_KEY] == ["A"]
+
+
+def test_generate_with_no_session_config_but_valid_input(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post(
+        "/run/generate",
+        data={"limit": "5", "optimizer_flags": ["faculty_course"]},
+    )
+
+    assert response.status_code == 400
+    assert "No config loaded" in response.get_json()["error"]
+
+
+def test_reset_handles_missing_session_id_gracefully(monkeypatch):
+    app = create_app()
+    client = app.test_client()
+
+    response = client.post("/run/reset")
+
+    assert response.status_code in (200, 302)
+
+
+def test_generate_single_optimizer_flag_as_string(monkeypatch):
+    observed = {}
+
+    def fake_thread(target, args=(), daemon=False):
+        class T:
+            def start(self_inner):
+                target(*args)
+
+        return T()
+
+    def fake_job(session_id, cfg, limit, optimizer_flags):
+        observed["optimizer_flags"] = optimizer_flags
+
+    monkeypatch.setattr("app.web.routes.run_routes.Thread", fake_thread)
+    monkeypatch.setattr(
+        "app.web.routes.run_routes._run_generation_job",
+        fake_job,
+    )
+
+    app = create_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess[SESSION_CONFIG_KEY] = {
+            "limit": 10,
+            "optimizer_flags": [],
+            "config": {"faculty": [], "rooms": [], "labs": [], "courses": []},
+        }
+
+    client.post(
+        "/run/generate",
+        data={
+            "limit": "5",
+            "optimizer_flags": "faculty_course",  # string instead of list
+        },
+    )
+
+    assert observed["optimizer_flags"] == ["faculty_course"]
