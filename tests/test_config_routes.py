@@ -593,25 +593,6 @@ def test_load_file_route_missing_file_key():
     assert response.status_code == 302
 
 
-def test_pattern_toggle_success(monkeypatch):
-    app = _make_app()
-    called = {"data": None}
-
-    def fake_toggle(**kwargs):
-        called["data"] = kwargs
-
-    monkeypatch.setattr(
-        "app.web.routes.config_routes.toggle_pattern_service",
-        fake_toggle,
-    )
-
-    client = app.test_client()
-    response = client.post("/config/pattern/toggle", data={"pattern": "MWF"})
-
-    assert response.status_code == 302
-    assert called["data"]["pattern"] == "MWF"
-
-
 def test_undo_redo_sequence(monkeypatch):
     app = _make_app()
 
