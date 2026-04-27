@@ -2,7 +2,7 @@
 # Date: 2026-04-26
 """
 File: mode_service.py
-Purpose: 
+Purpose:
     Manage Viewer / Editor mode state for the application using Flask session storage.
 
 Responsibilities:
@@ -13,7 +13,7 @@ Responsibilities:
 Notes:
 - Defaults to EDITOR_MODE if no session value is set or an invalid mode is provided.
 - Relies on Flask session, so this requires a properly configured secret key.
-- Setting session.modified ensures the session is persisted 
+- Setting session.modified ensures the session is persisted
     even if the value is unchanged.
 """
 
