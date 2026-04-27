@@ -27,7 +27,9 @@ from app.web.services.schedule_service import (
     _check_for_conflicts,
     _group_by,
     export_schedules_to_csv,
+    get_schedules_for_export,
     get_view_data,
+    import_schedules_from_file,
     is_export_enabled,
     is_valid_file,
     next_schedule,
@@ -291,3 +293,80 @@ def test_export_enabled_flag(app):
 
         session[SESSION_SCHEDULES_KEY] = [{}]
         assert is_export_enabled() is True
+
+
+def test_next_schedule_no_session_key(app):
+    with app.test_request_context():
+        session.clear()
+
+        next_schedule()
+
+        assert SESSION_SELECTED_INDEX_KEY not in session
+
+
+def test_prev_schedule_no_session_key(app):
+    with app.test_request_context():
+        session.clear()
+
+        prev_schedule()
+
+        assert SESSION_SELECTED_INDEX_KEY not in session
+
+
+def test_group_by_faculty_multiple_groups():
+    assignments = [
+        {"faculty": "Smith"},
+        {"faculty": "Jones"},
+        {"faculty": "Smith"},
+    ]
+
+    grouped = _group_by(assignments, "faculty")
+
+    assert len(grouped) == 2
+    assert len(grouped["Smith"]) == 2
+
+
+def test_select_schedule_exact_index(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{}, {}, {}]
+
+        select_schedule(1)
+
+        assert session[SESSION_SELECTED_INDEX_KEY] == 1
+
+
+def test_conflict_with_missing_fields(app):
+    with app.test_request_context():
+        schedule = {
+            "meta": {},
+            "assignments": [
+                {"day": "MON"},
+                {"start": "10:00"},
+            ],
+        }
+
+        session[SESSION_SCHEDULES_KEY] = [schedule]
+        session[SESSION_SELECTED_INDEX_KEY] = 0
+
+        result = get_view_data()
+
+        assert "has_conflicts" in result
+
+
+def test_import_invalid_json(app, tmp_path):
+    file_path = tmp_path / "bad.json"
+    file_path.write_text("not json")
+
+    with app.test_request_context():
+        with pytest.raises(ValueError):
+            import_schedules_from_file(str(file_path))
+
+
+def test_get_schedules_for_export(app):
+    with app.test_request_context():
+        session[SESSION_SCHEDULES_KEY] = [{"meta": {}}]
+
+        result = get_schedules_for_export()
+
+        assert isinstance(result, list)
+        assert len(result) == 1
