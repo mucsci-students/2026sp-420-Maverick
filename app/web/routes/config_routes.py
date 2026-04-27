@@ -71,15 +71,12 @@ from app.web.services.config_service import (
     toggle_pattern_service,
     undo,
 )
-
+from app.web.services.mode_service import is_viewer, set_mode
 from app.web.services.run_service import (
     SESSION_SCHEDULES_KEY,
     SESSION_SELECTED_INDEX_KEY,
     SESSION_USER_SELECTED_KEY,
 )
-
-from app.web.services.mode_service import set_mode, is_viewer
-
 
 bp = Blueprint("config", __name__, url_prefix="/config")
 
@@ -598,7 +595,9 @@ def block_config_mutations_in_viewer_mode():
     }
 
     if request.method == "POST" and request.endpoint not in allowed_endpoints:
-        flash("Viewer Mode is read-only. Switch to Editor Mode to make changes.", "error")
+        flash(
+            "Viewer Mode is read-only. Switch to Editor Mode to make changes.", "error"
+        )
         return redirect(url_for("config.editor"))
 
     return None

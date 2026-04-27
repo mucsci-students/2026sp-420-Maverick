@@ -99,7 +99,7 @@ def create_app():
         This allows templates to conditionally show, hide, or disable editing
         controls without each route manually passing the same context values.
         """
-        from app.web.services.mode_service import get_mode, is_viewer, is_editor
+        from app.web.services.mode_service import get_mode, is_editor, is_viewer
 
         return {
             "app_mode": get_mode(),
