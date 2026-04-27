@@ -690,8 +690,8 @@ From the repo root:
 
 ```bash
 uv sync --dev
-uv run ruff check .
 uv run ruff format .
+uv run ruff check .
 uv run ty check app tests
 uv run pytest --cov=app --cov-branch --cov-report=xml
 ```
